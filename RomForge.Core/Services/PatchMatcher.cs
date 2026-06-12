@@ -1,0 +1,109 @@
+using Patch.Core.Models;
+using System.IO.Compression;
+
+namespace Patch.Core.Services;
+
+public static class PatchMatcher
+{
+    private static readonly HashSet<string> PatchExtensions = new(StringComparer.OrdinalIgnoreCase)
+        { ".xdelta", ".xdelta3", ".ips", ".ups", ".bps", ".ppf", ".aps" };
+
+    /// <summary>
+    /// 원본(단일파일 or ZIP)과 패치(단일파일 or 폴더 or ZIP)를 받아 베이스네임으로 매칭
+    /// </summary>
+    public static List<PatchPair> Match(string sourcePath, string patchPath)
+    {
+        var sources = ExpandSource(sourcePath);
+        var patches = ExpandPatch(patchPath);
+
+        var patchMap = patches.ToDictionary(
+            p => Path.GetFileNameWithoutExtension(p),
+            p => p,
+            StringComparer.OrdinalIgnoreCase);
+
+        var sourceMap = sources.ToDictionary(
+            s => Path.GetFileNameWithoutExtension(s),
+            s => s,
+            StringComparer.OrdinalIgnoreCase);
+
+        var pairs = new List<PatchPair>();
+        var usedPatches = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (baseName, srcPath) in sourceMap)
+        {
+            if (patchMap.TryGetValue(baseName, out var patchFile))
+            {
+                pairs.Add(new PatchPair
+                {
+                    BaseName   = baseName,
+                    SourcePath = srcPath,
+                    PatchPath  = patchFile,
+                    Status     = PairStatus.Matched
+                });
+                usedPatches.Add(patchFile);
+            }
+            else
+            {
+                pairs.Add(new PatchPair
+                {
+                    BaseName   = baseName,
+                    SourcePath = srcPath,
+                    Status     = PairStatus.OrphanSource
+                });
+            }
+        }
+
+        foreach (var (baseName, patchFile) in patchMap)
+        {
+            if (!usedPatches.Contains(patchFile))
+            {
+                pairs.Add(new PatchPair
+                {
+                    BaseName  = baseName,
+                    PatchPath = patchFile,
+                    Status    = PairStatus.OrphanPatch
+                });
+            }
+        }
+
+        return pairs;
+    }
+
+    // 원본: 단일파일 → [파일], ZIP → [내부 엔트리 가상경로]
+    private static List<string> ExpandSource(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        if (ext == ".zip")
+        {
+            using var zip = ZipFile.OpenRead(path);
+            return zip.Entries
+                .Where(e => !string.IsNullOrEmpty(e.Name))
+                .Select(e => $"{path}|{e.FullName}")  // 가상경로: zipPath|entryName
+                .ToList();
+        }
+        return [path];
+    }
+
+    // 패치: 단일파일 → [파일], 폴더 → [파일들], ZIP → [내부 엔트리 가상경로]
+    private static List<string> ExpandPatch(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            return Directory.EnumerateFiles(path, "*.*", SearchOption.AllDirectories)
+                .Where(f => PatchExtensions.Contains(Path.GetExtension(f)))
+                .ToList();
+        }
+
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        if (ext == ".zip")
+        {
+            using var zip = ZipFile.OpenRead(path);
+            return zip.Entries
+                .Where(e => PatchExtensions.Contains(Path.GetExtension(e.Name)))
+                .Select(e => $"{path}|{e.FullName}")
+                .ToList();
+        }
+
+        return [path];
+    }
+}
