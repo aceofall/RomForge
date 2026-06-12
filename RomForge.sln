@@ -13,6 +13,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RomZip.Core", "..\RomZip\Ro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Patch.Core", "..\기타\PatchCore.Tools\Patch.Core\Patch.Core.csproj", "{857FCB0B-31EA-F473-4FB1-10DDD898B42E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "3DS.Core", "..\3DS.Installer\3DS.Core\3DS.Core.csproj", "{69144B9B-0989-74E7-365E-FB77E5F251B6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CHD.Core", "..\RomZip\CHD.Core\CHD.Core.csproj", "{09735EE5-0FC4-DEFA-C044-CB732154AD93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DolphinTool.Core", "..\RomZip\DolphinTool.Core\DolphinTool.Core.csproj", "{31BBC867-5A72-4B57-8A83-2E50EE33DE34}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +45,18 @@ Global
 		{857FCB0B-31EA-F473-4FB1-10DDD898B42E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{857FCB0B-31EA-F473-4FB1-10DDD898B42E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{857FCB0B-31EA-F473-4FB1-10DDD898B42E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69144B9B-0989-74E7-365E-FB77E5F251B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69144B9B-0989-74E7-365E-FB77E5F251B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69144B9B-0989-74E7-365E-FB77E5F251B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69144B9B-0989-74E7-365E-FB77E5F251B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09735EE5-0FC4-DEFA-C044-CB732154AD93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09735EE5-0FC4-DEFA-C044-CB732154AD93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09735EE5-0FC4-DEFA-C044-CB732154AD93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09735EE5-0FC4-DEFA-C044-CB732154AD93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31BBC867-5A72-4B57-8A83-2E50EE33DE34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31BBC867-5A72-4B57-8A83-2E50EE33DE34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31BBC867-5A72-4B57-8A83-2E50EE33DE34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31BBC867-5A72-4B57-8A83-2E50EE33DE34}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,5 +1,9 @@
-﻿using Common;
-using RomForge.Core;
+﻿using _3DS.Core.Services;
+using CHD.Core.Services;
+using Common;
+using DolphinTool.Core.Services;
+using RomZip.Core.Enums;
+using RomZip.Core.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -31,7 +35,7 @@ public class CompressViewModel : INotifyPropertyChanged
 
     private bool _isConverting;
     private CancellationTokenSource _cts = new();
-    private readonly AppConfig _config;
+    private readonly Core.AppConfig _config;
 
     #endregion
 
@@ -66,7 +70,7 @@ public class CompressViewModel : INotifyPropertyChanged
     public event Action<FileItemViewModel>? ScrollToItemRequested;
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public CompressViewModel(AppConfig config)
+    public CompressViewModel(Core.AppConfig config)
     {
         _config = config;
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsConverting && FileItems.Count > 0);
@@ -129,29 +133,91 @@ public class CompressViewModel : INotifyPropertyChanged
         IsConverting = true;
         _cts.Dispose();
         _cts = new CancellationTokenSource();
-        LogEntries.Clear();
+        ClearLog();
 
         try
         {
-            AppendLog($"총 {FileItems.Count}개의 작업을 시작합니다.", LogLevel.Info);
+            int totalCount = FileItems.Count;
+            AppendLog($"총 {totalCount}개의 작업을 시작합니다.", LogLevel.Info);
 
             int cnt = 0;
-
             foreach (var item in FileItems)
             {
-                if (_cts.Token.IsCancellationRequested) 
-                    break;
+                if (_cts.Token.IsCancellationRequested) break;
 
-                if (item.Status == "완료" || item.Status == "미지원") 
+                if (item.Status == "완료" || item.Status == "미지원")
                     continue;
+
+                item.Status = "대기중";
+                item.Progress = 0;
+
+                var detected = FormatDetector.Detect(item.FilePath);
 
                 item.Status = "변환중";
                 item.Progress = 0;
                 ScrollToItemRequested?.Invoke(item);
 
-                var progress = new Progress<ProgressInfo>(p => item.Progress = p.Percent);
+                var progressHandler = new Progress<ProgressInfo>(p =>
+                {
+                    item.Progress = p.Percent;
+                });
 
-                await Task.Delay(100, _cts.Token);
+                switch (detected.Format)
+                {
+                    case RomFormat.Nsp:
+                        await NspCompressService.CompressAsync(item.FilePath, _config.Switch.CompressLevel, _config.Switch.VerifyCompress, _config.Switch.UseBlockMode, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Xci:
+                        await XciCompressService.CompressAsync(item.FilePath, _config.Switch.CompressLevel, _config.Switch.VerifyCompress, _config.Switch.UseBlockMode, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Nsz:
+                        await NspCompressService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Xcz:
+                        await XciCompressService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Cci:
+                        await Z3dsArchiveService.CompressAsync(item.FilePath, _config.Azahar.CompressLevel, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Cia:
+                        await Z3dsArchiveService.CompressFromCiaAsync(item.FilePath, _config.Azahar.CompressLevel, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.ZCci:
+                        await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
+                        break;
+                    case RomFormat.Iso:
+                    case RomFormat.Cue:
+                    case RomFormat.Gdi:
+                    case RomFormat.Chd:
+                        {
+                            FileConverter chdConverter = new();
+                            chdConverter.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
+                            chdConverter.ProgressChanged += (s, e) => Application.Current.Dispatcher.BeginInvoke(() => item.Progress = e.Progress);
+                            var chdResult = await chdConverter.ConvertFileAsync(item.FilePath, _cts.Token);
+
+                            if (!chdResult.Success)
+                                throw new InvalidOperationException(chdResult.Message);
+                        }
+                        break;
+                    case RomFormat.Rvz:
+                    case RomFormat.Wii:
+                    case RomFormat.Gcm:
+                    case RomFormat.Gcz:
+                    case RomFormat.Wbfs:
+                    case RomFormat.Wia:
+                        {
+                            DolphinService dolphin = new();
+                            dolphin.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
+                            dolphin.ProgressChanged += (s, e) => Application.Current.Dispatcher.BeginInvoke(() => item.Progress = e.Progress);
+                            await dolphin.ConvertFileAsync(item.FilePath, detected.Format.ToString(), detected.OutputExtension, _config.Dolphin.CompressLevel, _cts.Token);
+                        }
+                        break;
+                    case RomFormat.Unknown:
+                    default:
+                        item.Status = "미지원";
+                        AppendLog($"[{item.FileName}] 지원하지 않는 포맷", LogLevel.Error);
+                        continue;
+                }
 
                 item.Progress = 100;
                 item.Status = "완료";
@@ -159,19 +225,19 @@ public class CompressViewModel : INotifyPropertyChanged
             }
 
             if (cnt > 0)
+            {
                 AppendLog($"총 {cnt}개의 작업을 완료했습니다.", LogLevel.Ok);
+            }
         }
         catch (OperationCanceledException)
         {
             AppendLog("취소되었습니다.", LogLevel.Error);
-
-            foreach (var item in FileItems.Where(i => i.Status is "대기중" or "변환중"))
+            foreach (var item in FileItems.Where(i => i.Status == "대기중" || i.Status == "변환중"))
                 item.Status = "취소";
         }
         catch (Exception ex)
         {
             AppendLog($"오류: {ex.Message}", LogLevel.Error);
-
             foreach (var item in FileItems.Where(i => i.Status == "변환중"))
                 item.Status = "실패";
         }
@@ -200,7 +266,9 @@ public class CompressViewModel : INotifyPropertyChanged
         }
     }
 
-    private void AppendLog(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
+    private void AppendLog(string msg, LogLevel level = LogLevel.Info, string titleId = "") => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
+
+    private void ClearLog() => Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
 
     #endregion
 

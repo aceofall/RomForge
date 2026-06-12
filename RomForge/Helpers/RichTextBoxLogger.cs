@@ -1,6 +1,7 @@
 ﻿using Common;
 using RomForge.ViewModels;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -27,14 +28,26 @@ public static class RichTextBoxLogger
         rtb.Document.PagePadding = new Thickness(0);
         rtb.Document.LineHeight = 18;
 
-        if (e.NewValue is ObservableCollection<LogEntry> entries) 
+        if (e.NewValue is ObservableCollection<LogEntry> entries)
             entries.CollectionChanged += (_, args) =>
             {
-                if (args.NewItems == null) 
-                    return;
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    switch (args.Action)
+                    {
+                        case NotifyCollectionChangedAction.Reset:
+                            rtb.Document.Blocks.Clear();
+                            break;
 
-                foreach (LogEntry entry in args.NewItems)
-                    AppendEntry(rtb, entry);
+                        case NotifyCollectionChangedAction.Add:
+                            if (args.NewItems != null)
+                            {
+                                foreach (LogEntry entry in args.NewItems)
+                                    AppendEntry(rtb, entry);
+                            }
+                            break;
+                    }
+                });
             };
     }
 
