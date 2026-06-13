@@ -49,11 +49,11 @@
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Image Source="/Assets/Images/Patch.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <Image Source="/Assets/Images/Patch.png" Width="24" Height="24" Margin="0,0,15,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="일반" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </TabItem.Header>
-                            <Grid Margin="12">
+                            <Grid Margin="15">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="16"/>
@@ -108,7 +108,7 @@
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Image Source="/Assets/Images/Mame.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <Image Source="/Assets/Images/FBNeo.png" Width="24" Height="24" Margin="0,0,15,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="아케이드" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </TabItem.Header>
@@ -277,13 +277,12 @@
                         <TabItem>
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Image Source="/Assets/Images/Switch.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <Image Source="/Assets/Images/Switch.png" Width="24" Height="24" Margin="0,0,15,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="Switch" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </TabItem.Header>
                             <Grid>
-                                <TextBlock Text="준비 중" Foreground="#555555" FontSize="16"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Text="준비 중" Foreground="#555555" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Grid>
                         </TabItem>
 

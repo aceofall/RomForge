@@ -18,6 +18,9 @@
     <NoWarn>1701;1702;CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Assets\Images\FBNeo.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +52,7 @@
     <Resource Include="Assets\Images\Dolphin.png" />
     <Resource Include="Assets\Images\Drag.png" />
     <Resource Include="Assets\Images\Extension.png" />
+    <Resource Include="Assets\Images\FBNeo.png" />
     <Resource Include="Assets\Images\FileSizeBytes.png" />
     <Resource Include="Assets\Images\Level.png" />
     <Resource Include="Assets\Images\List.png" />
