@@ -1,6 +1,6 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 
-namespace RomForge.ViewModels;
+namespace RomForge.Helpers;
 
 public class RelayCommand(Func<object?, Task> executeAsync, Func<object?, bool>? canExecute = null) : ICommand
 {
@@ -14,13 +14,13 @@ public class RelayCommand(Func<object?, Task> executeAsync, Func<object?, bool>?
 
     public async void Execute(object? parameter)
     {
-        if (!CanExecute(parameter)) 
+        if (!CanExecute(parameter))
             return;
 
         _isExecuting = true;
         CommandManager.InvalidateRequerySuggested();
 
-        try   { await _executeAsync(parameter); }
+        try { await _executeAsync(parameter); }
         finally
         {
             _isExecuting = false;
@@ -30,7 +30,7 @@ public class RelayCommand(Func<object?, Task> executeAsync, Func<object?, bool>?
 
     public event EventHandler? CanExecuteChanged
     {
-        add    => CommandManager.RequerySuggested += value;
+        add => CommandManager.RequerySuggested += value;
         remove => CommandManager.RequerySuggested -= value;
     }
 }

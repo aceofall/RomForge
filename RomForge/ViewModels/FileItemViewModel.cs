@@ -7,7 +7,7 @@ using System.Windows.Media;
 
 namespace RomForge.ViewModels;
 
-public class FileItemViewModel : INotifyPropertyChanged
+public class FileItemViewModel : ViewModelBase
 {
     private int _progress;
     private string _status = string.Empty;
@@ -87,8 +87,6 @@ public class FileItemViewModel : INotifyPropertyChanged
         _ => Brushes.Transparent
     };
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
     public FileItemViewModel(string filePath)
     {
         FilePath = filePath;
@@ -158,7 +156,4 @@ public class FileItemViewModel : INotifyPropertyChanged
 
         return brush;
     }
-
-    protected void OnPropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

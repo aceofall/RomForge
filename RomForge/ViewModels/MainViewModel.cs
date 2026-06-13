@@ -1,11 +1,11 @@
 ﻿using Common;
 using RomForge.Core;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using RomForge.Models;
+using System.Collections.ObjectModel;
 
 namespace RomForge.ViewModels;
 
-public class MainViewModel : INotifyPropertyChanged
+public class MainViewModel : ViewModelBase
 {
     private int _selectedTabIndex;
 
@@ -18,12 +18,17 @@ public class MainViewModel : INotifyPropertyChanged
     public int SelectedTabIndex
     {
         get => _selectedTabIndex;
-        set { _selectedTabIndex = value; OnPropertyChanged(); OnPropertyChanged(nameof(ActiveLogEntries)); }
+        set
+        {
+            _selectedTabIndex = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ActiveLogEntries));
+        }
     }
 
-    public System.Collections.ObjectModel.ObservableCollection<LogEntry> ActiveLogEntries => _selectedTabIndex == 0 ? PatchVM.LogEntries : CompressVM.LogEntries;
+    public ObservableCollection<LogEntry> ActiveLogEntries => _selectedTabIndex == 0 ? PatchVM.LogEntries : CompressVM.LogEntries;
 
-    #region 압축 설정 프로퍼티
+    #region 압축 설정
 
     public double SwitchCompressLevel
     {
@@ -40,13 +45,31 @@ public class MainViewModel : INotifyPropertyChanged
     public bool SwitchUseBlockMode
     {
         get => _config.Switch.UseBlockMode;
-        set { _config.Switch.UseBlockMode = value; if (value) _config.Switch.UseBlocklessMode = false; OnPropertyChanged(); OnPropertyChanged(nameof(SwitchUseBlocklessMode)); }
+        set
+        {
+            _config.Switch.UseBlockMode = value;
+
+            if (value) 
+                _config.Switch.UseBlocklessMode = false;
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SwitchUseBlocklessMode));
+        }
     }
 
     public bool SwitchUseBlocklessMode
     {
         get => _config.Switch.UseBlocklessMode;
-        set { _config.Switch.UseBlocklessMode = value; if (value) _config.Switch.UseBlockMode = false; OnPropertyChanged(); OnPropertyChanged(nameof(SwitchUseBlockMode)); }
+        set
+        {
+            _config.Switch.UseBlocklessMode = value;
+
+            if (value) 
+                _config.Switch.UseBlockMode = false;
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SwitchUseBlockMode));
+        }
     }
 
     public double AzaharCompressLevel
@@ -63,33 +86,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     #endregion
 
-    #region 패치 설정 프로퍼티
-
-    public bool OutputModeNormal
-    {
-        get => _config.Patch.OutputMode == OutputMode.Normal;
-        set
-        {
-            if (value)
-                _config.Patch.OutputMode = OutputMode.Normal;
-
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(OutputModeArcade));
-        }
-    }
-
-    public bool OutputModeArcade
-    {
-        get => _config.Patch.OutputMode == OutputMode.Arcade;
-        set
-        {
-            if (value) 
-                _config.Patch.OutputMode = OutputMode.Arcade;
-
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(OutputModeNormal));
-        }
-    }
+    #region 패치 설정
 
     public bool UseCustomOutputFolder
     {
@@ -97,7 +94,6 @@ public class MainViewModel : INotifyPropertyChanged
         set
         {
             _config.Patch.OutputFolder = value ? _config.Patch.OutputFolder ?? string.Empty : null;
-
             OnPropertyChanged();
             OnPropertyChanged(nameof(OutputFolder));
         }
@@ -106,14 +102,16 @@ public class MainViewModel : INotifyPropertyChanged
     public string OutputFolder
     {
         get => _config.Patch.OutputFolder ?? string.Empty;
-        set { _config.Patch.OutputFolder = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
+        set
+        {
+            _config.Patch.OutputFolder = string.IsNullOrWhiteSpace(value) ? null : value;
+            OnPropertyChanged();
+        }
     }
 
     #endregion
 
     public static string AppVersion => $"{AppDomain.CurrentDomain.FriendlyName} - Ver {Utils.ToAppVersionString()}";
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public MainViewModel()
     {
@@ -122,6 +120,4 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public void SaveConfig() => _config.Save();
-
-    protected void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

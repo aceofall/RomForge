@@ -1,6 +1,6 @@
 ﻿using Common;
 
-namespace RomForge.ViewModels;
+namespace RomForge.Models;
 
 public class LogEntry
 {

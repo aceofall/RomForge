@@ -2,6 +2,8 @@
 using CHD.Core.Services;
 using Common;
 using DolphinTool.Core.Services;
+using RomForge.Helpers;
+using RomForge.Models;
 using RomZip.Core.Enums;
 using RomZip.Core.Services;
 using System.Collections.ObjectModel;
@@ -14,7 +16,7 @@ using System.Windows.Input;
 
 namespace RomForge.ViewModels;
 
-public class CompressViewModel : INotifyPropertyChanged
+public class CompressViewModel : ViewModelBase
 {
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -68,7 +70,6 @@ public class CompressViewModel : INotifyPropertyChanged
     #endregion
 
     public event Action<FileItemViewModel>? ScrollToItemRequested;
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public CompressViewModel(Core.AppConfig config)
     {
@@ -271,6 +272,4 @@ public class CompressViewModel : INotifyPropertyChanged
     private void ClearLog() => Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
 
     #endregion
-
-    protected void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

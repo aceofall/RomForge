@@ -28,6 +28,7 @@
                 </Style>
             </TabControl.Resources>
 
+            <!-- 패치 탭 (메인) -->
             <TabItem>
                 <TabItem.Header>
                     <Grid Width="120">
@@ -38,197 +39,271 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 드롭존 영역 -->
-                    <Grid Grid.Row="0" Margin="12,12,12,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                    <TabControl Grid.Row="0" SelectedIndex="{Binding PatchVM.SelectedTabIndex}">
 
-                        <!-- 원본 드롭존 -->
-                        <Border Grid.Column="0" Style="{StaticResource DropZone}"
-                                x:Name="SourceDropZone"
-                                AllowDrop="True"
-                                Drop="SourceDrop_Drop"
-                                MouseLeftButtonDown="SourceDrop_Click">
-                            <Grid Margin="14,0">
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding PatchVM.SourceLabel}"
-                                               Foreground="#888888" FontSize="12"
-                                               TextTrimming="CharacterEllipsis"/>
+                        <!-- 일반 탭 -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="/Assets/Images/Patch.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="일반" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="원본" Foreground="#3F3F46" FontSize="11"
-                                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
-                            </Grid>
-                        </Border>
+                            </TabItem.Header>
+                            <Grid Margin="12">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="16"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                        <!-- 패치 드롭존 -->
-                        <Border Grid.Column="2" Style="{StaticResource DropZone}"
-                                x:Name="PatchDropZone"
-                                AllowDrop="True"
-                                Drop="PatchDrop_Drop"
-                                MouseLeftButtonDown="PatchDrop_Click">
-                            <Grid Margin="14,0">
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding PatchVM.PatchLabel}"
-                                               Foreground="#888888" FontSize="12"
-                                               TextTrimming="CharacterEllipsis"/>
+                                <!-- 드롭존 -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource DropZone}" AllowDrop="True" Drop="NormalSourceDrop_Drop" MouseLeftButtonDown="NormalSourceDrop_Click">
+                                        <Grid Margin="14,0">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PatchVM.NormalVM.SourceLabel}" Foreground="#888888" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <TextBlock Text="원본" Foreground="#3F3F46" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Style="{StaticResource DropZone}" AllowDrop="True" Drop="NormalPatchDrop_Drop" MouseLeftButtonDown="NormalPatchDrop_Click">
+                                        <Grid Margin="14,0">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PatchVM.NormalVM.PatchLabel}" Foreground="#888888" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <TextBlock Text="패치" Foreground="#3F3F46" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- ProgressBar -->
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ProgressBar Grid.Column="0" Value="{Binding PatchVM.NormalVM.Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="22"/>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding PatchVM.NormalVM.Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                        <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding PatchVM.NormalVM.StatusText}" Foreground="{Binding PatchVM.NormalVM.StatusColor}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- 아케이드 탭 -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="/Assets/Images/Mame.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="아케이드" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="패치" Foreground="#3F3F46" FontSize="11"
-                                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
-                            </Grid>
-                        </Border>
-                    </Grid>
+                            </TabItem.Header>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                    <!-- 매칭 결과 ListView -->
-                    <ListView x:Name="lvPairs" Grid.Row="1"
-                              ItemsSource="{Binding PatchVM.PairItems}"
-                              IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
-                              SelectionMode="Extended">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Width="70">
-                                    <GridViewColumn.Header>
-                                        <GridViewColumnHeader Tag="No">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Image Source="/Assets/Images/List.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="No." Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </GridViewColumnHeader>
-                                    </GridViewColumn.Header>
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding No}" Foreground="#888888" HorizontalAlignment="Center"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Width="260">
-                                    <GridViewColumn.Header>
-                                        <GridViewColumnHeader Tag="SourceFileName"/>
-                                    </GridViewColumn.Header>
-                                    <GridViewColumn.HeaderTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="원본 파일" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </GridViewColumn.HeaderTemplate>
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding SourceFileName}" Padding="6,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourcePath}"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Width="260">
-                                    <GridViewColumn.Header>
-                                        <GridViewColumnHeader Tag="PatchFileName"/>
-                                    </GridViewColumn.Header>
-                                    <GridViewColumn.HeaderTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="패치 파일" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </GridViewColumn.HeaderTemplate>
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding PatchFileName}" Padding="6,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding PatchPath}"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Width="90">
-                                    <GridViewColumn.Header>
-                                        <GridViewColumnHeader Tag="StatusLabel"/>
-                                    </GridViewColumn.Header>
-                                    <GridViewColumn.HeaderTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="상태" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </GridViewColumn.HeaderTemplate>
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{Binding StatusLabelColor}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Left" Margin="2,0">
-                                                <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusLabelColor}" FontWeight="Bold" FontSize="11"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Width="140">
-                                    <GridViewColumn.Header>
-                                        <GridViewColumnHeader Tag="Progress"/>
-                                    </GridViewColumn.Header>
-                                    <GridViewColumn.HeaderTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Image Source="/Assets/Images/Progress.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="진행률" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </GridViewColumn.HeaderTemplate>
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="6,0">
-                                                <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}"/>
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                                    <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="결과" Width="80">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Status}" Foreground="{Binding RunStatusColor}" Padding="6,0" FontWeight="Bold"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
+                                <!-- 드롭존 -->
+                                <Grid Grid.Row="0" Margin="12,12,12,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                    <!-- 힌트 오버레이 -->
-                    <Border Grid.Row="1" IsHitTestVisible="False"
-                            Visibility="{Binding PatchVM.HintVisibility}"
-                            BorderBrush="#333337" BorderThickness="1" Margin="15,50,15,15" CornerRadius="6">
-                        <Border.Background>
-                            <SolidColorBrush Color="#181818" Opacity="0.95"/>
-                        </Border.Background>
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7">
-                            <TextBlock Text="원본과 패치 파일을 위에 드래그하세요"
+                                    <Border Grid.Column="0" Style="{StaticResource DropZone}" AllowDrop="True" Drop="ArcadeSourceDrop_Drop" MouseLeftButtonDown="ArcadeSourceDrop_Click">
+                                        <Grid Margin="14,0">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PatchVM.ArcadeVM.SourceLabel}" Foreground="#888888" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <TextBlock Text="원본 ZIP" Foreground="#3F3F46" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Style="{StaticResource DropZone}" AllowDrop="True" Drop="ArcadePatchDrop_Drop" MouseLeftButtonDown="ArcadePatchDrop_Click">
+                                        <Grid Margin="14,0">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PatchVM.ArcadeVM.PatchLabel}" Foreground="#888888" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <TextBlock Text="패치 (ZIP/폴더/파일)" Foreground="#3F3F46" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 매칭 카드 리스트 -->
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding PatchVM.ArcadeVM.MatchItems}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="12,3" Padding="10,6" CornerRadius="4" Background="#252526" BorderBrush="#3F3F46" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="32"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="80"/>
+                                                            <ColumnDefinition Width="100"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- 원본 파일명 -->
+                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding SourceFileName}" Foreground="#DCDCDC" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceFileName}"/>
+                                                        </StackPanel>
+
+                                                        <!-- 화살표 -->
+                                                        <TextBlock Grid.Column="1" Text="→" Foreground="#555555" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                                        <!-- 패치 파일명 (드롭존) -->
+                                                        <Border Grid.Column="2" AllowDrop="True" Drop="MatchCard_PatchDrop" DragOver="MatchCard_DragOver" Tag="{Binding}" CornerRadius="3" Padding="8,4" BorderThickness="1">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#1E1E1E"/>
+                                                                    <Setter Property="BorderBrush" Value="#3F3F46"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding PatchFileName}" Value="{x:Null}">
+                                                                            <Setter Property="BorderBrush" Value="#FF6B6B"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding PatchFileName}">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Text" Value="{Binding PatchFileName}"/>
+                                                                        <Setter Property="Foreground" Value="#DCDCDC"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding PatchFileName}" Value="{x:Null}">
+                                                                                <Setter Property="Text" Value="패치 파일을 드래그하세요"/>
+                                                                                <Setter Property="Foreground" Value="#555555"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+
+                                                        <!-- 상태 뱃지 -->
+                                                        <Border Grid.Column="3" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="6,0">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#2D7D46"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsMatched}" Value="False">
+                                                                            <Setter Property="Background" Value="#7D2D2D"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock FontWeight="Bold" FontSize="11">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Text" Value="매칭"/>
+                                                                        <Setter Property="Foreground" Value="#AAFFAA"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsMatched}" Value="False">
+                                                                                <Setter Property="Text" Value="미매칭"/>
+                                                                                <Setter Property="Foreground" Value="#FFAAAA"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+
+                                                        <!-- 진행률 -->
+                                                        <Grid Grid.Column="4" Margin="6,0,0,0">
+                                                            <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="20"/>
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                                                <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <!-- 힌트 오버레이 -->
+                                <Border Grid.Row="1" IsHitTestVisible="False" Visibility="{Binding PatchVM.ArcadeVM.HintVisibility}" BorderBrush="#333337" BorderThickness="1" Margin="15,15,15,15" CornerRadius="6">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#181818" Opacity="0.95"/>
+                                    </Border.Background>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7">
+                                        <TextBlock Text="원본 ZIP과 패치를 위에 드래그하세요"
                                        Foreground="White" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="베이스네임 기준으로 자동 매칭됩니다"
+                                        <TextBlock Text="확장자 기준으로 자동 매칭됩니다"
                                        Foreground="#888" FontSize="11" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Border>
+                                    </StackPanel>
+                                </Border>
 
-                    <!-- 버튼 바 -->
-                    <Border Grid.Row="2" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+                                <!-- 전체 진행바 -->
+                                <Border Grid.Row="2" Background="#252526" Padding="10,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ProgressBar Grid.Column="0" Value="{Binding PatchVM.ArcadeVM.TotalProgress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="18"/>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding PatchVM.ArcadeVM.TotalProgress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding PatchVM.ArcadeVM.ProgressSummary}" Foreground="#888888" FontSize="11" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- 스위치 탭 (껍데기) -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="/Assets/Images/Switch.png" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Switch" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid>
+                                <TextBlock Text="준비 중" Foreground="#555555" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                        </TabItem>
+
+                    </TabControl>
+
+                    <!-- 버튼 바 (공용) -->
+                    <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button Style="{StaticResource RunButton}"
-                                        IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
-                                        Command="{Binding PatchVM.RunCommand}" Margin="0,0,6,0">
+                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            Command="{Binding PatchVM.RunCommand}" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="패치 시작" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding PatchVM.IsPatching}"
-                                        Command="{Binding PatchVM.CancelCommand}">
+                            IsEnabled="{Binding PatchVM.IsPatching}"
+                            Command="{Binding PatchVM.CancelCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="취소" VerticalAlignment="Center"/>
@@ -237,16 +312,16 @@
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
-                                        Click="BtnPatchClear_Click" Margin="0,0,6,0">
+                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            Command="{Binding PatchVM.ClearCommand}" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="초기화" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
-                                        Click="BtnSettings_Click">
+                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            Click="BtnSettings_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Settings.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="설정" VerticalAlignment="Center"/>
@@ -257,7 +332,7 @@
                     </Border>
                 </Grid>
             </TabItem>
-            
+
             <TabItem>
                 <TabItem.Header>
                     <Grid Width="120">
