@@ -1,11 +1,12 @@
-﻿using System.Collections.ObjectModel;
+﻿using Common.WPF.ViewModels;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
 using System.Windows;
 
 namespace RomForge.ViewModels;
 
-public class ArcadePatchViewModel : ViewModelBase
+public class ArcadePatchViewModel : ToolTabViewModel
 {
     public ObservableCollection<ArcadeMatchItem> MatchItems { get; } = [];
 

@@ -1,11 +1,12 @@
 ﻿using Common;
+using Common.WPF.ViewModels;
 using RomForge.Core;
 using RomForge.Models;
 using System.Collections.ObjectModel;
 
 namespace RomForge.ViewModels;
 
-public class MainViewModel : ViewModelBase
+public class MainViewModel : ToolTabViewModel
 {
     private int _selectedTabIndex;
 
@@ -117,6 +118,9 @@ public class MainViewModel : ViewModelBase
     {
         PatchVM = new PatchViewModel(_config);
         CompressVM = new CompressViewModel(_config);
+
+        RegisterChild(PatchVM);
+        RegisterChild(CompressVM);
     }
 
     public void SaveConfig() => _config.Save();

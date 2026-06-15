@@ -1,4 +1,5 @@
 ﻿using Common;
+using Common.WPF.ViewModels;
 using Patch.Core;
 using RomForge.Core;
 using RomForge.Core.Services;
@@ -10,7 +11,7 @@ using System.Windows.Input;
 
 namespace RomForge.ViewModels;
 
-public class PatchViewModel : ViewModelBase
+public class PatchViewModel : ToolTabViewModel
 {
     private readonly AppConfig _config;
 
@@ -23,13 +24,6 @@ public class PatchViewModel : ViewModelBase
     {
         get => _selectedTabIndex;
         set { _selectedTabIndex = value; OnPropertyChanged(); }
-    }
-
-    private bool _isPatching;
-    public bool IsPatching
-    {
-        get => _isPatching;
-        set { _isPatching = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];    
@@ -51,18 +45,14 @@ public class PatchViewModel : ViewModelBase
     private async Task RunAsync()
     {
         _cts = new CancellationTokenSource();
-        IsPatching = true;
-        try
+
+        using (BeginWork())
         {
             switch (SelectedTabIndex)
             {
                 case 0: await RunNormalAsync(_cts.Token); break;
                 case 1: await RunArcadeAsync(_cts.Token); break;
             }
-        }
-        finally
-        {
-            IsPatching = false;
         }
     }
 

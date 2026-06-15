@@ -293,7 +293,7 @@
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button Style="{StaticResource RunButton}"
-                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            IsEnabled="{Binding PatchVM.IsLocked, Converter={StaticResource InverseBool}}"
                             Command="{Binding PatchVM.RunCommand}" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -301,7 +301,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding PatchVM.IsPatching}"
+                            IsEnabled="{Binding PatchVM.IsLocked}"
                             Command="{Binding PatchVM.CancelCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -311,7 +311,7 @@
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            IsEnabled="{Binding PatchVM.IsLocked, Converter={StaticResource InverseBool}}"
                             Command="{Binding PatchVM.ClearCommand}" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -319,7 +319,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding PatchVM.IsPatching, Converter={StaticResource InverseBool}}"
+                            IsEnabled="{Binding PatchVM.IsLocked, Converter={StaticResource InverseBool}}"
                             Click="BtnSettings_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Settings.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -349,7 +349,7 @@
 
                     <ListView x:Name="lvFiles" Grid.Row="0"
                               ItemsSource="{Binding CompressVM.FileItems}"
-                              IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                              IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                               SelectionMode="Extended"
                               KeyUp="LvFiles_KeyUp"
                               AllowDrop="True"
@@ -580,7 +580,7 @@
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button Style="{StaticResource RunButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Command="{Binding CompressVM.RunCommand}" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -588,7 +588,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting}"
+                                        IsEnabled="{Binding CompressVM.IsLocked}"
                                         Command="{Binding CompressVM.CancelCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -598,7 +598,7 @@
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Click="BtnAddFiles_Click" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -606,7 +606,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Click="BtnAddFolder_Click" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/AddFolder.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -614,7 +614,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Click="BtnRemove_Click" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Delete.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -622,7 +622,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Click="BtnClear_Click" Margin="0,0,6,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -630,7 +630,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GrayButton}"
-                                        IsEnabled="{Binding CompressVM.IsConverting, Converter={StaticResource InverseBool}}"
+                                        IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
                                         Click="BtnSettings_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Settings.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>

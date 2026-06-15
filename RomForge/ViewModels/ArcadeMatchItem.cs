@@ -1,4 +1,6 @@
-﻿namespace RomForge.ViewModels;
+﻿using Common.WPF.ViewModels;
+
+namespace RomForge.ViewModels;
 
 public class ArcadeMatchItem : ViewModelBase
 {

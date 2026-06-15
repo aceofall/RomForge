@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\RomZip\Common\Common.csproj" />
     <ProjectReference Include="..\..\RomZip\DolphinTool.Core\DolphinTool.Core.csproj" />
     <ProjectReference Include="..\..\RomZip\RomZip.Core\RomZip.Core.csproj" />
+    <ProjectReference Include="..\Common.WPF\Common.WPF.csproj" />
     <ProjectReference Include="..\RomForge.Core\RomForge.Core.csproj" />
     <!-- RomZip.Core는 기존 프로젝트 경로로 교체 -->
     <!-- <ProjectReference Include="..\..\RomZip\RomZip.Core\RomZip.Core.csproj"/> -->

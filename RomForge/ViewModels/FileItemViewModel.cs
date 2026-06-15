@@ -1,8 +1,7 @@
+using Common.WPF.ViewModels;
 using RomZip.Core.Enums;
 using RomZip.Core.Services;
-using System.ComponentModel;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
 namespace RomForge.ViewModels;

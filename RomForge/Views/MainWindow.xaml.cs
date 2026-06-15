@@ -39,9 +39,9 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
-        bool busy = ViewModel.CompressVM.IsConverting || ViewModel.PatchVM.IsPatching;
+        bool busy = ViewModel.CompressVM.IsLocked || ViewModel.PatchVM.IsLocked;
 
-        if (!busy) 
+        if (!busy)
             return;
 
         var result = MessageBox.Show("작업이 진행 중입니다. 취소하고 종료할까요?", "종료 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning);

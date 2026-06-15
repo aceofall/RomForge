@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace RomForge.ViewModels;
+namespace Common.WPF.ViewModels;
 
 public abstract class ViewModelBase : INotifyPropertyChanged
 {

@@ -1,6 +1,8 @@
-﻿namespace RomForge.ViewModels;
+﻿using Common.WPF.ViewModels;
 
-public class NormalPatchViewModel : ViewModelBase
+namespace RomForge.ViewModels;
+
+public class NormalPatchViewModel : ToolTabViewModel
 {
     private string? _sourcePath;
     public string? SourcePath
