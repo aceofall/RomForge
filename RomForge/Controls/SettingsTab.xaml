@@ -5,7 +5,6 @@
     <Grid>
         <TabControl>
 
-            <!-- 패치 탭 -->
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -20,21 +19,9 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <ToggleButton Grid.Row="0" Style="{StaticResource ToggleStyle}"
-                                  IsChecked="{Binding Settings.Patch.UseCustomOutputFolder}">
+                    <ToggleButton Grid.Row="0" Style="{StaticResource ToggleStyle}" IsChecked="{Binding Settings.Patch.UseCustomOutputFolder}">
                         <StackPanel Orientation="Horizontal">
-                            <Image Width="18" Margin="0,0,10,0">
-                                <Image.Style>
-                                    <Style TargetType="Image">
-                                        <Setter Property="Source" Value="/Assets/Images/Unchecked.png"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Settings.Patch.UseCustomOutputFolder}" Value="True">
-                                                <Setter Property="Source" Value="/Assets/Images/Checked.png"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Image.Style>
-                            </Image>
+                            <Image Width="18" Margin="0,0,10,0" Source="{Binding Settings.Patch.UseCustomOutputFolder, Converter={StaticResource BoolToImageConverter}}"/>
                             <TextBlock Text="출력 폴더 지정" VerticalAlignment="Center" FontSize="12"/>
                         </StackPanel>
                     </ToggleButton>
@@ -61,7 +48,6 @@
                 </Grid>
             </TabItem>
 
-            <!-- 압축 탭 -->
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -70,7 +56,6 @@
                     </StackPanel>
                 </TabItem.Header>
                 <TabControl>
-                    <!-- Switch -->
                     <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -126,25 +111,13 @@
                             <ToggleButton Grid.Row="4" Style="{StaticResource ToggleStyle}"
                                           IsChecked="{Binding Settings.Compress.SwitchIsValidationEnabled}">
                                 <StackPanel Orientation="Horizontal">
-                                    <Image Width="18" Margin="0,0,10,0">
-                                        <Image.Style>
-                                            <Style TargetType="Image">
-                                                <Setter Property="Source" Value="/Assets/Images/Unchecked.png"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Settings.Compress.SwitchIsValidationEnabled}" Value="True">
-                                                        <Setter Property="Source" Value="/Assets/Images/Checked.png"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Image.Style>
-                                    </Image>
+                                    <Image Width="18" Margin="0,0,10,0" Source="{Binding Settings.Compress.SwitchIsValidationEnabled, Converter={StaticResource BoolToImageConverter}}"/>
                                     <TextBlock Text="검증" VerticalAlignment="Center" FontSize="12"/>
                                 </StackPanel>
                             </ToggleButton>
                         </Grid>
                     </TabItem>
 
-                    <!-- Azahar -->
                     <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -176,7 +149,6 @@
                         </Grid>
                     </TabItem>
 
-                    <!-- Dolphin -->
                     <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

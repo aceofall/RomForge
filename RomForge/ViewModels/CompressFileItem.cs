@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace RomForge.ViewModels;
 
-public class FileItemViewModel : ViewModelBase
+public class CompressFileItem : ViewModelBase
 {
     private int _progress;
     private string _status = string.Empty;
@@ -86,7 +86,7 @@ public class FileItemViewModel : ViewModelBase
         _ => Brushes.Transparent
     };
 
-    public FileItemViewModel(string filePath)
+    public CompressFileItem(string filePath)
     {
         FilePath = filePath;
         FileSizeBytes = CalculateTotalSize(filePath);

@@ -1,5 +1,6 @@
 ﻿using Common;
 using RomForge.Models;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Windows;
@@ -11,6 +12,8 @@ namespace RomForge.Helpers;
 
 public static class RichTextBoxLogger
 {
+    private static readonly ConcurrentDictionary<RichTextBox, NotifyCollectionChangedEventHandler> _handlers = new();
+
     public static readonly DependencyProperty LogEntriesProperty = DependencyProperty.RegisterAttached("LogEntries", typeof(ObservableCollection<LogEntry>), typeof(RichTextBoxLogger), new PropertyMetadata(null, OnLogEntriesChanged));
 
     public static void SetLogEntries(DependencyObject obj, ObservableCollection<LogEntry> value) => obj.SetValue(LogEntriesProperty, value);
@@ -19,8 +22,13 @@ public static class RichTextBoxLogger
 
     private static void OnLogEntriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not RichTextBox rtb) 
+        if (d is not RichTextBox rtb)
             return;
+
+        if (e.OldValue is ObservableCollection<LogEntry> oldEntries && _handlers.TryRemove(rtb, out var oldHandler))
+        {
+            oldEntries.CollectionChanged -= oldHandler;
+        }
 
         rtb.Document.Blocks.Clear();
         rtb.Document.FontFamily = new FontFamily("Consolas");
@@ -29,31 +37,40 @@ public static class RichTextBoxLogger
         rtb.Document.LineHeight = 18;
 
         if (e.NewValue is ObservableCollection<LogEntry> entries)
-            entries.CollectionChanged += (_, args) =>
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    switch (args.Action)
-                    {
-                        case NotifyCollectionChangedAction.Reset:
-                            rtb.Document.Blocks.Clear();
-                            break;
+        {
+            foreach (var entry in entries)
+                AppendEntry(rtb, entry);
 
-                        case NotifyCollectionChangedAction.Add:
-                            if (args.NewItems != null)
-                            {
-                                foreach (LogEntry entry in args.NewItems)
-                                    AppendEntry(rtb, entry);
-                            }
-                            break;
+            void newHandler(object? s, NotifyCollectionChangedEventArgs args) => CollectionChangedHandler(rtb, args);
+
+            _handlers[rtb] = newHandler;
+            entries.CollectionChanged += newHandler;
+        }
+    }
+
+    private static void CollectionChangedHandler(RichTextBox rtb, NotifyCollectionChangedEventArgs args)
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            switch (args.Action)
+            {
+                case NotifyCollectionChangedAction.Reset:
+                    rtb.Document.Blocks.Clear();
+                    break;
+
+                case NotifyCollectionChangedAction.Add:
+                    if (args.NewItems != null)
+                    {
+                        foreach (LogEntry entry in args.NewItems)
+                            AppendEntry(rtb, entry);
                     }
-                });
-            };
+                    break;
+            }
+        });
     }
 
     private static void AppendEntry(RichTextBox rtb, LogEntry entry)
     {
-
         rtb.Document.Blocks.Add(new Paragraph(new Run(entry.Message))
         {
             Foreground = new SolidColorBrush(GetColor(entry.Level)),

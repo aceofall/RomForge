@@ -5,7 +5,7 @@ namespace RomForge.Controls;
 
 public partial class SettingsTab : UserControl
 {
-    private MainViewModel Vm => (MainViewModel)DataContext;
+    private MainViewModel? Vm => DataContext as MainViewModel;
 
     public SettingsTab()
     {
@@ -14,6 +14,9 @@ public partial class SettingsTab : UserControl
 
     private void BtnBrowseFolder_Click(object sender, System.Windows.RoutedEventArgs e)
     {
+        if (Vm == null) 
+            return;
+
         var dlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
         {
             Description = "출력 폴더 선택",

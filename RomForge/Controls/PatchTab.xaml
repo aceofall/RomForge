@@ -10,8 +10,7 @@
 
         <TabControl Grid.Row="0" SelectedIndex="{Binding PatchVM.SelectedTabIndex}">
 
-            <!-- 일반 탭 -->
-            <TabItem>
+            <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Image Source="/Assets/Images/Patch.png" Width="16" Height="16" Margin="0,0,15,0" VerticalAlignment="Center"/>
@@ -27,7 +26,6 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 드롭존 -->
                     <Grid Grid.Row="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -54,7 +52,6 @@
                         </Border>
                     </Grid>
 
-                    <!-- ProgressBar -->
                     <Grid Grid.Row="2"> 
                         <ProgressBar Value="{Binding PatchVM.NormalVM.Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="30"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -66,7 +63,7 @@
                     <Border Grid.Row="4" BorderBrush="#333337" BorderThickness="1" CornerRadius="5" Padding="10,8" Margin="0,0,0,2">   
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/Patch.png" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#909090">
+                            <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="#909090">
                                 <Run Text="지원 패치 형식:" Foreground="#888888" FontWeight="Bold"/>
                                 <Run Text=" IPS, BPS, UPS, PPF, APS, Xdelta" Foreground="#CCCCCC"/>
                             </TextBlock>
@@ -75,8 +72,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- 아케이드 탭 -->
-            <TabItem>
+            <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Image Source="/Assets/Images/FBNeo.png" Width="16" Height="16" Margin="0,0,15,0" VerticalAlignment="Center"/>
@@ -90,7 +86,6 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 드롭존 -->
                     <Grid Grid.Row="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -117,7 +112,6 @@
                         </Border>
                     </Grid>
 
-                    <!-- 매칭 카드 리스트 -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding PatchVM.ArcadeVM.MatchItems}">
                             <ItemsControl.ItemTemplate>
@@ -132,15 +126,12 @@
                                                 <ColumnDefinition Width="100"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- 원본 파일명 -->
                                             <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding SourceFileName}" Foreground="#DCDCDC" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceFileName}"/>
                                             </StackPanel>
 
-                                            <!-- 화살표 -->
                                             <TextBlock Grid.Column="1" Text="→" Foreground="#555555" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                                            <!-- 패치 파일명 (드롭존) -->
                                             <Border Grid.Column="2" AllowDrop="True" Drop="MatchCard_PatchDrop" DragOver="MatchCard_DragOver" Tag="{Binding}" CornerRadius="3" Padding="8,4" BorderThickness="1">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
@@ -169,7 +160,6 @@
                                                 </TextBlock>
                                             </Border>
 
-                                            <!-- 상태 뱃지 -->
                                             <Border Grid.Column="3" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="6,0">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
@@ -197,7 +187,6 @@
                                                 </TextBlock>
                                             </Border>
 
-                                            <!-- 진행률 -->
                                             <Grid Grid.Column="4" Margin="6,0,0,0">
                                                 <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="20"/>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -212,7 +201,6 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <!-- 힌트 오버레이 -->
                     <Border Grid.Row="1" IsHitTestVisible="False" Visibility="{Binding PatchVM.ArcadeVM.HintVisibility}" BorderBrush="#333337" BorderThickness="1" CornerRadius="6" Margin="0,4,0,2">
                         <Border.Background>
                             <SolidColorBrush Color="#181818" Opacity="0.95"/>
@@ -223,7 +211,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 전체 진행바 -->
                     <Grid Grid.Row="2" Margin="0,2,0,4">
                         <ProgressBar Value="{Binding PatchVM.ArcadeVM.TotalProgress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="18"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -235,8 +222,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- 스위치 탭 (껍데기) -->
-            <TabItem>
+            <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Image Source="/Assets/Images/Switch.png" Width="16" Height="16" Margin="0,0,15,0" VerticalAlignment="Center"/>

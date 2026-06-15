@@ -9,6 +9,7 @@
         <converters:LogLevelToColorConverter x:Key="LogColor"/>
         <converters:LevelToColorConverter x:Key="LevelToColorConverter"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <converters:BoolToImageConverter x:Key="BoolToImageConverter"/>
         
         <Style x:Key="BaseButton" TargetType="Button">
             <Setter Property="Height" Value="32"/>
@@ -64,6 +65,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        
 
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
@@ -93,9 +95,7 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1,1,1,0"/>
-            <!-- 1. 기본적으로 좌, 우, 위 윤곽선 생성 (아래는 탭 컨트롤 기본선과 겹치므로 보통 0) -->
             <Setter Property="Padding" Value="10,4"/>
-            <!-- 패딩이 너무 작으면 윤곽선 안이 답답해 보여서 살짝 늘림 -->
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -108,25 +108,17 @@
                                       VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- 선택되었을 때 윤곽선 강조 -->
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#2D2D2D"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#007ACC"/>
-                                <!-- 파란색 윤곽선 -->
                                 <Setter TargetName="Bd" Property="BorderThickness" Value="1,1,1,0"/>
-                                <!-- 사방을 다 채우고 싶다면 1,1,1,1로 수정 가능 -->
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
-
-                            <!-- 마우스 올렸을 때 윤곽선 살짝 밝게 -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <!-- 선택된 상태가 아닐 때만 작동하게 하려면 조건부로 보거나, 보통 테두리 색을 살짝 밝혀줌 -->
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#444444"/>
                                 <Setter TargetName="Bd" Property="Background" Value="#252525"/>
                                 <Setter Property="Foreground" Value="#CCCCCC"/>
                             </Trigger>
-
-                            <!-- 선택된 상태에서 마우스 올렸을 때 파란색 테두리 유지하기 위한 트리거 조합 -->
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True"/>
@@ -139,6 +131,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        
 
         <Style x:Key="ProgressBarStyle" TargetType="ProgressBar">
             <Setter Property="Height" Value="18"/>
@@ -176,6 +169,7 @@
             <Setter Property="Height" Value="72"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+        
 
         <Style TargetType="ListView">
             <Setter Property="Background" Value="#1E1E1E"/>
@@ -264,7 +258,8 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>            
+        </Style>      
+        
 
         <Style x:Key="SliderStyle" TargetType="Slider">
             <Setter Property="IsMoveToPointEnabled" Value="True"/>
@@ -385,6 +380,7 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+        
 
         <Style TargetType="ContextMenu">
             <Setter Property="OverridesDefaultStyle" Value="True"/>
@@ -455,16 +451,17 @@
             </Setter>
         </Style>
 
+
         <Style x:Key="LogBox" TargetType="RichTextBox">
-            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#A0A0A0"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontFamily" Value="Consolas"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="IsReadOnly" Value="True"/>
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="Padding" Value="10"/>
         </Style>
+        
 
     </Application.Resources>
     

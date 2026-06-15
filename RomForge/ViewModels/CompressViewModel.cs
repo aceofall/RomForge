@@ -43,7 +43,7 @@ public class CompressViewModel : ToolTabViewModel
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
-    public ObservableCollection<FileItemViewModel> FileItems { get; } = [];
+    public ObservableCollection<CompressFileItem> FileItems { get; } = [];
 
     #endregion
 
@@ -61,7 +61,7 @@ public class CompressViewModel : ToolTabViewModel
 
     #endregion
 
-    public event Action<FileItemViewModel>? ScrollToItemRequested;
+    public event Action<CompressFileItem>? ScrollToItemRequested;
 
     public CompressViewModel(Core.AppConfig config)
     {
@@ -84,7 +84,7 @@ public class CompressViewModel : ToolTabViewModel
             if (!existing.Add(path)) 
                 continue;
 
-            var item = new FileItemViewModel(path) { No = FileItems.Count + 1 };
+            var item = new CompressFileItem(path) { No = FileItems.Count + 1 };
             FileItems.Add(item);
         }
 
@@ -92,7 +92,7 @@ public class CompressViewModel : ToolTabViewModel
         CommandManager.InvalidateRequerySuggested();
     }
 
-    public void RemoveItems(IEnumerable<FileItemViewModel> items)
+    public void RemoveItems(IEnumerable<CompressFileItem> items)
     {
         foreach (var item in items.ToList()) 
             FileItems.Remove(item);
@@ -106,7 +106,7 @@ public class CompressViewModel : ToolTabViewModel
         OnPropertyChanged(nameof(HintVisibility));
     }
 
-    public static void OpenFolder(List<FileItemViewModel> selected)
+    public static void OpenFolder(List<CompressFileItem> selected)
     {
         if (selected.Count == 0) 
             return;
