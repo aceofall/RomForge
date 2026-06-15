@@ -1,0 +1,141 @@
+﻿<UserControl x:Class="RomForge.Controls._3DS.InstallMainTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RomForge.Controls._3DS"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── 경로 설정 ── -->
+        <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#2A2A3A" BorderThickness="0,1">
+            <DockPanel Margin="20,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel Grid.Column="0">
+                        <Image DockPanel.Dock="Left" Source="/Assets/Images/SdCard.png" Width="32" Height="32" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <ComboBox x:Name="SdDriveComboBox" Style="{StaticResource DarkComboBoxStyle}" VerticalAlignment="Center" SelectionChanged="SdDriveComboBox_SelectionChanged" IsEnabled="{Binding IsIdle}">
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                        </ComboBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <Image DockPanel.Dock="Left" Source="/Assets/Images/Seed.png" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock DockPanel.Dock="Left" Text="movable.sed" Foreground="#8888A8" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <Button x:Name="BrowseMovableButton" DockPanel.Dock="Right" Height="32" Width="32" Margin="15,0,0,0" Click="BrowseMovable_Click" Background="Transparent" BorderBrush="Transparent" Padding="0" IsEnabled="{Binding IsIdle}">
+                            <Image Source="/Assets/Images/AddFile.png" Width="32" Height="32" Stretch="UniformToFill"/>
+                        </Button>
+                        <TextBox x:Name="MovablePathBox" Style="{StaticResource PathBox}" IsReadOnly="True" Text="{Binding MovablePath, Mode=OneWay}"/>
+                    </DockPanel>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- ── 탭 ── -->
+        <TabControl Grid.Row="1"
+                    x:Name="Tab"
+                    Background="Transparent"
+                    BorderThickness="0">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0"
+                                Background="#1E1E1E"
+                                BorderBrush="#2A2A3A"
+                                BorderThickness="0,0,0,1">
+                            <TabPanel IsItemsHost="True" Margin="12,0"/>
+                        </Border>
+                        <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                    </Grid>
+                </ControlTemplate>
+            </TabControl.Template>
+
+            <!-- 설치된 타이틀 탭 -->
+            <TabItem IsEnabled="{Binding IsIdle}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/List.png" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="설치된 게임목록" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <local:InstalledTitlesTab x:Name="InstalledTitlesTab"/>
+            </TabItem>
+
+            <!-- 설치 탭 -->
+            <TabItem IsEnabled="{Binding IsIdle}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/Install.png" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="신규 게임 설치" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <local:InstallTab x:Name="InstallTab"/>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- ── 상태바 ── -->
+        <Border Grid.Row="2"
+                Background="#1E1E1E"
+                BorderBrush="#2A2A3A"
+                BorderThickness="0,1"
+                Padding="20,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="StatusTextBlock"
+                           Grid.Column="0"
+                           Style="{StaticResource StatusText}"
+                           Text="{Binding StatusMessage}"/>
+
+                <StackPanel Grid.Column="1"
+                            x:Name="ProgressPanel"
+                            Orientation="Horizontal"
+                            Visibility="{Binding ProgressPanelVisibility}">
+                    <ProgressBar x:Name="StatusProgressBar"
+                                 Width="200" Height="4"
+                                 Maximum="100"
+                                 Value="{Binding Progress}"
+                                 Background="#2A2A3A"
+                                 Foreground="#4F8EF7"
+                                 BorderThickness="0"
+                                 VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ProgressText"
+                               Style="{StaticResource StatusText}"
+                               Text="{Binding ProgressText}"
+                               Margin="10,0,0,0"/>
+                    <Button x:Name="CancelButton"
+                            Content="취소"
+                            Style="{StaticResource SecondaryButton}"
+                            Visibility="{Binding CancelButtonVisibility}"
+                            Margin="10,0,0,0" Padding="8,2"
+                            Click="Cancel_Click"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:RomForge.Views"
         xmlns:controls="clr-namespace:RomForge.Controls"
+        xmlns:_3ds="clr-namespace:RomForge.Controls._3DS"
+        xmlns:util="clr-namespace:RomForge.Controls.Util"
         xmlns:vm="clr-namespace:RomForge.ViewModels"
         xmlns:helpers="clr-namespace:RomForge.Helpers"
         Title="{Binding AppVersion}"
@@ -45,12 +47,22 @@
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image Source="/Assets/Images/Setup.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="설치" VerticalAlignment="Center"/>
+                        <Image Source="/Assets/Images/3DS.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="3DS" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <controls:CompressTab/>
+                <_3ds:MainTab DataContext="{Binding Main3DsVM}"/>
             </TabItem>
+
+            <!--<TabItem IsEnabled="{Binding IsIdle}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/Utility.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="유틸" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <util:MainTab DataContext="{Binding UtilMainVM}"/>
+            </TabItem>-->
 
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>

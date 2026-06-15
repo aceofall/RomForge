@@ -1,4 +1,5 @@
 using Patch.Core.Models;
+using System.IO;
 using System.IO.Compression;
 
 namespace RomForge.Core.Services;
