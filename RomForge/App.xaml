@@ -67,37 +67,73 @@
 
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Border BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="10"
+                        Background="{TemplateBinding Background}"
+                        ClipToBounds="True">
+                            <DockPanel>
+                                <TabPanel DockPanel.Dock="Top" IsItemsHost="True" Background="#252526" Margin="{TemplateBinding Padding}"/>
+                                <ContentPresenter ContentSource="SelectedContent"/>
+                            </DockPanel>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
+        
         <Style TargetType="TabItem">
             <Setter Property="Foreground" Value="#888888"/>
-            <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="BorderThickness" Value="1,1,1,0"/>
+            <!-- 1. 기본적으로 좌, 우, 위 윤곽선 생성 (아래는 탭 컨트롤 기본선과 겹치므로 보통 0) -->
+            <Setter Property="Padding" Value="10,4"/>
+            <!-- 패딩이 너무 작으면 윤곽선 안이 답답해 보여서 살짝 늘림 -->
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="Bd" Background="Transparent"
-                            BorderThickness="0,0,0,2"
-                            BorderBrush="Transparent"
-                            Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd"
+                        Background="Transparent"
+                        BorderBrush="#333333"
+                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}">
                             <ContentPresenter ContentSource="Header"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"/>
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- 선택되었을 때 윤곽선 강조 -->
                             <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2D2D2D"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#007ACC"/>
+                                <!-- 파란색 윤곽선 -->
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="1,1,1,0"/>
+                                <!-- 사방을 다 채우고 싶다면 1,1,1,1로 수정 가능 -->
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
+
+                            <!-- 마우스 올렸을 때 윤곽선 살짝 밝게 -->
                             <Trigger Property="IsMouseOver" Value="True">
+                                <!-- 선택된 상태가 아닐 때만 작동하게 하려면 조건부로 보거나, 보통 테두리 색을 살짝 밝혀줌 -->
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#444444"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#252525"/>
                                 <Setter Property="Foreground" Value="#CCCCCC"/>
                             </Trigger>
+
+                            <!-- 선택된 상태에서 마우스 올렸을 때 파란색 테두리 유지하기 위한 트리거 조합 -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#007ACC"/>
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -231,6 +267,7 @@
         </Style>            
 
         <Style x:Key="SliderStyle" TargetType="Slider">
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">

@@ -42,7 +42,7 @@ public class ArcadePatchViewModel : ToolTabViewModel
 
     public string SourceLabel => SourcePath ?? "원본 ZIP을 드래그하거나 클릭하세요";
 
-    public string PatchLabel => PatchPath ?? "패치 파일 / ZIP / 폴더를 드래그하거나 클릭하세요";
+    public string PatchLabel => PatchPath ?? "패치(IPS/폴더/ZIP)를 드래그하거나 클릭하세요";
 
     public Visibility HintVisibility => MatchItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -102,23 +102,17 @@ public class ArcadePatchViewModel : ToolTabViewModel
 
         MatchItems.Clear();
 
-        // 원본 ZIP 엔트리 수집
         var sourceEntries = GetSourceEntries(SourcePath);
-
-        // 패치 파일 수집
         var patchFiles = GetPatchFiles(PatchPath);
 
-        // 매칭
         foreach (var (fileName, fullPath) in sourceEntries)
         {
             var ext = Path.GetExtension(fileName).TrimStart('.').ToLower();
 
-            // 1순위: 베이스네임 매칭
             var matched = patchFiles.FirstOrDefault(p =>
                 Path.GetFileNameWithoutExtension(p).Equals(
                     Path.GetFileNameWithoutExtension(fileName), StringComparison.OrdinalIgnoreCase));
 
-            // 2순위: 확장자 키 매칭 (패치파일 베이스네임의 마지막 확장자 부분)
             matched ??= patchFiles.FirstOrDefault(p =>
                     Path.GetFileNameWithoutExtension(p).EndsWith(
                         $"-{ext}", StringComparison.OrdinalIgnoreCase));

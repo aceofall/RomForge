@@ -39,6 +39,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        ViewModel.SaveConfig();
         bool busy = ViewModel.CompressVM.IsLocked || ViewModel.PatchVM.IsLocked;
 
         if (!busy)
@@ -123,13 +124,6 @@ public partial class MainWindow : Window
         CompressViewModel.OpenFolder(selected);
     }
 
-    private void BtnSettings_Click(object sender, RoutedEventArgs e)
-    {
-        var settings = new SettingsWindow(ViewModel) { Owner = this };
-
-        settings.ShowDialog();
-    }
-
     private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
     {
         if (e.OriginalSource is not GridViewColumnHeader header)
@@ -150,95 +144,5 @@ public partial class MainWindow : Window
 
         _lastSortColumn = sortBy;
         _lastSortDirection = direction;
-    }
-
-    private static string? OpenSingleFileDialog(string title)
-    {
-        var dlg = new OpenFileDialog { Title = title };
-
-        return dlg.ShowDialog() == true ? dlg.FileName : null;
-    }
-
-    // 일반 탭
-    private void NormalSourceDrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        var path = OpenSingleFileDialog("원본 파일 선택");
-        if (path != null)
-            ViewModel.PatchVM.NormalVM.SourcePath = path;
-    }
-
-    private void NormalSourceDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.NormalVM.SourcePath = files[0];
-    }
-
-    private void NormalPatchDrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        var dlg = new OpenFileDialog { Title = "패치 파일 선택" };
-        if (dlg.ShowDialog() == true)
-            ViewModel.PatchVM.NormalVM.PatchPath = dlg.FileName;
-    }
-
-    private void NormalPatchDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.NormalVM.PatchPath = files[0];
-    }
-
-    // 아케이드 탭
-    private void ArcadeSourceDrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        var path = OpenSingleFileDialog("원본 ZIP 선택");
-        if (path != null)
-            ViewModel.PatchVM.ArcadeVM.SourcePath = path;
-    }
-
-    private void ArcadeSourceDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.ArcadeVM.SourcePath = files[0];
-    }
-
-    private void ArcadePatchDrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        // 파일 먼저 시도
-        var dlg = new OpenFileDialog { Title = "패치 파일 선택" };
-        if (dlg.ShowDialog() == true)
-        {
-            ViewModel.PatchVM.ArcadeVM.PatchPath = dlg.FileName;
-            return;
-        }
-
-        // 폴더 선택
-        var folderDlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
-        {
-            Description = "패치 폴더 선택",
-            UseDescriptionForTitle = true
-        };
-        if (folderDlg.ShowDialog() == true)
-            ViewModel.PatchVM.ArcadeVM.PatchPath = folderDlg.SelectedPath;
-    }
-
-    private void ArcadePatchDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
-        ViewModel.PatchVM.ArcadeVM.PatchPath = files[0]; // 파일이든 폴더든 그대로
-    }
-
-    // 카드 드롭
-    private void MatchCard_DragOver(object sender, DragEventArgs e)
-    {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void MatchCard_PatchDrop(object sender, DragEventArgs e)
-    {
-        if (sender is not Border border) return;
-        if (border.Tag is not ArcadeMatchItem item) return;
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
-
-        ViewModel.PatchVM.ArcadeVM.ManualMatch(item, files[0]);
     }
 }
