@@ -34,7 +34,7 @@ public class MainViewModel : ToolTabViewModel
     {
         0 => PatchVM.LogEntries,
         1 => CompressVM.LogEntries,
-        2 => Main3DsVM.LogEntries,
+        3 => Main3DsVM.LogEntries,
         //3 => UtilMainVM.LogEntries,
         _ => PatchVM.LogEntries
     };

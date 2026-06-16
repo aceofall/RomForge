@@ -99,7 +99,6 @@ public class UtilMainViewModel : ToolTabViewModel
 
     private void DoSync()
     {
-        LogEntries.Clear();
         if (SubTabIndex < 0 || SubTabIndex >= _tools.Count) return;
 
         var currentTool = _tools[SubTabIndex];

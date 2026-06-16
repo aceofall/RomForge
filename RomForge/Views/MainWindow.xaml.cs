@@ -24,7 +24,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += MainWindow_Closing;
 
-        var converter = new PbpConverter(new PbpPackOptions { CompressionLevel = 9 });
+        //var converter = new PbpConverter(new PbpPackOptions { CompressionLevel = 9 });
 
         //converter.Convert(
         //    [
@@ -32,11 +32,11 @@ public partial class MainWindow : Window
         //        (DiskSource.FromChd("D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 2) (v1.1)_patched.chd"), "Valkyrie Profile"),
         //    ], "Valkyrie Profile.pbp");
 
-        converter.Convert(
-            [
-            (DiskSource.FromBinCue("D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 1)_patched.bin", "D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 1).cue"), "Valkyrie Profile"),
-            (DiskSource.FromBinCue("D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 2) (v1.1)_patched.bin", "D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 2) (v1.1).cue"), "Valkyrie Profile"),
-        ], "Valkyrie Profile.pbp");
+        //converter.Convert(
+        //    [
+        //    (DiskSource.FromBinCue("D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 1)_patched.bin", "D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 1).cue"), "Valkyrie Profile"),
+        //    (DiskSource.FromBinCue("D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 2) (v1.1)_patched.bin", "D:\\download\\발키리 프로파일\\Valkyrie Profile (Japan) (Disc 2) (v1.1).cue"), "Valkyrie Profile"),
+        //], "Valkyrie Profile.pbp");
     }
 
     protected override void OnSourceInitialized(EventArgs e)

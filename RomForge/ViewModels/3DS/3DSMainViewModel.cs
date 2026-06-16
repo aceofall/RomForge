@@ -87,13 +87,9 @@ public class _3DSMainViewModel : ToolTabViewModel
 
     private void DoSync()
     {
-        LogEntries.Clear();
-
         var currentSource = _subTabIndex == 0 ? InstallerVM.LogEntries : ConverterVM.LogEntries;
 
         foreach (var item in currentSource)
-        {
             LogEntries.Add(item);
-        }
     }
 }
