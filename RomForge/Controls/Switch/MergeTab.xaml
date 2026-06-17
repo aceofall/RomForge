@@ -42,8 +42,7 @@
 
                 <!-- Output TextBox -->
                 <Border Grid.Column="2" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
-                    <TextBox x:Name="txtOutput" FontSize="11" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" VerticalContentAlignment="Center" Text="{Binding OutputPath, Mode=TwoWay}" Height="36" IsEnabled="{Binding IsIdle}">
-                    </TextBox>
+                    <TextBox x:Name="txtOutput" FontSize="11" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" VerticalContentAlignment="Center" Text="{Binding OutputPath, Mode=TwoWay}" Height="36" IsEnabled="{Binding IsIdle}"/>
                 </Border>
 
                 <!-- Browse Button -->

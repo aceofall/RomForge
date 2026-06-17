@@ -3,25 +3,26 @@ using RomForge.Core;
 
 namespace RomForge.ViewModels.Settings;
 
-public class PatchSettingsViewModel(AppConfig config) : ToolTabViewModel
+public class PatchSettingsViewModel : ToolTabViewModel
 {
-    public bool UseCustomOutputFolder
+    private readonly AppConfig _config;
+
+    public PatchSettingsViewModel(AppConfig config)
     {
-        get => config.Patch.OutputFolder != null;
-        set
+        _config = config;
+        _config.Patch.PropertyChanged += (s, e) =>
         {
-            config.Patch.OutputFolder = value ? config.Patch.OutputFolder ?? string.Empty : null;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(OutputFolder));
-        }
+            if (e.PropertyName == nameof(PatchConfig.AutoCompress))
+                OnPropertyChanged(nameof(AutoCompress));
+        };
     }
 
-    public string OutputFolder
+    public bool AutoCompress
     {
-        get => config.Patch.OutputFolder ?? string.Empty;
+        get => _config.Patch.AutoCompress;
         set
         {
-            config.Patch.OutputFolder = string.IsNullOrWhiteSpace(value) ? null : value;
+            _config.Patch.AutoCompress = value;
             OnPropertyChanged();
         }
     }

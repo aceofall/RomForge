@@ -4,6 +4,8 @@ namespace RomForge.ViewModels;
 
 public class NormalPatchViewModel : ToolTabViewModel
 {
+    private readonly Core.AppConfig _config;
+
     private string? _sourcePath;
     public string? SourcePath
     {
@@ -25,6 +27,16 @@ public class NormalPatchViewModel : ToolTabViewModel
             _patchPath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(PatchLabel));
+        }
+    }
+    
+    public bool AutoCompress
+    {
+        get => _config.Patch.AutoCompress;
+        set 
+        { 
+            _config.Patch.AutoCompress = value;
+            OnPropertyChanged(nameof(AutoCompress));
         }
     }
 
@@ -53,11 +65,29 @@ public class NormalPatchViewModel : ToolTabViewModel
         set { _statusColor = value; OnPropertyChanged(); }
     }
 
+    public NormalPatchViewModel(Core.AppConfig config)
+    {
+        _config = config;
+
+        _config.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(Core.AppConfig.Patch))
+                OnPropertyChanged(nameof(AutoCompress));
+        };
+
+        _config.Patch.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(Core.PatchConfig.AutoCompress))
+                OnPropertyChanged(nameof(AutoCompress));
+        };
+    }
+
     public void Clear()
     {
         SourcePath = null;
         PatchPath = null;
         Progress = 0;
         StatusText = string.Empty;
+        AutoCompress = false;
     }
 }

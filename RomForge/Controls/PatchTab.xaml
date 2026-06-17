@@ -24,6 +24,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="16"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0">
@@ -71,6 +72,14 @@
                             </TextBlock>
                         </StackPanel>
                     </Border>
+
+                    <ToggleButton Grid.Row="5" Style="{StaticResource ToggleStyle}" IsChecked="{Binding PatchVM.NormalVM.AutoCompress}" Margin="0,0,0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Width="18" Margin="0,0,10,0" Source="{Binding PatchVM.NormalVM.AutoCompress, Converter={StaticResource BoolToImageConverter}}"/>
+                            <TextBlock Text="패치 후 자동 압축 ( iso->chd, 다른 포멧은 zip )" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    
                 </Grid>
             </TabItem>
 

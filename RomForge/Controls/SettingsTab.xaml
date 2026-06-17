@@ -15,36 +15,14 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="12"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-
-                    <ToggleButton Grid.Row="0" Style="{StaticResource ToggleStyle}" IsChecked="{Binding Settings.Patch.UseCustomOutputFolder}">
+                    <ToggleButton Grid.Row="4" Style="{StaticResource ToggleStyle}"
+                                          IsChecked="{Binding Settings.Patch.AutoCompress}">
                         <StackPanel Orientation="Horizontal">
-                            <Image Width="18" Margin="0,0,10,0" Source="{Binding Settings.Patch.UseCustomOutputFolder, Converter={StaticResource BoolToImageConverter}}"/>
-                            <TextBlock Text="출력 폴더 지정" VerticalAlignment="Center" FontSize="12"/>
+                            <Image Width="18" Margin="0,0,10,0" Source="{Binding Settings.Patch.AutoCompress, Converter={StaticResource BoolToImageConverter}}"/>
+                            <TextBlock Text="패치 후 자동 압축" VerticalAlignment="Center" FontSize="12"/>
                         </StackPanel>
                     </ToggleButton>
-
-                    <Border Grid.Row="2" Style="{StaticResource OptionBorder}"
-                            Visibility="{Binding Settings.Patch.UseCustomOutputFolder, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding Settings.Patch.OutputFolder, UpdateSourceTrigger=PropertyChanged}"
-                                     Background="Transparent" BorderThickness="0"
-                                     Foreground="#DCDCDC" FontSize="12" VerticalAlignment="Center"/>
-                            <Button Style="{StaticResource GrayButton}" Grid.Column="1" Click="BtnBrowseFolder_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <Image Source="/Assets/Images/AddFolder.png" Width="18" Height="18" Margin="0,0,6,0"/>
-                                    <TextBlock Text="찾아보기" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-                    </Border>
                 </Grid>
             </TabItem>
 
@@ -80,14 +58,14 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <Image Grid.Column="0" Source="/Assets/Images/Level.png" Width="24" Margin="0,0,10,0"/>
+                                        <Image Grid.Column="0" Source="/Assets/Images/Level.png" Width="24" Margin="0,0,5,0"/>
                                         <Slider Grid.Column="1" x:Name="sliderSwitch" Style="{StaticResource SliderStyle}"
-                                                Minimum="3" Maximum="18" Value="{Binding Settings.Compress.SwitchCompressLevel}"
+                                                Minimum="2" Maximum="18" Value="{Binding Settings.Compress.SwitchCompressLevel}"
                                                 SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2"
-                                                   Text="{Binding ElementName=sliderSwitch, Path=Value}"
+                                                   Text="{Binding ElementName=sliderSwitch, Path=Value,Converter={StaticResource CompressLevelTextConverter}}"
                                                    Foreground="{Binding ElementName=sliderSwitch, Path=Value, Converter={StaticResource LevelToColorConverter}}"
-                                                   FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="10,0,0,0"/>
+                                                   FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="5,0,0,0" MinWidth="45"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>

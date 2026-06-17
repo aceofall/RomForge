@@ -7,7 +7,7 @@ namespace RomForge.Core.Services;
 
 public static class PatchService
 {
-    public static async Task ApplyAsync(string sourcePath, string patchPath, string? outputFolder = null, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
+    public static async Task ApplyAsync(string sourcePath, string patchPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         bool sourceIsZipEntry = sourcePath.Contains('|');
         bool patchIsZipEntry = patchPath.Contains('|');
@@ -17,7 +17,7 @@ public static class PatchService
         ct.ThrowIfCancellationRequested();
 
         var result = await Task.Run(() => UniversalPatcher.ApplyPatch(sourceBytes, patchBytes, p => progress?.Report(new ProgressInfo { Percent = (int)(p * 100) })), ct);
-        string outputPath = ResolveNormalOutputPath(sourcePath, patchPath, outputFolder);
+        string outputPath = ResolveNormalOutputPath(sourcePath);
 
         if (sourceIsZipEntry)
             await WriteZipEntryAsync(sourcePath, result, outputPath);
@@ -27,13 +27,10 @@ public static class PatchService
         log?.Invoke($"[{Path.GetFileName(outputPath)}] 완료", LogLevel.Ok);
     }
 
-    public static string ResolveNormalOutputPath(string sourcePath, string patchPath, string? outputFolder = null)
+    public static string ResolveNormalOutputPath(string sourcePath)
     {
         string realSourcePath = sourcePath.Contains('|') ? sourcePath.Split('|')[0] : sourcePath;
-
-        string dir = string.IsNullOrEmpty(outputFolder)
-            ? Path.GetDirectoryName(Path.GetFullPath(realSourcePath))!
-            : outputFolder;
+        string dir = Path.GetDirectoryName(Path.GetFullPath(realSourcePath))!;
 
         if (sourcePath.Contains('|'))
         {

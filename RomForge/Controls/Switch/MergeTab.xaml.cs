@@ -32,7 +32,7 @@ public partial class MergeTab : UserControl
         };
 
         if (dlg.ShowDialog() == true)
-            txtOutput.Text = dlg.SelectedPath;
+            ViewModel.OutputPath = dlg.SelectedPath;
     }
 
     private async void BtnMergeStart_Click(object sender, RoutedEventArgs e)
