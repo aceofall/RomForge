@@ -16,23 +16,23 @@
             </Grid.RowDefinitions>
 
             <TabControl Grid.Row="0" Margin="0,0,0,5" SelectedIndex="0">
-                <TabItem>
+                <TabItem IsEnabled="{Binding IsIdle}">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/AddFile.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
                             <TextBlock Text="파일" VerticalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <core:FileManagerControl x:Name="fileMgr"/>
+                    <core:FileManagerControl x:Name="fileMgr" IsEnabled="{Binding IsIdle}"/>
                 </TabItem>
-                <TabItem>
+                <TabItem IsEnabled="{Binding IsIdle}">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/Metadata.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
                             <TextBlock Text="메타데이터" VerticalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <core:LanguageTabControl x:Name="langTab"/>
+                    <core:LanguageTabControl x:Name="langTab" IsEnabled="{Binding IsIdle}"/>
                 </TabItem>
             </TabControl>
 
@@ -42,7 +42,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                <StackPanel Grid.Column="0" Margin="5,0,8,0">
                     <TextBlock Text="[한글패치] or [xdelta 폴더]" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,4"/>
                     <Grid Height="36">
                         <Grid.ColumnDefinitions>
@@ -51,17 +51,17 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Margin="0,0,4,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" AllowDrop="True" PreviewDragEnter="TxtPatch_DragEnter" PreviewDragOver="TxtPatch_DragOver" PreviewDrop="TxtPatch_Drop">
                             <Grid>
-                                <TextBox x:Name="txtPatch" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
+                                <TextBox x:Name="txtPatch" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
                                 <TextBlock Text="[한글패치] or [xdelta 폴더]를 드래그&amp;드롭하세요" Visibility="{Binding PatchHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
-                        <Button Grid.Column="1" x:Name="btnOpenPatchFolder" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowsePatchCommand}">
+                        <Button Grid.Column="1" x:Name="btnOpenPatchFolder" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowsePatchCommand}" IsEnabled="{Binding IsIdle}">
                             <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Button>
                     </Grid>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                <StackPanel Grid.Column="1" Margin="8,0,5,0">
                     <TextBlock Text="작업 폴더" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,4"/>
                     <Grid Height="36">
                         <Grid.ColumnDefinitions>
@@ -70,44 +70,60 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Margin="0,0,4,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
                             <Grid>
-                                <TextBox x:Name="txtOutput" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
+                                <TextBox x:Name="txtOutput" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
                                 <TextBlock Text="작업 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
-                        <Button Grid.Column="1" x:Name="btnOpenWorkSpaceFolder" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}">
+                        <Button Grid.Column="1" x:Name="btnOpenWorkSpaceFolder" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsIdle}">
                             <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Button>
                     </Grid>
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="2" Margin="0,0,0,10">
+            <!-- 버튼 3개: 일반 Button → IconButton으로 교체 -->
+            <Grid Grid.Row="2" Margin="5,0,0,10">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="100*"/>
+                    <ColumnDefinition Width="29*"/>
+                    <ColumnDefinition Width="71*"/>
+                    <ColumnDefinition Width="200*"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Style="{StaticResource GrayButton}" Click="BtnUnpack_Click" Margin="0,0,5,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Image Source="/Assets/Images/Unpack.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding UnpackButtonText}" IsEnabled="{Binding UnpackEnabled}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="1" Style="{StaticResource GrayButton}" Click="BtnRebuild_Click" Margin="5,0,5,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Image Source="/Assets/Images/Repack.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding RebuildButtonText}" IsEnabled="{Binding RebuildEnabled}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2" Style="{StaticResource GrayButton}" Click="BtnStart_Click" Margin="5,0,0,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StartButtonText}" IsEnabled="{Binding StartEnabled}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+
+                <!-- 언팩: IsRunning = 언팩 작업 중일 때만 -->
+                <core:IconButton Grid.Column="0"
+                                 DefaultText="언팩"
+                                 DefaultIcon="/Assets/Images/Unpack.png"
+                                 CancelText="취소"
+                                 CancelIcon="/Assets/Images/Cancel.png"
+                                 IsRunning="{Binding IsUnpackRunning}"
+                                 IsEnabled="{Binding UnpackEnabled}"
+                                 Click="BtnUnpack_Click" HorizontalAlignment="Left" Width="195"/>
+
+                <!-- 리팩: IsRunning = 리팩 작업 중일 때만 -->
+                <core:IconButton Grid.Column="1"
+                                 Margin="5,0,5,0"
+                                 DefaultText="리팩"
+                                 DefaultIcon="/Assets/Images/Repack.png"
+                                 CancelText="취소"
+                                 CancelIcon="/Assets/Images/Cancel.png"
+                                 IsRunning="{Binding IsRebuildRunning}"
+                                 IsEnabled="{Binding RebuildEnabled}"
+                                 Click="BtnRebuild_Click" Grid.ColumnSpan="2"/>
+
+                <!-- Full: IsRunning = Full 작업 중일 때만 -->
+                <core:IconButton Grid.Column="3"
+                                 Margin="5,0,5,0"
+                                 DefaultText="언팩 + 리팩 (Full)"
+                                 DefaultIcon="/Assets/Images/Run.png"
+                                 CancelText="취소"
+                                 CancelIcon="/Assets/Images/Cancel.png"
+                                 IsRunning="{Binding IsFullRunning}"
+                                 IsEnabled="{Binding StartEnabled}"
+                                 Click="BtnStart_Click"/>
             </Grid>
 
-            <Grid Grid.Row="3" Margin="0,0,0,10" Visibility="{Binding IsLocked, Converter={StaticResource BoolToVisibility}}">
+            <Grid Grid.Row="3" Margin="5,0,5,0" Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>

@@ -226,7 +226,7 @@
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding CompressVM.RunCommand}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="시작" VerticalAlignment="Center"/>
+                            <TextBlock Text="시작" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding CompressVM.IsLocked}" Command="{Binding CompressVM.CancelCommand}">

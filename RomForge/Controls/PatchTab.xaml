@@ -235,7 +235,7 @@
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding PatchVM.IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding PatchVM.RunCommand}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="패치 시작" VerticalAlignment="Center"/>
+                            <TextBlock Text="패치 시작" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding PatchVM.IsLocked}" Command="{Binding PatchVM.CancelCommand}">

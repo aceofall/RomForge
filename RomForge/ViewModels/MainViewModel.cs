@@ -49,7 +49,7 @@ public class MainViewModel : ToolTabViewModel
     {
         PatchVM = new PatchViewModel(_config);
         CompressVM = new CompressViewModel(_config);
-        SwitchMainVM = new SwitchMainViewModel();
+        SwitchMainVM = new SwitchMainViewModel(_config);
         Main3DsVM = new _3DSMainViewModel();
         UtilMainVM = new UtilMainViewModel();
         Settings = new SettingsViewModel(_config);

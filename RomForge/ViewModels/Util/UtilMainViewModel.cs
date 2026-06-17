@@ -11,6 +11,7 @@ public class UtilMainViewModel : ToolTabViewModel
 {
     private int _subTabIndex;
     private readonly List<ToolTabViewModel> _tools = [];
+    private bool _isAdmin;
 
     public ZipImageToolViewModel ZipImageToolVM { get; }
 
@@ -27,8 +28,24 @@ public class UtilMainViewModel : ToolTabViewModel
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
+    public bool IsAdmin
+    {
+        get => _isAdmin;
+        set
+        {
+            if (_isAdmin == value) return;
+            _isAdmin = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsNotAdmin));
+        }
+    }
+
+    public bool IsNotAdmin => !IsAdmin;
+
     public UtilMainViewModel()
     {
+        IsAdmin = CheckAdmin();
+
         ZipImageToolVM = new ZipImageToolViewModel();
 
         _tools.Add(ZipImageToolVM);
@@ -48,13 +65,18 @@ public class UtilMainViewModel : ToolTabViewModel
         SyncLogEntries();
     }
 
+    private bool CheckAdmin()
+    {
+        var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        var principal = new System.Security.Principal.WindowsPrincipal(identity);
+
+        return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
+
     private void Child_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(IsLocked) || e.PropertyName == nameof(IsIdle))
-        {
-            //IsLocked = _tools.Any(t => t.IsLocked);
             OnPropertyChanged(nameof(IsIdle));
-        }
     }
 
     private void LogEntries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e, ToolTabViewModel tool)

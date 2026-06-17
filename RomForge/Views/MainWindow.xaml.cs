@@ -1,4 +1,5 @@
 ﻿using DiscUtils.Iso9660;
+using NSW.WPF.UI;
 using PBP.Core;
 using PBP.Core.Cue;
 using PBP.Core.Models;
@@ -57,9 +58,9 @@ public partial class MainWindow : Window
         if (!busy)
             return;
 
-        var result = MessageBox.Show("작업이 진행 중입니다. 취소하고 종료할까요?", "종료 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        var result = MessageBoxHelper.ShowQuestion("작업이 진행 중입니다. 취소하고 종료할까요?");
 
-        if (result == MessageBoxResult.Yes)
+        if (result)
         {
             ViewModel.CompressVM.CancelCommand.Execute(null);
             ViewModel.PatchVM.CancelCommand.Execute(null);

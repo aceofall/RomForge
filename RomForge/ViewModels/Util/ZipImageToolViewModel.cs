@@ -1,6 +1,7 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using Ionic.Zlib;
+using NSW.WPF.UI;
 using PickPack.Disk;
 using RomForge.Helpers;
 using RomForge.Models;
@@ -259,8 +260,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
             return;
         }
 
-        if (MessageBox.Show("굽기를 시작하면 선택한 드라이브의 모든 데이터가 삭제 됩니다.\n진행 할까요?", "알림",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+        if (!MessageBoxHelper.ShowQuestion("굽기를 시작하면 선택한 드라이브의 모든 데이터가 삭제 됩니다.\n진행 할까요?"))
             return;
 
         WriteButtonText = "취소";
@@ -476,7 +476,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
         }
     }
 
-    private void AppendLog(string msg, LogLevel level = LogLevel.Info, string titleId = "")
+    private void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
         if (Application.Current?.Dispatcher == null) return;
 

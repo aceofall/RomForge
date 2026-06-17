@@ -12,6 +12,8 @@ public class SwitchConfig
     public bool UseBlockMode { get; set; } = true;
 
     public bool UseBlocklessMode { get; set; } = false;
+
+    public bool ForceKeyGen0 { get; set; } = false;
 }
 
 public class AzaharConfig

@@ -53,7 +53,7 @@
                     <Button x:Name="LoadButton" Style="{StaticResource PrimaryButton}" Margin="20,0,0,0" IsEnabled="{Binding CanLoad}" Click="LoadTitles_Click">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Loading.png" Width="24" Height="24" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="게임목록 불러오기" VerticalAlignment="Center"/>
+                            <TextBlock Text="게임목록 불러오기" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

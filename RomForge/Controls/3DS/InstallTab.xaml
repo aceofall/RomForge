@@ -140,7 +140,7 @@
                     <Button x:Name="InstallButton" Style="{StaticResource PrimaryButton}" Click="Install_Click" IsEnabled="{Binding CanInstall}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="설치" VerticalAlignment="Center"/>
+                            <TextBlock Text="설치" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="InstallCancelButton" Style="{StaticResource SecondaryButton}" Click="InstallCancel_Click" IsEnabled="{Binding Install.IsInstalling}">

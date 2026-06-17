@@ -27,7 +27,7 @@
                     </ToggleButton>
 
                     <Border Grid.Row="2" Style="{StaticResource OptionBorder}"
-                            Visibility="{Binding Settings.Patch.UseCustomOutputFolder, Converter={StaticResource BoolToVisibility}}">
+                            Visibility="{Binding Settings.Patch.UseCustomOutputFolder, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>

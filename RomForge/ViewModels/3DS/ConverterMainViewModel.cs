@@ -1,13 +1,9 @@
 using _3DS.Core.Crypto;
-using _3DS.Core.Enums;
-using _3DS.Core.IO;
-using _3DS.Core.Models;
 using _3DS.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
 using RomForge.Helpers;
 using RomForge.Models;
-using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -267,7 +263,7 @@ public class ConverterMainViewModel : ToolTabViewModel
         }
     }
 
-    private void AppendLog(string msg, LogLevel level = LogLevel.Info, string titleId = "")
+    private void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
         if (Application.Current?.Dispatcher == null) return;
 

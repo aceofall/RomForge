@@ -18,7 +18,10 @@
                         <TextBlock Text="ZipImageTool" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <local:ZipImageToolTab DataContext="{Binding ZipImageToolVM}"/>
+                <Grid>
+                    <TextBlock Text="관리자 권한이 필요합니다." Visibility="{Binding IsNotAdmin, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <local:ZipImageToolTab DataContext="{Binding ZipImageToolVM}" Visibility="{Binding DataContext.IsAdmin, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </Grid>
             </TabItem>
 
         </TabControl>

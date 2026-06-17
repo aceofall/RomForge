@@ -108,13 +108,13 @@ public partial class ConverterTab : UserControl
 
     private void BtnAddFolder_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new System.Windows.Forms.FolderBrowserDialog
+        var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
         {
             Description = "추가할 폴더를 선택하세요",
             UseDescriptionForTitle = true
         };
 
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        if (dialog.ShowDialog() == true)
             ViewModel?.AddPaths([dialog.SelectedPath]);
     }
 

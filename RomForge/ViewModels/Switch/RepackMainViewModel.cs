@@ -61,16 +61,17 @@ namespace RomForge.ViewModels.Switch
             set { _outputPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(OutputHintVisibility)); }
         }
 
-        public string UnpackButtonText => _currentMode == BuildMode.UnpackOnly ? "취소" : "언팩";
-        public string RebuildButtonText => _currentMode == BuildMode.RebuildOnly ? "취소" : "리팩";
-        public string StartButtonText => _currentMode == BuildMode.FullProcess ? "취소" : "언팩 + 리팩 (Full)";
+        // IconButton.IsRunning 바인딩용 — 각 버튼이 독립적으로 자기 상태만 반영
+        public bool IsUnpackRunning => IsLocked && _currentMode == BuildMode.UnpackOnly;
+        public bool IsRebuildRunning => IsLocked && _currentMode == BuildMode.RebuildOnly;
+        public bool IsFullRunning => IsLocked && _currentMode == BuildMode.FullProcess;
 
+        // IsEnabled 바인딩 — 자기 작업 중이거나 아이들일 때만 활성
         public bool UnpackEnabled => !IsLocked || _currentMode == BuildMode.UnpackOnly;
         public bool RebuildEnabled => !IsLocked || _currentMode == BuildMode.RebuildOnly;
         public bool StartEnabled => !IsLocked || _currentMode == BuildMode.FullProcess;
 
         public Visibility PatchHintVisibility => string.IsNullOrEmpty(PatchPath) ? Visibility.Visible : Visibility.Collapsed;
-
         public Visibility OutputHintVisibility => string.IsNullOrEmpty(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
 
         public record BuildContext(IList<GameFile> GameFiles, GameMetadata? Metadata, ApplicationControlProperty.Language ForcedLanguage);
@@ -78,7 +79,6 @@ namespace RomForge.ViewModels.Switch
         public BuildContext? Context { get; set; }
 
         public ICommand BrowsePatchCommand { get; }
-
         public ICommand BrowseOutputCommand { get; }
 
         public RepackMainViewModel()
@@ -86,13 +86,19 @@ namespace RomForge.ViewModels.Switch
             OutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
             BrowsePatchCommand = new RelayCommand(async _ => await BrowsePatch());
             BrowseOutputCommand = new RelayCommand(async _ => await BrowseOutput());
+
+            PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(IsLocked))
+                    NotifyButtonStates();
+            };
         }
 
         public async Task StartAsync(BuildMode mode)
         {
             if (!TryGetBuildRequest(mode, out var req, out string errorMsg) || req == null)
             {
-                MessageBoxHelper.ShowWarning(errorMsg);
+                Log(errorMsg, LogLevel.Error);
                 return;
             }
 
@@ -101,14 +107,14 @@ namespace RomForge.ViewModels.Switch
                 return;
 
             _totalSw.Restart();
-
             _currentMode = mode;
             NotifyButtonStates();
+
             using (BeginWork())
             {
-                try 
-                { 
-                    await ExecuteBuildAsync(mode, req); 
+                try
+                {
+                    await ExecuteBuildAsync(mode, req);
                 }
                 finally
                 {
@@ -122,12 +128,16 @@ namespace RomForge.ViewModels.Switch
 
         private void NotifyButtonStates()
         {
-            OnPropertyChanged(nameof(UnpackButtonText));
-            OnPropertyChanged(nameof(RebuildButtonText));
-            OnPropertyChanged(nameof(StartButtonText));
-            OnPropertyChanged(nameof(UnpackEnabled));
-            OnPropertyChanged(nameof(RebuildEnabled));
-            OnPropertyChanged(nameof(StartEnabled));
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // IsRunning 3개 + IsEnabled 3개 한꺼번에 갱신
+                OnPropertyChanged(nameof(IsUnpackRunning));
+                OnPropertyChanged(nameof(IsRebuildRunning));
+                OnPropertyChanged(nameof(IsFullRunning));
+                OnPropertyChanged(nameof(UnpackEnabled));
+                OnPropertyChanged(nameof(RebuildEnabled));
+                OnPropertyChanged(nameof(StartEnabled));
+            });
         }
 
         public void Cancel()
@@ -154,7 +164,6 @@ namespace RomForge.ViewModels.Switch
                     req.Language = Context?.ForcedLanguage ?? default;
                     req.UserMetadata = Context?.Metadata;
                     req.OverrideKeyGeneration = 1;
-                    //req.TargetIdOffset = 2;
                     string finalResult = NspBuildService.Run(req, mode, progress, (msg, lvl) => Log(msg, lvl), token);
                     Log($"{mode} 완료! 총 소요: {_totalSw.Elapsed:mm\\:ss}", LogLevel.Ok);
                     if (Directory.Exists(req.OutputDir)) Process.Start("explorer.exe", $"\"{req.OutputDir}\"");
@@ -171,7 +180,11 @@ namespace RomForge.ViewModels.Switch
                 {
                     Log($"오류: {ex.Message}", LogLevel.Error);
                 }
-                finally { _cts?.Dispose(); _cts = null; }
+                finally
+                {
+                    _cts?.Dispose();
+                    _cts = null;
+                }
             }, token);
         }
 
@@ -211,7 +224,7 @@ namespace RomForge.ViewModels.Switch
             if (dlg.ShowDialog() == true) OutputPath = dlg.FolderName;
         }
 
-        private void Log(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
-
+        private void Log(string msg, LogLevel level = LogLevel.Info)
+            => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
     }
 }

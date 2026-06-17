@@ -18,8 +18,11 @@
     <NoWarn>1701;1702;CS8601;CS8604;CS8618;CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Assets\Images\OpenFolder.png" />
     <None Remove="Assets\Images\Repack.png" />
+    <None Remove="Assets\Images\Split.png" />
     <None Remove="Assets\Images\Unpack.png" />
+    <None Remove="Assets\Images\WorkSpace.png" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="icon.ico" />
@@ -29,9 +32,12 @@
     <Resource Include="Assets\Images\Cartridge.png" />
     <Resource Include="Assets\Images\Convert.png" />
     <Resource Include="Assets\Images\HDD.png" />
+    <Resource Include="Assets\Images\OpenFolder.png" />
     <Resource Include="Assets\Images\Repack.png" />
     <Resource Include="Assets\Images\SD.png" />
+    <Resource Include="Assets\Images\Split.png" />
     <Resource Include="Assets\Images\Unpack.png" />
+    <Resource Include="Assets\Images\WorkSpace.png" />
     <Resource Include="Assets\Images\WriteTab.png" />
     <Resource Include="Assets\Images\DLC.png" />
     <Resource Include="Assets\Images\file.png" />
@@ -109,5 +115,10 @@
     <Resource Include="Assets\Images\ZipFile.png" />
     <Resource Include="Assets\Images\ZipFolder.png" />
     <Resource Include="Assets\Sounds\complete.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="prod.keys">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

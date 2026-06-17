@@ -3,6 +3,7 @@ using _3DS.Core.FileSystem;
 using _3DS.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
+using NSW.WPF.UI;
 using RomForge.Models;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -22,6 +23,7 @@ public class InstallerMainViewModel : ToolTabViewModel
     private SdCrypto? _sdCrypto;
     private SdTitleScanner? _scanner;
     private CancellationTokenSource? _extractCts;
+
     private IEnumerable<ToolTabViewModel> AllTabs => [InstalledTitles, Install];
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
@@ -33,6 +35,7 @@ public class InstallerMainViewModel : ToolTabViewModel
     ];
 
     public InstalledTitlesViewModel InstalledTitles { get; }
+
     public InstallViewModel Install { get; }
 
     public static string AppVersion => $"3DS Easy Installer - Ver {Utils.ToAppVersionString()}";
@@ -257,11 +260,10 @@ public class InstallerMainViewModel : ToolTabViewModel
             if (Directory.Exists(titleRoot))
             {
                 AppendLog($"이미 동일한 타이틀이 존재합니다. 경로: {titleRoot}", LogLevel.Info);
-                var result = MessageBox.Show(
-                    $"{selected.ShortDescription} 이(가) 이미 설치되어 있습니다.\n재설치하시겠습니까?",
-                    "재설치 확인", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                var result = MessageBoxHelper.ShowQuestion(
+                    $"{selected.ShortDescription} 이(가) 이미 설치되어 있습니다.\n재설치하시겠습니까?");
 
-                if (result == MessageBoxResult.No)
+                if (result)
                 {
                     AppendLog("사용자가 재설치를 거부하여 작업을 중단합니다.", LogLevel.Info);
                     return;
@@ -360,7 +362,7 @@ public class InstallerMainViewModel : ToolTabViewModel
         }
     }
 
-    private void AppendLog(string msg, LogLevel level = LogLevel.Info)
+    public void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
         if (Application.Current?.Dispatcher == null) return;
 

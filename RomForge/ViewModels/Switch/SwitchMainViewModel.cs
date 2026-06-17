@@ -1,4 +1,5 @@
 ﻿using Common.WPF.ViewModels;
+using RomForge.Core;
 using RomForge.Models;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -11,6 +12,7 @@ public class SwitchMainViewModel : ToolTabViewModel
     private int _subTabIndex;
 
     public RepackMainViewModel RepackVM { get; }
+
     public MergeMainViewModel MergeVM { get; }
 
     public int SubTabIndex
@@ -26,10 +28,10 @@ public class SwitchMainViewModel : ToolTabViewModel
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
-    public SwitchMainViewModel()
+    public SwitchMainViewModel(AppConfig config)
     {
         RepackVM = new RepackMainViewModel();
-        MergeVM = new MergeMainViewModel();
+        MergeVM = new MergeMainViewModel(config);
 
         RegisterChild(RepackVM);
         RegisterChild(MergeVM);

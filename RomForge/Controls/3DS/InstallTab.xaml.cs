@@ -96,7 +96,7 @@ public partial class InstallTab : UserControl
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            MessageBox.Show($"설치 오류:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            Vm.AppendLog($"설치 오류:\n{ex.Message}", Common.LogLevel.Error);
         }
         finally
         {

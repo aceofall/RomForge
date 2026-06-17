@@ -11,6 +11,7 @@ public class _3DSMainViewModel : ToolTabViewModel
     private int _subTabIndex;
 
     public InstallerMainViewModel InstallerVM { get; }
+
     public ConverterMainViewModel ConverterVM { get; }
 
     public int SubTabIndex
