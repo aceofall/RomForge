@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\RomZip\Common\Common.csproj" />
     <ProjectReference Include="..\..\기타\PatchCore.Tools\Patch.Core\Patch.Core.csproj" />
+    <ProjectReference Include="..\..\기타\PickPack.Disk\PickPack.Disk.csproj" />
   </ItemGroup>
 </Project>

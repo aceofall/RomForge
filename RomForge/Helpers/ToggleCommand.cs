@@ -1,0 +1,19 @@
+﻿using System.Windows.Input;
+
+namespace RomForge.Helpers;
+
+public class ToggleCommand(Func<object?, Task> executeAsync, Func<object?, bool>? canExecute = null) : ICommand
+{
+    public bool CanExecute(object? parameter) => canExecute?.Invoke(parameter) ?? true;
+
+    public async void Execute(object? parameter)
+    {
+        await executeAsync(parameter);
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+}

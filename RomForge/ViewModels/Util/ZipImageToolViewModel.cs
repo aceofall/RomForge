@@ -1,12 +1,16 @@
-﻿using Common.WPF.ViewModels;
+﻿using Common;
+using Common.WPF.ViewModels;
 using Ionic.Zlib;
-using Microsoft.Win32;
+using PickPack.Disk;
 using RomForge.Helpers;
-using RomForge.Models; // 프로젝트의 LogEntry 및 LogLevel 위치에 맞게 수정
+using RomForge.Models;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels.Util;
 
@@ -14,371 +18,478 @@ public class ZipImageToolViewModel : ToolTabViewModel
 {
     #region Fields
 
+    private readonly WmiWatchers _wmiWatchers = new();
     private CancellationTokenSource? _cts;
-    private bool _isWorking;
-    private object? _selectedUsbDrive;
-    private string _writeImagePath = string.Empty;
-    private string _readImagePath = string.Empty;
-    private int _selectedSegmentIndex = 5; // 기본값 20GB
-    private int _selectedCompressionIndex = 0; // 기본값 압축 안함
-    private bool _isZipOptionsVisible;
-
-    private int _progressValue;
-    private string _statusMessage1 = string.Empty;
-    private string _statusMessage2 = string.Empty;
-
-    // 예시 구조를 위한 임시 가상 클래스 (실제 PickPack.Disk 내부 구조에 맞게 매핑 필요)
-    // WmiWatchers나 DriveInfos, ImageWriter 등은 기존 라이브러리를 그대로 참조한다고 가정합니다.
-    private readonly dynamic? _wmiWatchers;
 
     #endregion
 
-    #region Properties
+    #region USB
 
-    public bool IsWorking
+    public ObservableCollection<DriveInfos> UsbDrives { get; } = [];
+
+    private DriveInfos? _selectedDrive;
+    public DriveInfos? SelectedDrive
     {
-        get => _isWorking;
-        set { _isWorking = value; OnPropertyChanged(); CommandManager.InvalidateRequerySuggested(); }
+        get => _selectedDrive;
+        set { _selectedDrive = value; OnPropertyChanged(); }
     }
 
-    public ObservableCollection<object> UsbDrives { get; } = [];
+    #endregion
 
-    public object? SelectedUsbDrive
+    #region Status
+
+    private string _statusText1 = string.Empty;
+    public string StatusText1
     {
-        get => _selectedUsbDrive;
-        set { _selectedUsbDrive = value; OnPropertyChanged(); }
+        get => _statusText1;
+        set { _statusText1 = value; OnPropertyChanged(); }
     }
 
+    private string _statusText2 = string.Empty;
+    public string StatusText2
+    {
+        get => _statusText2;
+        set { _statusText2 = value; OnPropertyChanged(); }
+    }
+
+    private int _progress;
+    public int Progress
+    {
+        get => _progress;
+        set { _progress = value; OnPropertyChanged(); }
+    }
+
+    #endregion
+
+    #region Tab
+
+    private int _selectedTabIndex;
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set { _selectedTabIndex = value; OnPropertyChanged(); }
+    }
+
+    #endregion
+
+    #region Write Tab
+
+    private string _writeImagePath = string.Empty;
     public string WriteImagePath
     {
         get => _writeImagePath;
         set { _writeImagePath = value; OnPropertyChanged(); }
     }
 
+    private BitmapImage _writeFileIcon = new(new Uri("pack://application:,,,/Assets/Images/File.png", UriKind.Absolute));
+    public BitmapImage? WriteFileIcon
+    {
+        get => _writeFileIcon;
+        set { _writeFileIcon = value; OnPropertyChanged(); }
+    }
+
+    private string _writeButtonText = "굽기";
+    public string WriteButtonText
+    {
+        get => _writeButtonText;
+        set { _writeButtonText = value; OnPropertyChanged(); }
+    }
+
+    #endregion
+
+    #region Read Tab
+
+    private string _readImagePath = string.Empty;
     public string ReadImagePath
     {
         get => _readImagePath;
-        set { _readImagePath = value; OnPropertyChanged(); }
+        set
+        {
+            _readImagePath = value;
+            OnPropertyChanged();
+            UpdateSegmentOptionsVisibility(value);
+        }
     }
 
+    private BitmapImage _readFileIcon = new(new Uri("pack://application:,,,/Assets/Images/File.png", UriKind.Absolute));
+    public BitmapImage? ReadFileIcon
+    {
+        get => _readFileIcon;
+        set { _readFileIcon = value; OnPropertyChanged(); }
+    }
+
+    private bool _segmentOptionsVisible;
+    public bool SegmentOptionsVisible
+    {
+        get => _segmentOptionsVisible;
+        set { _segmentOptionsVisible = value; OnPropertyChanged(); }
+    }
+
+    private string _readButtonText = "저장";
+    public string ReadButtonText
+    {
+        get => _readButtonText;
+        set { _readButtonText = value; OnPropertyChanged(); }
+    }
+
+    public List<string> SegmentSizeOptions { get; } =
+        ["분할안함", "1GB", "2GB", "5GB", "10GB", "20GB", "50GB", "100GB"];
+
+    private int _selectedSegmentIndex = 5;
     public int SelectedSegmentIndex
     {
         get => _selectedSegmentIndex;
         set { _selectedSegmentIndex = value; OnPropertyChanged(); }
     }
 
+    public List<string> CompressionLevelOptions { get; } =
+        ["압축 안함", "빠르게", "보통 압축률", "최대 압축률"];
+
+    private int _selectedCompressionIndex = 0;
     public int SelectedCompressionIndex
     {
         get => _selectedCompressionIndex;
         set { _selectedCompressionIndex = value; OnPropertyChanged(); }
     }
 
-    public bool IsZipOptionsVisible
-    {
-        get => _isZipOptionsVisible;
-        set { _isZipOptionsVisible = value; OnPropertyChanged(); }
-    }
-
-    public int ProgressValue
-    {
-        get => _progressValue;
-        set { _progressValue = value; OnPropertyChanged(); }
-    }
-
-    public string StatusMessage1
-    {
-        get => _statusMessage1;
-        set { _statusMessage1 = value; OnPropertyChanged(); }
-    }
-
-    public string StatusMessage2
-    {
-        get => _statusMessage2;
-        set { _statusMessage2 = value; OnPropertyChanged(); }
-    }
-
-    public ObservableCollection<LogEntry> LogEntries { get; } = [];
-
-    public List<string> SegmentSizes { get; } = ["분할안함", "1GB", "2GB", "5GB", "10GB", "20GB", "50GB", "100GB"];
-    public List<string> CompressionLevels { get; } = ["압축 안함", "빠르게", "보통 압축률", "최대 압축률"];
-
     #endregion
+    public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
     #region Commands
 
-    public ICommand RefreshDrivesCommand { get; }
-    public ICommand OpenWriteImageCommand { get; }
-    public ICommand OpenReadImageCommand { get; }
+    public ICommand OpenWriteFileCommand { get; }
     public ICommand WriteCommand { get; }
+    public ICommand OpenReadFileCommand { get; }
     public ICommand ReadCommand { get; }
 
     #endregion
 
     public ZipImageToolViewModel()
     {
-        RefreshDrivesCommand = new RelayCommand(_ => ListRemovableUsbDrives());
-        OpenWriteImageCommand = new RelayCommand(_ => OpenWriteImage());
-        OpenReadImageCommand = new RelayCommand(_ => OpenReadImage());
-        WriteCommand = new RelayCommand(async _ => await ExecuteWriteAsync());
-        ReadCommand = new RelayCommand(async _ => await ExecuteReadAsync());
+        DiskUtil.PreventSleep();
 
-        // 기존 절전 모드 방지 로직 유지
-        try { dynamic diskUtil = new object(); /* DiskUtil.PreventSleep(); */ } catch { }
+        _wmiWatchers.USBArrival += (s, e) =>
+        {
+            AppendLog("이동식 드라이브의 연결이 감지되었습니다.\n드라이브 목록을 갱신합니다.");
+        };
+
+        _wmiWatchers.USBRemoval += (s, e) =>
+        {
+            AppendLog("이동식 드라이브의 분리가 감지되었습니다.\n드라이브 목록을 갱신합니다.");
+        };
+
+        OpenWriteFileCommand = new RelayCommand(_ => OpenWriteFile());
+        OpenReadFileCommand = new RelayCommand(_ => OpenReadFile());
+        WriteCommand = new ToggleCommand(async _ => await WriteAsync());
+        ReadCommand = new ToggleCommand(async _ => await ReadAsync());
 
         ListRemovableUsbDrives();
-        SetupUsbWatchers();
     }
 
-    #region Methods
+    #region Private Methods
 
     private void ListRemovableUsbDrives()
-    {
+    {        
         UsbDrives.Clear();
-        try
-        {
-            // 기존 WinForms 프로젝트의 DriveInfos.GetDriveInfos() 호출 가정
-            dynamic drives = typeof(System.Windows.Forms.Form).Assembly.GetType("PickPack.Disk.DriveInfos")?
-                .GetMethod("GetDriveInfos")?.Invoke(null, null) ?? new List<object>();
 
-            foreach (var d in drives)
-                UsbDrives.Add(d);
-        }
-        catch
-        {
-            // 실패 시 Fallback 혹은 기존 참조 정상 작동 시 정상 반영됨
-        }
+        var infos = DriveInfos.GetDriveInfos();
+
+        foreach (var info in infos)
+            UsbDrives.Add(info);
 
         if (UsbDrives.Count > 0)
-            SelectedUsbDrive = UsbDrives[0];
-        else
-            System.Windows.MessageBox.Show("연결된 이동식 드라이브가 없습니다.\n연결 후 재시도 하세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            SelectedDrive = UsbDrives[0];
     }
 
-    private void SetupUsbWatchers()
+    private long GetMaxOutputSegmentSize64() => SelectedSegmentIndex switch
     {
-        try
-        {
-            // 기존 WmiWatchers 이벤트 연동 부분 (필요 시 유지)
-            // 본 코드는 구동 컨텍스트 유지를 위해 비하인드나 전역 핸들러 구조 대신 원본 로직 흐름만 보존합니다.
-        }
-        catch { }
-    }
+        0 => 0,
+        1 => 1073741824,
+        2 => 2 * FileSize._1GB,
+        3 => 5 * FileSize._1GB,
+        4 => 10 * FileSize._1GB,
+        5 => 20 * FileSize._1GB,
+        6 => 50 * FileSize._1GB,
+        7 => 100 * FileSize._1GB,
+        _ => 20 * FileSize._1GB
+    };
 
-    private void OpenWriteImage()
+    private CompressionLevel GetCompressionLevel() => SelectedCompressionIndex switch
     {
-        var dialog = new OpenFileDialog
+        0 => CompressionLevel.None,
+        1 => CompressionLevel.BestSpeed,
+        2 => CompressionLevel.Default,
+        3 => CompressionLevel.BestCompression,
+        _ => CompressionLevel.None
+    };
+
+    private void OpenWriteFile()
+    {
+        var ofd = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "ZIP 파일 (*.zip)|*.zip|7z 파일 (*.7z)|*.7z|gz 파일 (*.gz)|*.gz|디스크 이미지 파일 (*.img)|*.img|모든 파일 (*.*)|*.*"
+            Filter = "ZIP 파일 (*.zip)|*.zip|gz 파일 (*.gz)|*.gz|디스크 이미지 파일 (*.img)|*.img|모든 파일 (*.*)|*.*"
         };
-        if (dialog.ShowDialog() == true)
-        {
-            WriteImagePath = dialog.FileName;
-        }
+
+        if (ofd.ShowDialog() != true) return;
+
+        WriteImagePath = ofd.FileName;
+        WriteFileIcon = GetIconForExtension(Path.GetExtension(ofd.FileName));
     }
 
-    private void OpenReadImage()
+    private static BitmapImage GetIconForExtension(string ext)
     {
-        var dialog = new SaveFileDialog
-        {
-            Filter = "디스크 이미지 파일 (*.img)|*.img|ZIP 파일 (*.zip)|*.zip"
-        };
-        if (dialog.ShowDialog() == true)
-        {
-            ReadImagePath = dialog.FileName;
-            string ext = Path.GetExtension(dialog.FileName).ToLowerInvariant();
-            IsZipOptionsVisible = (ext == ".zip");
-        }
+        string name = ext.TrimStart('.').ToUpperInvariant();
+        var uri = new Uri($"pack://application:,,,/Assets/Images/{name}.png", UriKind.Absolute);
+        try { return new BitmapImage(uri); }
+        catch { return new BitmapImage(new Uri("pack://application:,,,/Assets/Images/File.png", UriKind.Absolute)); }
     }
 
-    private async Task ExecuteWriteAsync()
+    private async Task WriteAsync()
     {
-        if (IsWorking)
+        if (IsLocked)
         {
             _cts?.Cancel();
-            StatusMessage1 = "취소중...";
+            StatusText1 = "취소중...";
             return;
         }
 
-        if (SelectedUsbDrive == null)
+        if (SelectedDrive == null)
         {
-            MessageBox.Show("SD 카드를 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppendLog("SD 카드를 선택해주세요.");
             return;
         }
 
-        if (MessageBox.Show("굽기를 시작하면 선택한 드라이브의 모든 데이터가 삭제 됩니다.\n진행 할까요?", "알림", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+        if (MessageBox.Show("굽기를 시작하면 선택한 드라이브의 모든 데이터가 삭제 됩니다.\n진행 할까요?", "알림",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
             return;
+
+        WriteButtonText = "취소";
+        _cts = new CancellationTokenSource();
 
         using (BeginWork())
         {
-            IsWorking = true;
-            _cts = new CancellationTokenSource();
-            ProgressValue = 0;
+            WriteButtonText = "취소";
 
             try
             {
-                dynamic info = SelectedUsbDrive;
-                int diskNumber = info.DiskNumber;
-                long sizeBytes = info.SizeBytes;
+                ImageWriter imgWriter = new();
+                imgWriter.ProgressChanged += OnProgressChanged;
+                imgWriter.WriteEnded += OnWriteEnded;
 
-                // 기존 라이브러리 비동기 메서드 호출 (인스턴스 및 이벤트 연동)
-                // 예시 구조이므로 리플렉션이나 원본 프로젝트 참조 객체를 그대로 대입하시면 됩니다.
-                dynamic imgWriter = Activator.CreateInstance(Type.GetType("PickPack.Disk.ImageWriter")!)!;
-
-                imgWriter.ProgressChanged += (System.EventHandler<dynamic>)((s, e) => {
-                    Application.Current.Dispatcher.Invoke(() => {
-                        ProgressValue = e.Percent;
-                        StatusMessage1 = e.Message1;
-                        if (e.Message2 != null) StatusMessage2 = e.Message2;
-                    });
-                });
-
-                imgWriter.WriteEnded += (System.EventHandler)((s, e) => {
-                    Application.Current.Dispatcher.Invoke(() => {
-                        ProgressValue = 100;
-                        StatusMessage1 = "이미지 굽기 완료";
-                        MessageBox.Show("이미지 굽기가 완료되었습니다.", "굽기 완료", MessageBoxButton.OK, MessageBoxImage.Information);
-                    });
-                });
-
-                await imgWriter.WriteImageAsync(WriteImagePath, diskNumber, sizeBytes, _cts.Token);
+                AppendLog("굽기가 시작 됩니다.", LogLevel.Highlight);
+                await imgWriter.WriteImageAsync(WriteImagePath, SelectedDrive.DiskNumber, SelectedDrive.SizeBytes, _cts.Token);
             }
             catch (OperationCanceledException)
             {
-                ProgressValue = 0;
-                StatusMessage1 = "굽기 취소";
-                MessageBox.Show("굽기가 취소 되었습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                Progress = 0;
+                StatusText1 = "굽기 취소";
+                PartitionUtil.RescanDisk(SelectedDrive.DiskNumber);
+                AppendLog("굽기가 취소 되었습니다.", LogLevel.Error);
+            }
+            catch (Win32Exception ex)
+            {
+                AppendLog(ex.Message, LogLevel.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppendLog(ex.Message, LogLevel.Error);
             }
             finally
             {
-                IsWorking = false;
+                WriteButtonText = "굽기";
                 _cts?.Dispose();
                 _cts = null;
             }
         }
     }
 
-    private async Task ExecuteReadAsync()
+    private void OpenReadFile()
     {
-        if (IsWorking)
+        var sfd = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "디스크 이미지 파일 (*.img)|*.img|ZIP 파일 (*.zip)|*.zip"
+        };
+
+        if (sfd.ShowDialog() != true) return;
+
+        string ext = Path.GetExtension(sfd.FileName).TrimStart('.').ToLowerInvariant();
+
+        ReadImagePath = sfd.FileName;
+        ReadFileIcon = GetIconForExtension(Path.GetExtension(sfd.FileName));
+
+        if (ext != "img" && ext != "zip")
+            AppendLog("지원하지 않는 파일 형식입니다.(.zip 또는 .img)", LogLevel.Error);
+    }
+
+    private async Task ReadAsync()
+    {
+        if (IsLocked)
         {
             _cts?.Cancel();
-            StatusMessage1 = "취소중...";
+            StatusText1 = "취소중...";
             return;
         }
 
-        if (SelectedUsbDrive == null)
+        if (SelectedDrive == null)
         {
-            MessageBox.Show("SD 카드를 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppendLog("SD 카드를 선택해주세요.", LogLevel.Info);
             return;
         }
 
         if (string.IsNullOrEmpty(ReadImagePath))
         {
-            MessageBox.Show("이미지 파일을 지정해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppendLog("이미지 파일을 지정해주세요.", LogLevel.Info);
             return;
         }
 
+        ulong freeSpace = 0;
+        try
+        {
+            freeSpace = DiskUtil.GetAvailableFreeSpace(Path.GetPathRoot(ReadImagePath));
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"디스크 용량을 확인하는 중 오류가 발생했습니다: {ex.Message}", LogLevel.Error);
+        }
+
+        if (freeSpace < (ulong)SelectedDrive.SizeBytes)
+        {
+            AppendLog("디스크 용량이 부족합니다.", LogLevel.Error);
+            return;
+        }
+
+        ReadButtonText = "취소";
+        _cts = new CancellationTokenSource();
+
         using (BeginWork())
         {
-            IsWorking = true;
-            _cts = new CancellationTokenSource();
-            ProgressValue = 0;
-
             try
             {
-                dynamic info = SelectedUsbDrive;
-                int diskNumber = info.DiskNumber;
+                ImageReader reader = new();
+                reader.ProgressChanged += OnProgressChanged;
+                reader.WriteEnded += OnReaderEnded;
 
-                dynamic reader = Activator.CreateInstance(Type.GetType("PickPack.Disk.ImageReader")!)!;
-                reader.ProgressChanged += (System.EventHandler<dynamic>)((s, e) => {
-                    Application.Current.Dispatcher.Invoke(() => {
-                        ProgressValue = e.Percent;
-                        StatusMessage1 = e.Message1;
-                        if (e.Message2 != null) StatusMessage2 = e.Message2;
-                    });
-                });
+                long maxSegment = GetMaxOutputSegmentSize64();
+                CompressionLevel compLevel = GetCompressionLevel();
 
-                reader.WriteEnded += (System.EventHandler)((s, e) => {
-                    Application.Current.Dispatcher.Invoke(() => {
-                        ProgressValue = 100;
-                        StatusMessage1 = "이미지 저장 완료";
-                        MessageBox.Show("이미지 저장이 완료되었습니다.", "저장 완료", MessageBoxButton.OK, MessageBoxImage.Information);
-                    });
-                });
-
-                long maxOutputSegmentSize64 = GetMaxOutputSegmentSize64();
-                CompressionLevel compressionLevel = GetCompressionLevel();
-
-                await Task.Run(() => reader.ReadImageAsync(diskNumber, ReadImagePath, maxOutputSegmentSize64, compressionLevel, _cts.Token));
+                AppendLog("저장이 시작 됩니다.", LogLevel.Highlight);
+                await Task.Run(() => reader.ReadImageAsync(SelectedDrive.DiskNumber, ReadImagePath, maxSegment, compLevel, _cts.Token));
             }
             catch (OperationCanceledException)
             {
-                ProgressValue = 0;
-                StatusMessage1 = "저장 취소";
+                Progress = 0;
+                StatusText1 = "저장 취소";
                 DeleteArchiveTempAndPartialFiles(ReadImagePath);
-                MessageBox.Show("저장이 취소되었습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppendLog("저장이 취소되었습니다.", LogLevel.Error);
+            }
+            catch (Win32Exception ex)
+            {
+                AppendLog(ex.Message, LogLevel.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppendLog(ex.Message, LogLevel.Error);
             }
             finally
             {
-                IsWorking = false;
+                ReadButtonText = "저장";
                 _cts?.Dispose();
                 _cts = null;
             }
         }
     }
 
-    private long GetMaxOutputSegmentSize64()
+    private void OnProgressChanged(object? sender, ProgressEventArgs e)
     {
-        return SelectedSegmentIndex switch
+        Application.Current.Dispatcher.Invoke(() =>
         {
-            0 => 0,
-            1 => 1073741824,
-            2 => 2 * 1073741824L,
-            3 => 5 * 1073741824L,
-            4 => 10 * 1073741824L,
-            5 => 20 * 1073741824L,
-            6 => 50 * 1073741824L,
-            7 => 100 * 1073741824L,
-            _ => 20 * 1073741824L
-        };
+            Progress = e.Percent;
+            StatusText1 = e.Message1;
+            if (e.Message2 != null)
+                StatusText2 = e.Message2;
+        });
     }
 
-    private CompressionLevel GetCompressionLevel()
+    private void OnWriteEnded(object? sender, EventArgs e)
     {
-        return SelectedCompressionIndex switch
+        Application.Current.Dispatcher.Invoke(() =>
         {
-            0 => CompressionLevel.None,
-            1 => CompressionLevel.BestSpeed,
-            2 => CompressionLevel.Default,
-            3 => CompressionLevel.BestCompression,
-            _ => CompressionLevel.None
-        };
+            Progress = 100;
+            StatusText1 = "이미지 굽기 완료";
+
+            PartitionUtil.RescanDisk(SelectedDrive!.DiskNumber);
+            PartitionUtil.AssignNextAvailableDriveLetter();
+
+            AppendLog("이미지 굽기가 완료되었습니다.", LogLevel.Ok);
+        });
     }
 
-    private void DeleteArchiveTempAndPartialFiles(string fileName)
+    private void OnReaderEnded(object? sender, EventArgs e)
     {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            Progress = 100;
+            StatusText1 = "이미지 저장 완료";
+
+            AppendLog("이미지 저장이 완료되었습니다.", LogLevel.Ok);
+        });
+    }
+
+    private void UpdateSegmentOptionsVisibility(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            SegmentOptionsVisible = false;
+            return;
+        }
+
+        string ext = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+        SegmentOptionsVisible = ext == "zip";
+    }
+
+    private static void DeleteArchiveTempAndPartialFiles(string fileName)
+    {
+        File.Delete(fileName);
+        string? directoryPath = Path.GetDirectoryName(fileName);
+
+        if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            return;
+
         try
         {
-            if (File.Exists(fileName)) File.Delete(fileName);
-            string? directoryPath = Path.GetDirectoryName(fileName);
-            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath)) return;
-
             foreach (string file in Directory.GetFiles(directoryPath, "DotNetZip-*.tmp"))
-                File.Delete(file);
+            {
+                try { File.Delete(file); }
+                catch (IOException ex) { Debug.WriteLine($"Could not delete temp file {file}: {ex.Message}"); }
+            }
 
             string searchPattern = Path.GetFileNameWithoutExtension(fileName) + ".z*";
             foreach (string file in Directory.GetFiles(directoryPath, searchPattern))
-                File.Delete(file);
+            {
+                try { File.Delete(file); Debug.WriteLine($"Deleted partial zip file: {file}"); }
+                catch (IOException ex) { Debug.WriteLine($"Could not delete partial file {file}: {ex.Message}"); }
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+    private void AppendLog(string msg, LogLevel level = LogLevel.Info, string titleId = "")
+    {
+        if (Application.Current?.Dispatcher == null) return;
+
+        Application.Current.Dispatcher.Invoke(() =>
+            LogEntries.Add(new LogEntry { Message = msg, Level = level })
+        );
+    }
+
+    private void ClearLog()
+    {
+        if (Application.Current?.Dispatcher == null) return;
+
+        Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
     }
 
     #endregion

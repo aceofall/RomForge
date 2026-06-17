@@ -4,6 +4,7 @@ using RomForge.Core;
 using RomForge.Models;
 using RomForge.ViewModels._3DS;
 using RomForge.ViewModels.Switch;
+using RomForge.ViewModels.Util;
 using System.Collections.ObjectModel;
 
 namespace RomForge.ViewModels;
@@ -17,6 +18,8 @@ public class MainViewModel : ToolTabViewModel
     public CompressViewModel CompressVM { get; }
     public _3DSMainViewModel Main3DsVM { get; }
     public SwitchMainViewModel SwitchMainVM { get; }
+    public UtilMainViewModel UtilMainVM { get; }
+
     public SettingsViewModel Settings { get; }
 
     public int SelectedTabIndex
@@ -35,7 +38,8 @@ public class MainViewModel : ToolTabViewModel
         0 => PatchVM.LogEntries,
         1 => CompressVM.LogEntries,
         2 => SwitchMainVM.LogEntries,
-        3 => Main3DsVM.LogEntries,        
+        3 => Main3DsVM.LogEntries,
+        4=> UtilMainVM.LogEntries,
         _ => PatchVM.LogEntries
     };
 
@@ -46,13 +50,15 @@ public class MainViewModel : ToolTabViewModel
         PatchVM = new PatchViewModel(_config);
         CompressVM = new CompressViewModel(_config);
         SwitchMainVM = new SwitchMainViewModel();
-        Main3DsVM = new _3DSMainViewModel();       
+        Main3DsVM = new _3DSMainViewModel();
+        UtilMainVM = new UtilMainViewModel();
         Settings = new SettingsViewModel(_config);
 
         RegisterChild(PatchVM);
         RegisterChild(CompressVM);
         RegisterChild(SwitchMainVM);
         RegisterChild(Main3DsVM);
+        RegisterChild(UtilMainVM);
         RegisterChild(Settings);
     }
 

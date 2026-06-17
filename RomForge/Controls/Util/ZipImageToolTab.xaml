@@ -5,136 +5,227 @@
              xmlns:d="http://schemas.expression/blend/2008" 
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="1000">
-    <Grid Margin="15">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <DockPanel>
 
-        <Grid Grid.Row="0" Margin="0,0,0,15">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="이동식 드라이브:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
-            <ComboBox Grid.Column="1" 
-                      ItemsSource="{Binding UsbDrives}" 
-                      SelectedItem="{Binding SelectedUsbDrive}"
-                      IsEnabled="{Binding IsIdle}"
-                      Height="32" VerticalContentAlignment="Center"/>
-            <Button Grid.Column="2" Content="새로고침" 
-                    Command="{Binding RefreshDrivesCommand}" 
-                    IsEnabled="{Binding IsIdle}"
-                    Margin="10,0,0,0" Padding="15,0" Height="32"/>
-        </Grid>
-
-        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="1" BorderBrush="#CCCCCC">
-            <TabItem Header="굽기" Height="35" Width="100" FontSize="13">
-                <Grid Margin="15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <Grid Grid.Row="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding WriteImagePath, UpdateSourceTrigger=PropertyChanged}" 
-                                 Height="32" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
-                        <Button Grid.Column="1" Content="열기" Command="{Binding OpenWriteImageCommand}" 
-                                IsEnabled="{Binding IsIdle}" Width="90" Height="32"/>
-                    </Grid>
-
-                    <Button Grid.Row="2" HorizontalAlignment="Right" Width="130" Height="42"
-                            Command="{Binding WriteCommand}" FontSize="14" FontWeight="Bold">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Content" Value="굽기"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsWorking}" Value="True">
-                                        <Setter Property="Content" Value="취소"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="저장" Height="35" Width="100" FontSize="13">
-                <Grid Margin="15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <Grid Grid.Row="0" Margin="0,0,0,15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding ReadImagePath, UpdateSourceTrigger=PropertyChanged}" 
-                                 Height="32" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
-                        <Button Grid.Column="1" Content="열기" Command="{Binding OpenReadImageCommand}" 
-                                IsEnabled="{Binding IsIdle}" Width="90" Height="32"/>
-                    </Grid>
-
-                    <StackPanel Grid.Row="1" Visibility="{Binding IsZipOptionsVisible, Converter={StaticResource BoolToVisibility}}">
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="최대 분할 크기:" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <ComboBox Grid.Column="1" ItemsSource="{Binding SegmentSizes}" 
-                                      SelectedIndex="{Binding SelectedSegmentIndex}" 
-                                      IsEnabled="{Binding IsIdle}" Height="30" VerticalContentAlignment="Center"/>
-                        </Grid>
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="압축 레벨:" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <ComboBox Grid.Column="1" ItemsSource="{Binding CompressionLevels}" 
-                                      SelectedIndex="{Binding SelectedCompressionIndex}" 
-                                      IsEnabled="{Binding IsIdle}" Height="30" VerticalContentAlignment="Center"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <Button Grid.Row="3" HorizontalAlignment="Right" Width="130" Height="42"
-                            Command="{Binding ReadCommand}" FontSize="14" FontWeight="Bold">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Content" Value="저장"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsWorking}" Value="True">
-                                        <Setter Property="Content" Value="취소"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </Grid>
-            </TabItem>
-        </TabControl>
-
-        <Grid Grid.Row="2" Margin="0,15,0,0">
+        <Grid DockPanel.Dock="Bottom" Height="32" Background="#1E1E2E">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding StatusMessage1}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Grid.Column="1" Text="{Binding StatusMessage2}" VerticalAlignment="Center" Margin="15,0"/>
-            <ProgressBar Grid.Column="2" Minimum="0" Maximum="100" Value="{Binding ProgressValue}" Height="22"/>
+
+            <TextBlock Grid.Column="0" Text="{Binding StatusText1}"
+               VerticalAlignment="Center" Margin="8,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding StatusText2}"
+               VerticalAlignment="Center" Margin="8,0"/>
+            <ProgressBar Grid.Column="2" Width="150" Height="4"
+                 Value="{Binding Progress}" Minimum="0" Maximum="100"
+                 Background="#2A2A3A" Foreground="#4F8EF7"
+                 BorderThickness="0" Margin="8,0"
+                 VerticalAlignment="Center"/>
         </Grid>
-    </Grid>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- USB 드라이브 선택 -->
+            <Grid Grid.Row="0" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Image Grid.Column="0" Source="/Assets/Images/Usb.png"
+                       Width="32" Height="32" Margin="5,0,15,0"
+                       VerticalAlignment="Center"/>
+
+                <ComboBox x:Name="UsbComboBox" Grid.Column="1"                          
+                          DisplayMemberPath="DisplayName"
+                          MaxDropDownHeight="174"
+                          FontSize="13.3"
+                          IsEnabled="{Binding IsIdle}"
+                          VerticalAlignment="Center" Height="28">
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                </ComboBox>
+            </Grid>
+
+            <!-- 탭 -->
+            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
+
+                <!-- 굽기 탭 -->
+                <TabItem IsEnabled="{Binding IsIdle}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Image Source="/Assets/Images/SD.png" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="굽기" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 파일 경로 -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="{Binding WriteFileIcon}"
+                                   Width="24" Height="24" Margin="6,0,8,0"
+                                   VerticalAlignment="Center"/>
+
+                            <TextBox Style="{StaticResource PathBox}" IsEnabled="{Binding IsIdle}" Grid.Column="1"
+                                     Text="{Binding WriteImagePath, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="12"
+                                     VerticalAlignment="Center"
+                                     VerticalContentAlignment="Center"/>
+
+                            <Button Grid.Column="2" Style="{StaticResource GrayButton}" IsEnabled="{Binding IsIdle}" Command="{Binding OpenWriteFileCommand}" Margin="6,0,6,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/ReadOpen.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="열기" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- 가운데 빈 공간 -->
+                        <Grid Grid.Row="1"/>
+
+                        <Button Grid.Row="2" Style="{StaticResource GrayButton}" Command="{Binding WriteCommand}" HorizontalAlignment="Right" Margin="6,0,6,6">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="/Assets/Images/SD.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding WriteButtonText}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </TabItem>
+
+                <!-- 저장 탭 -->
+                <TabItem IsEnabled="{Binding IsIdle}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Image Source="/Assets/Images/HDD.png" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="저장" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 파일 경로 -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="{Binding ReadFileIcon}"
+                                   Width="24" Height="24" Margin="6,0,8,0"
+                                   VerticalAlignment="Center"/>
+
+                            <TextBox Style="{StaticResource PathBox}" IsEnabled="{Binding IsIdle}" Grid.Column="1"
+                                     Text="{Binding ReadImagePath, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="12"
+                                     VerticalAlignment="Center"
+                                     VerticalContentAlignment="Center"/>
+
+                            <Button Grid.Column="2" Style="{StaticResource GrayButton}" IsEnabled="{Binding IsIdle}" Command="{Binding OpenReadFileCommand}" Margin="6,0,6,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/WriteOpen.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="열기" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- 분할 크기 -->
+                        <Grid Grid.Row="1" Margin="0,0,0,6"
+                              Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="/Assets/Images/Size.png"
+                                   Width="24" Height="24" Margin="6,0,8,0"
+                                   VerticalAlignment="Center"/>
+
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding SegmentSizeOptions}"
+                                      SelectedIndex="{Binding SelectedSegmentIndex}"
+                                      FontSize="13.3"
+                                      IsEnabled="{Binding IsIdle}"
+                                      Margin="0,0,6,0"
+                                      VerticalAlignment="Center">
+                                <ComboBox.ItemContainerStyle>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    </Style>
+                                </ComboBox.ItemContainerStyle>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- 압축 레벨 -->
+                        <Grid Grid.Row="2" Margin="0,0,0,6"
+                              Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="/Assets/Images/Compress.png"
+                                   Width="24" Height="24" Margin="6,0,8,0"
+                                   VerticalAlignment="Center"/>
+
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding CompressionLevelOptions}"
+                                      SelectedIndex="{Binding SelectedCompressionIndex}"
+                                      FontSize="13.3"
+                                      IsEnabled="{Binding IsIdle}"
+                                      Margin="0,0,6,0"
+                                      VerticalAlignment="Center">
+                                <ComboBox.ItemContainerStyle>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    </Style>
+                                </ComboBox.ItemContainerStyle>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- 빈 공간 -->
+                        <Grid Grid.Row="3"/>
+
+                        <Button Grid.Row="4" Style="{StaticResource GrayButton}" Command="{Binding ReadCommand}" HorizontalAlignment="Right" Margin="6,0,6,6">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="/Assets/Images/HDD.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ReadButtonText}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </TabItem>
+
+            </TabControl>
+        </Grid>
+    </DockPanel>
+
 </UserControl>

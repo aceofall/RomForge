@@ -12,35 +12,11 @@
     <RootNamespace>RomForge</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <NoWarn>1701;1702;CS8618;CA1416</NoWarn>
+    <NoWarn>1701;1702;CS8601;CS8604;CS8618;CA1416</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <NoWarn>1701;1702;CS8618;CA1416</NoWarn>
+    <NoWarn>1701;1702;CS8601;CS8604;CS8618;CA1416</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <None Remove="Assets\Images\3DS.png" />
-    <None Remove="Assets\Images\Cartridge.png" />
-    <None Remove="Assets\Images\Convert.png" />
-    <None Remove="Assets\Images\DLC.png" />
-    <None Remove="Assets\Images\FBNeo.png" />
-    <None Remove="Assets\Images\Gift.png" />
-    <None Remove="Assets\Images\Info.png" />
-    <None Remove="Assets\Images\Input.png" />
-    <None Remove="Assets\Images\Install.png" />
-    <None Remove="Assets\Images\Installer.png" />
-    <None Remove="Assets\Images\Loading.png" />
-    <None Remove="Assets\Images\Merge.png" />
-    <None Remove="Assets\Images\Metadata.png" />
-    <None Remove="Assets\Images\Output.png" />
-    <None Remove="Assets\Images\Package.png" />
-    <None Remove="Assets\Images\PS1.png" />
-    <None Remove="Assets\Images\SdCard.png" />
-    <None Remove="Assets\Images\Seed.png" />
-    <None Remove="Assets\Images\Setup.png" />
-    <None Remove="Assets\Images\Utility.png" />
-    <None Remove="Assets\Images\ZipFile.png" />
-    <None Remove="Assets\Images\ZipFolder.png" />
-  </ItemGroup>
   <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
@@ -48,8 +24,14 @@
     <Resource Include="Assets\Images\3DS.png" />
     <Resource Include="Assets\Images\Cartridge.png" />
     <Resource Include="Assets\Images\Convert.png" />
+    <Resource Include="Assets\Images\HDD.png" />
+    <Resource Include="Assets\Images\SD.png" />
+    <Resource Include="Assets\Images\WriteTab.png" />
     <Resource Include="Assets\Images\DLC.png" />
+    <Resource Include="Assets\Images\file.png" />
     <Resource Include="Assets\Images\Gift.png" />
+    <Resource Include="Assets\Images\gz.png" />
+    <Resource Include="Assets\Images\img.png" />
     <Resource Include="Assets\Images\Input.png" />
     <Resource Include="Assets\Images\Install.png" />
     <Resource Include="Assets\Images\Installer.png" />
@@ -103,13 +85,23 @@
     <Resource Include="Assets\Images\Patch.png" />
     <Resource Include="Assets\Images\Progress.png" />
     <Resource Include="Assets\Images\PS1.png" />
+    <Resource Include="Assets\Images\read.png" />
+    <Resource Include="Assets\Images\ReadImage.png" />
+    <Resource Include="Assets\Images\ReadOpen.png" />
+    <Resource Include="Assets\Images\refresh.png" />
     <Resource Include="Assets\Images\Run.png" />
+    <Resource Include="Assets\Images\ReadTab.png" />
     <Resource Include="Assets\Images\SdCard.png" />
     <Resource Include="Assets\Images\Seed.png" />
     <Resource Include="Assets\Images\Settings.png" />
+    <Resource Include="Assets\Images\size.png" />
     <Resource Include="Assets\Images\Switch.png" />
     <Resource Include="Assets\Images\Unchecked.png" />
+    <Resource Include="Assets\Images\Usb.png" />
     <Resource Include="Assets\Images\Utility.png" />
+    <Resource Include="Assets\Images\write.png" />
+    <Resource Include="Assets\Images\WriteOpen.png" />
+    <Resource Include="Assets\Images\zip.png" />
     <Resource Include="Assets\Images\ZipFile.png" />
     <Resource Include="Assets\Images\ZipFolder.png" />
     <Resource Include="Assets\Sounds\complete.mp3" />

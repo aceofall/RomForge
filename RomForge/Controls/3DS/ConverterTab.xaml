@@ -132,7 +132,6 @@
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding AvailableFormats}" 
                                               SelectedItem="{Binding SelectedTargetFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              Style="{StaticResource DarkComboBoxStyle}"
                                               Width="100" 
                                               Height="26"
                                               HorizontalAlignment="Center" 

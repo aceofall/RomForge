@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using PickPack.Disk;
 using RomForge.Core.Services;
 using RomForge.ViewModels._3DS;
 using System.Windows;
@@ -60,7 +61,6 @@ public partial class InstallMainTab : UserControl
 
         if (SdDriveComboBox.Items.Count == 0)
         {
-            //MessageBox.Show("연결된 이동식 드라이브가 없습니다.\n연결 후 재시도 하세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
             ViewModel.SdPath = string.Empty;
             MovablePathBox.Text = string.Empty;
             SdDriveComboBox.IsEnabled = false;

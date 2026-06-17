@@ -8,11 +8,16 @@
              d:DesignHeight="600" d:DesignWidth="1000">
     <Grid>
         <TabControl SelectedIndex="{Binding SubTabIndex, Mode=TwoWay}"
-                    IsEnabled="{Binding IsIdle}"
                     Background="Transparent" 
                     BorderThickness="0">
 
-            <TabItem Header="ZipImageTool">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/Zip.png" Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="ZipImageTool" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <local:ZipImageToolTab DataContext="{Binding ZipImageToolVM}"/>
             </TabItem>
 
