@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <None Remove="BASE.PBP" />
+    <None Remove="BASE.zip" />
     <None Remove="DATA.PSP" />
     <None Remove="ICON0.PNG" />
   </ItemGroup>

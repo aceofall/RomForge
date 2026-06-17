@@ -151,7 +151,7 @@
                         <GridViewColumn Header="암호화" Width="60">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Image Source="{Binding Crypto, Converter={StaticResource LockIconConverter}}" Width="16" Height="16" Margin="8,0" HorizontalAlignment="Center"/>
+                                    <Image Source="{Binding Crypto, Converter={StaticResource LockIconConverter}}" Width="24" Height="24" Margin="8,0" HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

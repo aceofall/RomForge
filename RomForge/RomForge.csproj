@@ -33,6 +33,7 @@
     <None Remove="Assets\Images\Metadata.png" />
     <None Remove="Assets\Images\Output.png" />
     <None Remove="Assets\Images\Package.png" />
+    <None Remove="Assets\Images\PS1.png" />
     <None Remove="Assets\Images\SdCard.png" />
     <None Remove="Assets\Images\Seed.png" />
     <None Remove="Assets\Images\Setup.png" />
@@ -101,6 +102,7 @@
     <Resource Include="Assets\Images\Package.png" />
     <Resource Include="Assets\Images\Patch.png" />
     <Resource Include="Assets\Images\Progress.png" />
+    <Resource Include="Assets\Images\PS1.png" />
     <Resource Include="Assets\Images\Run.png" />
     <Resource Include="Assets\Images\SdCard.png" />
     <Resource Include="Assets\Images\Seed.png" />
