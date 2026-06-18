@@ -63,9 +63,9 @@
     <ProjectReference Include="..\..\RomZip\Common\Common.csproj" />
     <ProjectReference Include="..\..\RomZip\DolphinTool.Core\DolphinTool.Core.csproj" />
     <ProjectReference Include="..\..\RomZip\RomZip.Core\RomZip.Core.csproj" />
-    <ProjectReference Include="..\..\기타\PickPack.Disk\PickPack.Disk.csproj" />
     <ProjectReference Include="..\Common.WPF\Common.WPF.csproj" />
     <ProjectReference Include="..\PBP.Core\PBP.Core.csproj" />
+    <ProjectReference Include="..\PickPack.Disk\PickPack.Disk.csproj" />
     <ProjectReference Include="..\RomForge.Core\RomForge.Core.csproj" />
     <!-- RomZip.Core는 기존 프로젝트 경로로 교체 -->
     <!-- <ProjectReference Include="..\..\RomZip\RomZip.Core\RomZip.Core.csproj"/> -->

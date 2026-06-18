@@ -33,7 +33,14 @@ public class ZipImageToolMainViewModel : ToolTabViewModel
     public DriveInfos? SelectedDrive
     {
         get => _selectedDrive;
-        set { _selectedDrive = value; OnPropertyChanged(); }
+        set
+        {
+            if (_selectedDrive != value)
+            {
+                _selectedDrive = value;
+                OnPropertyChanged();
+            }
+        }
     }
 
     #endregion

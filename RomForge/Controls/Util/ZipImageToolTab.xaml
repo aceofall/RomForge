@@ -38,16 +38,8 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Image Grid.Column="0" Source="/Assets/Images/Usb.png"
-                       Width="32" Height="32" Margin="5,0,15,0"
-                       VerticalAlignment="Center"/>
-
-                <ComboBox x:Name="UsbComboBox" Grid.Column="1"                          
-                          DisplayMemberPath="DisplayName"
-                          MaxDropDownHeight="174"
-                          FontSize="13.3"
-                          IsEnabled="{Binding IsIdle}"
-                          VerticalAlignment="Center" Height="28">
+                <Image Grid.Column="0" Source="/Assets/Images/Usb.png" Width="32" Height="32" Margin="5,0,15,0" VerticalAlignment="Center"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding UsbDrives}" SelectedItem="{Binding SelectedDrive}" DisplayMemberPath="DisplayName" IsEnabled="{Binding IsIdle}" VerticalAlignment="Center" Height="28">
                     <ComboBox.ItemContainerStyle>
                         <Style TargetType="ComboBoxItem">
                             <Setter Property="HorizontalContentAlignment" Value="Left"/>

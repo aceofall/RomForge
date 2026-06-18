@@ -21,8 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DolphinTool.Core", "..\RomZ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.WPF", "Common.WPF\Common.WPF.csproj", "{7662E962-34A8-4FF7-8142-15B6074B449F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PickPack.Disk", "..\기타\PickPack.Disk\PickPack.Disk.csproj", "{594B5DD3-20AF-3BCB-11D9-125BF4669764}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PBP.Core", "PBP.Core\PBP.Core.csproj", "{40680222-3FC7-4C80-B801-D1E87D4C0D15}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSW.M1.Core", "..\NSW.Tools\NSW.M1.Core\NSW.M1.Core.csproj", "{AD56B267-C4C8-A368-7772-C1932D7B21E2}"
@@ -34,6 +32,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSW.HacPack", "..\NSW.Tools\NSW.HacPack\NSW.HacPack.csproj", "{BC2FFD8A-54BE-1D78-30B9-ADDA6F3A7375}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSW.Utils", "..\NSW.Tools\NSW.Utils\NSW.Utils.csproj", "{336FA6A8-144D-2F28-5976-92C30F9D1158}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PickPack.Disk", "PickPack.Disk\PickPack.Disk.csproj", "{6678B5DB-30F9-5FD1-194F-DE9258A644D4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,10 +77,6 @@ Global
 		{7662E962-34A8-4FF7-8142-15B6074B449F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7662E962-34A8-4FF7-8142-15B6074B449F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7662E962-34A8-4FF7-8142-15B6074B449F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{594B5DD3-20AF-3BCB-11D9-125BF4669764}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{594B5DD3-20AF-3BCB-11D9-125BF4669764}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{594B5DD3-20AF-3BCB-11D9-125BF4669764}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{594B5DD3-20AF-3BCB-11D9-125BF4669764}.Release|Any CPU.Build.0 = Release|Any CPU
 		{40680222-3FC7-4C80-B801-D1E87D4C0D15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{40680222-3FC7-4C80-B801-D1E87D4C0D15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40680222-3FC7-4C80-B801-D1E87D4C0D15}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -105,6 +101,10 @@ Global
 		{336FA6A8-144D-2F28-5976-92C30F9D1158}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{336FA6A8-144D-2F28-5976-92C30F9D1158}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{336FA6A8-144D-2F28-5976-92C30F9D1158}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6678B5DB-30F9-5FD1-194F-DE9258A644D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6678B5DB-30F9-5FD1-194F-DE9258A644D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6678B5DB-30F9-5FD1-194F-DE9258A644D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6678B5DB-30F9-5FD1-194F-DE9258A644D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

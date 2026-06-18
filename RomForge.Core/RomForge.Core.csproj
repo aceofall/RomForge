@@ -19,7 +19,7 @@
     <ProjectReference Include="..\..\NSW.Tools\NSW.M1.Core\NSW.M1.Core.csproj" />
     <ProjectReference Include="..\..\RomZip\Common\Common.csproj" />
     <ProjectReference Include="..\..\기타\PatchCore.Tools\Patch.Core\Patch.Core.csproj" />
-    <ProjectReference Include="..\..\기타\PickPack.Disk\PickPack.Disk.csproj" />
     <ProjectReference Include="..\Common.WPF\Common.WPF.csproj" />
+    <ProjectReference Include="..\PickPack.Disk\PickPack.Disk.csproj" />
   </ItemGroup>
 </Project>
