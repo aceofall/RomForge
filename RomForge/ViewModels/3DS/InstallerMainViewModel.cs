@@ -34,9 +34,9 @@ public class InstallerMainViewModel : ToolTabViewModel
         @"gm9\out\movable.sed",
     ];
 
-    public InstalledTitlesViewModel InstalledTitles { get; }
+    public InstalledTitlesMainViewModel InstalledTitles { get; }
 
-    public InstallViewModel Install { get; }
+    public InstallMainViewModel Install { get; }
 
     public static string AppVersion => $"3DS Easy Installer - Ver {Utils.ToAppVersionString()}";
 
@@ -92,8 +92,8 @@ public class InstallerMainViewModel : ToolTabViewModel
 
     public InstallerMainViewModel()
     {
-        InstalledTitles = new InstalledTitlesViewModel(msg => StatusMessage = msg);
-        Install = new InstallViewModel();
+        InstalledTitles = new InstalledTitlesMainViewModel(msg => StatusMessage = msg);
+        Install = new InstallMainViewModel();
 
         RegisterChild(InstalledTitles);
         RegisterChild(Install);

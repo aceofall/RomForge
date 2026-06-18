@@ -194,39 +194,72 @@ namespace RomForge.ViewModels.Switch
         {
             req = null;
             errorMsg = string.Empty;
-            if (string.IsNullOrEmpty(OutputPath)) { errorMsg = "작업 폴더를 설정하세요."; return false; }
+
+            if (string.IsNullOrEmpty(OutputPath)) 
+            { 
+                errorMsg = "작업 폴더를 설정하세요."; 
+                return false; 
+            }
+
             if (mode == BuildMode.RebuildOnly)
             {
                 string unpackedPath = Path.Combine(OutputPath, "unpacked");
-                if (!Directory.Exists(unpackedPath)) { errorMsg = "언팩된 데이터가 없습니다."; return false; }
+
+                if (!Directory.Exists(unpackedPath)) 
+                { 
+                    errorMsg = "언팩된 데이터가 없습니다."; 
+                    return false; 
+                }
+
                 string tempPath = Path.Combine(OutputPath, "temp");
-                if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
-                req = new BuildRequest("", "", [], PatchPath.Trim(), OutputPath);
+
+                if (!Directory.Exists(tempPath)) 
+                    Directory.CreateDirectory(tempPath);
+
+                req = new BuildRequest(string.Empty, string.Empty, [], PatchPath.Trim(), OutputPath);
+
                 return true;
             }
+
             var gameFiles = Context?.GameFiles;
-            if (gameFiles == null || !gameFiles.Any(f => f.FileType.Contains('B'))) { errorMsg = "원본 파일(BASE)이 리스트에 없습니다."; return false; }
-            if (gameFiles.Any(f => f.IsKeyMissing)) { errorMsg = NSW.Core.Properties.Resources.Main_Err_NoKeys; return false; }
+
+            if (gameFiles == null || !gameFiles.Any(f => f.FileType.Contains('B'))) 
+            { 
+                errorMsg = "원본 파일(BASE)이 리스트에 없습니다."; 
+                return false; 
+            }
+
+            if (gameFiles.Any(f => f.IsKeyMissing)) 
+            { 
+                errorMsg = NSW.Core.Properties.Resources.Main_Err_NoKeys; 
+                return false; 
+            }
+
             var baseFile = gameFiles.First(f => f.FileType.Contains('B')).FilePath;
             var updateFile = gameFiles.FirstOrDefault(f => f.FileType.Contains('U'))?.FilePath ?? "";
             var dlcFiles = gameFiles.Where(f => f.FileType.Contains('D')).Select(f => f.FilePath).ToList();
+
             req = new BuildRequest(baseFile, updateFile, dlcFiles, PatchPath.Trim(), OutputPath);
+
             return true;
         }
 
         private async Task BrowsePatch()
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "한글패치 루트 폴더 선택" };
-            if (dlg.ShowDialog() == true) PatchPath = dlg.FolderName;
+
+            if (dlg.ShowDialog() == true) 
+                PatchPath = dlg.FolderName;
         }
 
         private async Task BrowseOutput()
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "작업 폴더 선택" };
-            if (dlg.ShowDialog() == true) OutputPath = dlg.FolderName;
+
+            if (dlg.ShowDialog() == true) 
+                OutputPath = dlg.FolderName;
         }
 
-        private void Log(string msg, LogLevel level = LogLevel.Info)
-            => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
+        private void Log(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
     }
 }

@@ -16,7 +16,7 @@ using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels.Util;
 
-public class ZipImageToolViewModel : ToolTabViewModel
+public class ZipImageToolMainViewModel : ToolTabViewModel
 {
     #region Fields
 
@@ -134,8 +134,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
         set { _readButtonText = value; OnPropertyChanged(); }
     }
 
-    public List<string> SegmentSizeOptions { get; } =
-        ["분할안함", "1GB", "2GB", "5GB", "10GB", "20GB", "50GB", "100GB"];
+    public List<string> SegmentSizeOptions { get; } = ["분할안함", "1GB", "2GB", "5GB", "10GB", "20GB", "50GB", "100GB"];
 
     private int _selectedSegmentIndex = 5;
     public int SelectedSegmentIndex
@@ -144,8 +143,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
         set { _selectedSegmentIndex = value; OnPropertyChanged(); }
     }
 
-    public List<string> CompressionLevelOptions { get; } =
-        ["압축 안함", "빠르게", "보통 압축률", "최대 압축률"];
+    public List<string> CompressionLevelOptions { get; } = ["압축 안함", "빠르게", "보통 압축률", "최대 압축률"];
 
     private int _selectedCompressionIndex = 0;
     public int SelectedCompressionIndex
@@ -166,7 +164,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
 
     #endregion
 
-    public ZipImageToolViewModel()
+    public ZipImageToolMainViewModel()
     {
         DiskUtil.PreventSleep();
 
@@ -232,7 +230,8 @@ public class ZipImageToolViewModel : ToolTabViewModel
             Filter = "ZIP 파일 (*.zip)|*.zip|gz 파일 (*.gz)|*.gz|디스크 이미지 파일 (*.img)|*.img|모든 파일 (*.*)|*.*"
         };
 
-        if (ofd.ShowDialog() != true) return;
+        if (ofd.ShowDialog() != true) 
+            return;
 
         WriteImagePath = ofd.FileName;
         WriteFileIcon = GetIconForExtension(Path.GetExtension(ofd.FileName));
@@ -242,8 +241,15 @@ public class ZipImageToolViewModel : ToolTabViewModel
     {
         string name = ext.TrimStart('.').ToUpperInvariant();
         var uri = new Uri($"pack://application:,,,/Assets/Images/{name}.png", UriKind.Absolute);
-        try { return new BitmapImage(uri); }
-        catch { return new BitmapImage(new Uri("pack://application:,,,/Assets/Images/File.png", UriKind.Absolute)); }
+
+        try 
+        { 
+            return new BitmapImage(uri); 
+        }
+        catch 
+        {
+            return new BitmapImage(new Uri("pack://application:,,,/Assets/Images/File.png", UriKind.Absolute)); 
+        }
     }
 
     private async Task WriteAsync()
@@ -311,7 +317,8 @@ public class ZipImageToolViewModel : ToolTabViewModel
             Filter = "디스크 이미지 파일 (*.img)|*.img|ZIP 파일 (*.zip)|*.zip"
         };
 
-        if (sfd.ShowDialog() != true) return;
+        if (sfd.ShowDialog() != true) 
+            return;
 
         string ext = Path.GetExtension(sfd.FileName).TrimStart('.').ToLowerInvariant();
 
@@ -367,10 +374,12 @@ public class ZipImageToolViewModel : ToolTabViewModel
             try
             {
                 ImageReader reader = new();
+
                 reader.ProgressChanged += OnProgressChanged;
                 reader.WriteEnded += OnReaderEnded;
 
                 long maxSegment = GetMaxOutputSegmentSize64();
+
                 CompressionLevel compLevel = GetCompressionLevel();
 
                 AppendLog("저장이 시작 됩니다.", LogLevel.Highlight);
@@ -406,6 +415,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
         {
             Progress = e.Percent;
             StatusText1 = e.Message1;
+
             if (e.Message2 != null)
                 StatusText2 = e.Message2;
         });
@@ -451,6 +461,7 @@ public class ZipImageToolViewModel : ToolTabViewModel
     private static void DeleteArchiveTempAndPartialFiles(string fileName)
     {
         File.Delete(fileName);
+
         string? directoryPath = Path.GetDirectoryName(fileName);
 
         if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
@@ -460,15 +471,29 @@ public class ZipImageToolViewModel : ToolTabViewModel
         {
             foreach (string file in Directory.GetFiles(directoryPath, "DotNetZip-*.tmp"))
             {
-                try { File.Delete(file); }
-                catch (IOException ex) { Debug.WriteLine($"Could not delete temp file {file}: {ex.Message}"); }
+                try 
+                { 
+                    File.Delete(file); 
+                }
+                catch (IOException ex) 
+                { 
+                    Debug.WriteLine($"Could not delete temp file {file}: {ex.Message}");
+                }
             }
 
             string searchPattern = Path.GetFileNameWithoutExtension(fileName) + ".z*";
+
             foreach (string file in Directory.GetFiles(directoryPath, searchPattern))
             {
-                try { File.Delete(file); Debug.WriteLine($"Deleted partial zip file: {file}"); }
-                catch (IOException ex) { Debug.WriteLine($"Could not delete partial file {file}: {ex.Message}"); }
+                try 
+                { 
+                    File.Delete(file); 
+                    Debug.WriteLine($"Deleted partial zip file: {file}");
+                }
+                catch (IOException ex) 
+                { 
+                    Debug.WriteLine($"Could not delete partial file {file}: {ex.Message}");
+                }
             }
         }
         catch (Exception ex)
@@ -479,7 +504,8 @@ public class ZipImageToolViewModel : ToolTabViewModel
 
     private void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
-        if (Application.Current?.Dispatcher == null) return;
+        if (Application.Current?.Dispatcher == null) 
+            return;
 
         Application.Current.Dispatcher.Invoke(() =>
             LogEntries.Add(new LogEntry { Message = msg, Level = level })
@@ -488,7 +514,8 @@ public class ZipImageToolViewModel : ToolTabViewModel
 
     private void ClearLog()
     {
-        if (Application.Current?.Dispatcher == null) return;
+        if (Application.Current?.Dispatcher == null) 
+            return;
 
         Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
     }

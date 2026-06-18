@@ -1,6 +1,5 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
-using NSW.WPF.UI;
 using NSW.WPF.ViewModels;
 using RomForge.Core;
 using RomForge.Core.Services.Switch;
@@ -81,12 +80,12 @@ public class MergeMainViewModel : ToolTabViewModel
 
     public bool IsCompressionOptionVisible => CompressLevel > 2;
 
-    public double CompressLevel
+    public int CompressLevel
     {
         get => _config.Switch.CompressLevel;
         set
         {
-            _config.Switch.CompressLevel = (int)value;
+            _config.Switch.CompressLevel = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsCompressionOptionVisible));
         }
@@ -169,13 +168,10 @@ public class MergeMainViewModel : ToolTabViewModel
             try
             {
                 _cts = new CancellationTokenSource();
+
                 var progress = BuildProgressReporter();
-
                 int compressLevel = GetCompressLevel();
-
-                var results = await NspMergeService.Merge(
-                    inputPaths, outputDir, compressLevel, UseBlockMode,
-                    VerifyCompress, ForceKeyGen0, progress, Log, _cts.Token);
+                var results = await NspMergeService.Merge(inputPaths, outputDir, compressLevel, UseBlockMode, VerifyCompress, ForceKeyGen0, progress, Log, _cts.Token);
 
                 if (results?.Count > 0)
                 {
@@ -206,6 +202,7 @@ public class MergeMainViewModel : ToolTabViewModel
     public async Task SplitAsync(IList<GameFile> gameFiles)
     {
         string outputDir = OutputPath?.Trim() ?? string.Empty;
+
         if (string.IsNullOrEmpty(outputDir))
         {
             Log(Res.Main_Err_NoOutput, LogLevel.Error);
@@ -284,8 +281,9 @@ public class MergeMainViewModel : ToolTabViewModel
 
     private int GetCompressLevel()
     {
-        int level = (int)CompressLevel;
-        return level == 2 ? 0 : level;
+        int level = CompressLevel;
+
+        return level < 3 ? 0 : level;
     }
 
     private void NotifyButtonStates()
@@ -305,31 +303,45 @@ public class MergeMainViewModel : ToolTabViewModel
         outputDir = string.Empty;
         errorMsg = string.Empty;
 
-        if (gameFiles.Any(f => f.IsKeyMissing)) { errorMsg = Res.Main_Err_NoKeys; return false; }
+        if (gameFiles.Any(f => f.IsKeyMissing)) 
+        { 
+            errorMsg = Res.Main_Err_NoKeys; 
+            return false; 
+        }
 
         outputDir = OutputPath?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(outputDir)) { errorMsg = Res.Main_Err_NoOutput; return false; }
+
+        if (string.IsNullOrEmpty(outputDir)) 
+        { 
+            errorMsg = Res.Main_Err_NoOutput; 
+            return false; }
 
         inputPaths = [.. gameFiles.Select(f => f.FilePath)];
+
         return true;
     }
 
     private void ExecuteOpenWorkSpace()
     {
         var path = OutputPath?.Trim();
-        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
+
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) 
+            return;
+
         OpenFolderPlatformSpecific(path);
     }
 
     private static void OpenFolderPlatformSpecific(string path)
     {
-        if (OperatingSystem.IsWindows()) Process.Start("explorer.exe", path);
-        else if (OperatingSystem.IsLinux()) Process.Start(new ProcessStartInfo("xdg-open", path) { UseShellExecute = false });
-        else if (OperatingSystem.IsMacOS()) Process.Start("open", path);
+        if (OperatingSystem.IsWindows()) 
+            Process.Start("explorer.exe", path);
+        else if (OperatingSystem.IsLinux())
+            Process.Start(new ProcessStartInfo("xdg-open", path) { UseShellExecute = false });
+        else if (OperatingSystem.IsMacOS()) 
+            Process.Start("open", path);
     }
 
-    public void Log(string msg, LogLevel level = LogLevel.Info, string titleId = "")
-        => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
+    public void Log(string msg, LogLevel level = LogLevel.Info, string titleId = "") => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
 
     #endregion
     

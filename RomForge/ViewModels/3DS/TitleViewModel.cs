@@ -21,7 +21,7 @@ public class TitleViewModel : ViewModelBase
 
     public string TitleId => Title.TitleId.ToUpperInvariant();
 
-    public string SizeText => FormatSize(Title.ContentSize);
+    public string SizeText => PickPack.Disk.ETC.FileSize.FormatSize((long)Title.ContentSize);
 
     public BitmapSource? Icon
     {
@@ -103,26 +103,6 @@ public class TitleViewModel : ViewModelBase
         _ => new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x6A)),
     };
 
-    private static string FormatSize(ulong bytes)
-    {
-        if (bytes == 0)
-            return "-";
-
-        const ulong KB = 1024;
-        const ulong MB = KB * 1024;
-        const ulong GB = MB * 1024;
-
-        if (bytes >= GB)
-            return $"{bytes / (double)GB:F2} GB";
-
-        if (bytes >= MB)
-            return $"{bytes / (double)MB:F1} MB";
-
-        if (bytes >= KB)
-            return $"{bytes / (double)KB:F1} KB";
-
-        return $"{bytes} B";
-    }
 
     private static string GetRegionFromProductCode(string productCode)
     {

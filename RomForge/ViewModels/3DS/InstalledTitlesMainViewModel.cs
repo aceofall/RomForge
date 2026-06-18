@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels._3DS;
 
-public class InstalledTitlesViewModel(Action<string> setStatus) : ToolTabViewModel
+public class InstalledTitlesMainViewModel(Action<string> setStatus) : ToolTabViewModel
 {
     private string _filterType = "All";
     private string _searchQuery = string.Empty;

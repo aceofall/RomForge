@@ -20,12 +20,6 @@ public class ConverterMainViewModel : ToolTabViewModel
         ".3ds", ".cci", ".cia", ".zcci"
     };
 
-    public static string GetFileDialogFilter()
-    {
-        string wildcards = string.Join(";", SupportedExtensions.Select(ext => $"*{ext}"));
-        return $"지원 파일|{wildcards}|모든 파일|*.*";
-    }
-
     #region Fields
 
     private bool _isConverting;
@@ -124,6 +118,12 @@ public class ConverterMainViewModel : ToolTabViewModel
     {
         FileItems.Clear();
         OnPropertyChanged(nameof(HintVisibility));
+    }
+
+    public static string GetFileDialogFilter()
+    {
+        string wildcards = string.Join(";", SupportedExtensions.Select(ext => $"*{ext}"));
+        return $"지원 파일|{wildcards}|모든 파일|*.*";
     }
 
     #endregion

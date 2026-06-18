@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels._3DS;
 
-public class InstallViewModel : ToolTabViewModel
+public class InstallMainViewModel : ToolTabViewModel
 {
     private static readonly HashSet<string> AllowedExtensions = [".3ds", ".cia", ".cci", ".zcci"];
 

@@ -3,7 +3,7 @@ using RomForge.Core;
 
 namespace RomForge.ViewModels.Settings;
 
-public class CompressSettingsViewModel(AppConfig config) : ToolTabViewModel
+public class CompressSettingsMainViewModel(AppConfig config) : ToolTabViewModel
 {
     public double SwitchCompressLevel
     {

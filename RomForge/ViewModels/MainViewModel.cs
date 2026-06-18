@@ -17,7 +17,7 @@ public class MainViewModel : ToolTabViewModel
     private readonly AppConfig _config = new AppConfig().Load();
 
     public PatchMainViewModel PatchVM { get; }
-    public CompressViewModel CompressVM { get; }
+    public CompressMainViewModel CompressVM { get; }
     public _3DSMainViewModel Main3DsVM { get; }
     public SwitchMainViewModel SwitchMainVM { get; }
     public UtilMainViewModel UtilMainVM { get; }
@@ -50,7 +50,7 @@ public class MainViewModel : ToolTabViewModel
     public MainViewModel()
     {
         PatchVM = new PatchMainViewModel(_config);
-        CompressVM = new CompressViewModel(_config);
+        CompressVM = new CompressMainViewModel(_config);
         SwitchMainVM = new SwitchMainViewModel(_config);
         Main3DsVM = new _3DSMainViewModel();
         UtilMainVM = new UtilMainViewModel();

@@ -90,7 +90,7 @@ public class CompressFileItem : ViewModelBase
     {
         FilePath = filePath;
         FileSizeBytes = CalculateTotalSize(filePath);
-        FileSize = FormatSize(FileSizeBytes);
+        FileSize = PickPack.Disk.ETC.FileSize.FormatSize(FileSizeBytes);
     }
 
     public static long CalculateTotalSize(string filePath)
@@ -98,13 +98,8 @@ public class CompressFileItem : ViewModelBase
         var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
         var dir = Path.GetDirectoryName(filePath) ?? string.Empty;
         var nameNoExt = Path.GetFileNameWithoutExtension(filePath);
-
-        long SumFiles(IEnumerable<string> paths) =>
-            paths.Where(File.Exists).Sum(p => new FileInfo(p).Length);
-
-        long ParsedSum(IEnumerable<string> referencedFiles) =>
-            new FileInfo(filePath).Length + SumFiles(
-                referencedFiles.Select(f => Path.Combine(dir, f)));
+        long SumFiles(IEnumerable<string> paths) => paths.Where(File.Exists).Sum(p => new FileInfo(p).Length);
+        long ParsedSum(IEnumerable<string> referencedFiles) => new FileInfo(filePath).Length + SumFiles(referencedFiles.Select(f => Path.Combine(dir, f)));
 
         return ext switch
         {
@@ -132,18 +127,6 @@ public class CompressFileItem : ViewModelBase
 
             _ => new FileInfo(filePath).Length
         };
-    }
-
-    public static string FormatSize(long bytes)
-    {
-        const long KB = 1024;
-        const long MB = KB * 1024;
-        const long GB = MB * 1024;
-
-        if (bytes >= GB) return $"{bytes / (double)GB:N2} GB";
-        if (bytes >= MB) return $"{bytes / (double)MB:N2} MB";
-        if (bytes >= KB) return $"{bytes / (double)KB:N2} KB";
-        return $"{bytes} Bytes";
     }
 
     private static SolidColorBrush Brush(string hex)

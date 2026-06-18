@@ -13,7 +13,7 @@ public class UtilMainViewModel : ToolTabViewModel
     private readonly List<ToolTabViewModel> _tools = [];
     private bool _isAdmin;
 
-    public ZipImageToolViewModel ZipImageToolVM { get; }
+    public ZipImageToolMainViewModel ZipImageToolVM { get; }
 
     public int SubTabIndex
     {
@@ -33,7 +33,9 @@ public class UtilMainViewModel : ToolTabViewModel
         get => _isAdmin;
         set
         {
-            if (_isAdmin == value) return;
+            if (_isAdmin == value)
+                return;
+
             _isAdmin = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsNotAdmin));
@@ -46,7 +48,7 @@ public class UtilMainViewModel : ToolTabViewModel
     {
         IsAdmin = CheckAdmin();
 
-        ZipImageToolVM = new ZipImageToolViewModel();
+        ZipImageToolVM = new ZipImageToolMainViewModel();
 
         _tools.Add(ZipImageToolVM);
 
@@ -56,16 +58,15 @@ public class UtilMainViewModel : ToolTabViewModel
             tool.PropertyChanged += Child_PropertyChanged;
 
             var logProp = tool.GetType().GetProperty("LogEntries");
+
             if (logProp?.GetValue(tool) is ObservableCollection<LogEntry> childLogs)
-            {
-                childLogs.CollectionChanged += (s, e) => LogEntries_CollectionChanged(s, e, tool);
-            }
+                childLogs.CollectionChanged += (_, e) => LogEntries_CollectionChanged(e, tool);
         }
 
         SyncLogEntries();
     }
 
-    private bool CheckAdmin()
+    private static bool CheckAdmin()
     {
         var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
         var principal = new System.Security.Principal.WindowsPrincipal(identity);
@@ -79,9 +80,10 @@ public class UtilMainViewModel : ToolTabViewModel
             OnPropertyChanged(nameof(IsIdle));
     }
 
-    private void LogEntries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e, ToolTabViewModel tool)
+    private void LogEntries_CollectionChanged(NotifyCollectionChangedEventArgs e, ToolTabViewModel tool)
     {
-        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count || _tools[SubTabIndex] != tool) return;
+        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count || _tools[SubTabIndex] != tool) 
+            return;
 
         if (Application.Current?.Dispatcher != null)
             Application.Current.Dispatcher.Invoke(() => HandleCollectionChanged(e));
@@ -95,15 +97,11 @@ public class UtilMainViewModel : ToolTabViewModel
         {
             case NotifyCollectionChangedAction.Add:
                 if (e.NewItems != null)
-                {
                     foreach (LogEntry item in e.NewItems) LogEntries.Add(item);
-                }
                 break;
             case NotifyCollectionChangedAction.Remove:
                 if (e.OldItems != null)
-                {
                     foreach (LogEntry item in e.OldItems) LogEntries.Remove(item);
-                }
                 break;
             case NotifyCollectionChangedAction.Reset:
                 LogEntries.Clear();
@@ -121,13 +119,13 @@ public class UtilMainViewModel : ToolTabViewModel
 
     private void DoSync()
     {
-        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count) return;
+        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count) 
+            return;
 
         var currentTool = _tools[SubTabIndex];
         var logProp = currentTool.GetType().GetProperty("LogEntries");
+
         if (logProp?.GetValue(currentTool) is ObservableCollection<LogEntry> childLogs)
-        {
             foreach (var item in childLogs) LogEntries.Add(item);
-        }
     }
 }

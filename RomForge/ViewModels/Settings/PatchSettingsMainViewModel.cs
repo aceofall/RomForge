@@ -3,11 +3,11 @@ using RomForge.Core;
 
 namespace RomForge.ViewModels.Settings;
 
-public class PatchSettingsViewModel : ToolTabViewModel
+public class PatchSettingsMainViewModel : ToolTabViewModel
 {
     private readonly AppConfig _config;
 
-    public PatchSettingsViewModel(AppConfig config)
+    public PatchSettingsMainViewModel(AppConfig config)
     {
         _config = config;
         _config.Patch.PropertyChanged += (s, e) =>

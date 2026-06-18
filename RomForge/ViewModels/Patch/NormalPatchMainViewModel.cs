@@ -3,7 +3,7 @@ using System.IO;
 
 namespace RomForge.ViewModels.Patch;
 
-public class NormalPatchViewModel : ToolTabViewModel
+public class NormalPatchMainViewModel : ToolTabViewModel
 {
     private readonly Core.AppConfig _config;
 
@@ -52,7 +52,7 @@ public class NormalPatchViewModel : ToolTabViewModel
         set { _progress = value; OnPropertyChanged(); }
     }
 
-    public NormalPatchViewModel(Core.AppConfig config)
+    public NormalPatchMainViewModel(Core.AppConfig config)
     {
         _config = config;
 

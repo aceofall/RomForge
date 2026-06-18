@@ -20,9 +20,9 @@ public class PatchMainViewModel : ToolTabViewModel
 {
     private readonly Core.AppConfig _config;
 
-    public NormalPatchViewModel NormalVM { get; }
+    public NormalPatchMainViewModel NormalVM { get; }
 
-    public ArcadePatchViewModel ArcadeVM { get; } = new();
+    public ArcadePatchMainViewModel ArcadeVM { get; } = new();
 
     private int _selectedTabIndex;
     public int SelectedTabIndex
@@ -44,7 +44,7 @@ public class PatchMainViewModel : ToolTabViewModel
     public PatchMainViewModel(Core.AppConfig config)
     {
         _config = config;
-        NormalVM = new NormalPatchViewModel(_config);
+        NormalVM = new NormalPatchMainViewModel(_config);
         RunCommand = new RelayCommand(async _ => await RunAsync());
         CancelCommand = new RelayCommand(_ => _cts?.Cancel());
         ClearCommand = new RelayCommand(_ => Clear());

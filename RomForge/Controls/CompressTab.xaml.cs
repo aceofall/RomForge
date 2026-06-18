@@ -68,7 +68,7 @@ public partial class CompressTab : UserControl
         var dlg = new OpenFileDialog
         {
             Multiselect = true,
-            Filter = CompressViewModel.GetFileDialogFilter()
+            Filter = CompressMainViewModel.GetFileDialogFilter()
         };
 
         if (dlg.ShowDialog() == true)
@@ -106,7 +106,7 @@ public partial class CompressTab : UserControl
     {
         var selected = lvFiles.SelectedItems.Cast<CompressFileItem>().ToList();
 
-        CompressViewModel.OpenFolder(selected);
+        CompressMainViewModel.OpenFolder(selected);
     }
 
     private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)

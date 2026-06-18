@@ -15,7 +15,7 @@ using System.Windows.Input;
 
 namespace RomForge.ViewModels;
 
-public class CompressViewModel : ToolTabViewModel
+public class CompressMainViewModel : ToolTabViewModel
 {
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -63,7 +63,7 @@ public class CompressViewModel : ToolTabViewModel
 
     public event Action<CompressFileItem>? ScrollToItemRequested;
 
-    public CompressViewModel(Core.AppConfig config)
+    public CompressMainViewModel(Core.AppConfig config)
     {
         _config = config;
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && FileItems.Count > 0);
@@ -156,6 +156,11 @@ public class CompressViewModel : ToolTabViewModel
                     {
                         item.Progress = p.Percent;
                     });
+
+                    int switchCompressLevel = _config.Switch.CompressLevel;
+
+                    if (switchCompressLevel < 3)
+                        switchCompressLevel = 3;
 
                     switch (detected.Format)
                     {

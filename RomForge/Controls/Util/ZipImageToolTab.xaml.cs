@@ -10,7 +10,7 @@ public partial class ZipImageToolTab : UserControl
 {
     private UsbDetector? _usbDetector;
     private bool _suppressSelectionChanged;
-    private ZipImageToolViewModel? ViewModel => DataContext as ZipImageToolViewModel;
+    private ZipImageToolMainViewModel? ViewModel => DataContext as ZipImageToolMainViewModel;
 
     public ZipImageToolTab()
     {

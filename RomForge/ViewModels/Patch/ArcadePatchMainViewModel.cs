@@ -9,7 +9,7 @@ using System.Windows;
 
 namespace RomForge.ViewModels.Patch;
 
-public class ArcadePatchViewModel : ToolTabViewModel
+public class ArcadePatchMainViewModel : ToolTabViewModel
 {
     public ObservableCollection<ArcadeMatchItem> MatchItems { get; } = [];
 

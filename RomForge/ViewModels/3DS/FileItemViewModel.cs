@@ -122,7 +122,7 @@ public class FileItemViewModel : ViewModelBase
     {
         FilePath = filePath;
         FileSizeBytes = new FileInfo(filePath).Length;
-        FileSize = FormatSize(FileSizeBytes);
+        FileSize = PickPack.Disk.ETC.FileSize.FormatSize(FileSizeBytes);
 
         InitAvailableFormats();
     }
@@ -160,18 +160,6 @@ public class FileItemViewModel : ViewModelBase
                 SelectedTargetFormat = "미지원";
                 break;
         }
-    }
-
-    public static string FormatSize(long bytes)
-    {
-        const long KB = 1024;
-        const long MB = KB * 1024;
-        const long GB = MB * 1024;
-
-        if (bytes >= GB) return $"{bytes / (double)GB:N2} GB";
-        if (bytes >= MB) return $"{bytes / (double)MB:N2} MB";
-        if (bytes >= KB) return $"{bytes / (double)KB:N2} KB";
-        return $"{bytes} Bytes";
     }
 
     private static SolidColorBrush Brush(string hex)
