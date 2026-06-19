@@ -12,6 +12,7 @@ using RomZip.Core.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Windows.Input;
 
 namespace RomForge.ViewModels.Patch;
@@ -68,20 +69,21 @@ public class PatchMainViewModel : ToolTabViewModel
 
     private async Task RunNormalAsync(CancellationToken ct)
     {
-        if (NormalVM.SourcePath is null || NormalVM.PatchPath is null) return;
+        if (NormalVM.SourcePath is null || NormalVM.PatchPath is null) 
+            return;
 
         NormalVM.Progress = 0;
-        Log($"패치 시작: {Path.GetFileName(NormalVM.SourcePath)}", LogLevel.Info);
+        string outputDir = Path.Combine(Path.GetDirectoryName(NormalVM.SourcePath)!, "output");
+        string outputPath = Path.Combine(outputDir, Path.GetFileName(NormalVM.SourcePath));
+        string? outputCuePath = null;
 
+        Log($"패치 시작: {Path.GetFileName(NormalVM.SourcePath)}", LogLevel.Info);
 
         try
         {
-            var sourceBytes = await File.ReadAllBytesAsync(NormalVM.SourcePath, ct);
-            var patchBytes = await File.ReadAllBytesAsync(NormalVM.PatchPath, ct);
-            var result = await Task.Run(() => UniversalPatcher.ApplyPatch(sourceBytes, patchBytes, p => NormalVM.Progress = (int)(p * 100)), ct);
-
-            string outputDir = Path.Combine(Path.GetDirectoryName(NormalVM.SourcePath)!, "output");
             Directory.CreateDirectory(outputDir);
+
+            await Task.Run(() => UniversalPatcher.ApplyPatch(NormalVM.SourcePath, NormalVM.PatchPath, outputPath, p => NormalVM.Progress = (int)(p * 100)), ct);
 
             if (NormalVM.AutoCompress)
             {
@@ -91,10 +93,6 @@ public class PatchMainViewModel : ToolTabViewModel
                 {
                     case RomFormat.Bin:
                         {
-                            string outputBinPath = Path.Combine(outputDir, Path.GetFileName(NormalVM.SourcePath));
-
-                            await File.WriteAllBytesAsync(outputBinPath, result, ct);
-
                             string? cuePath = Directory.GetFiles(Path.GetDirectoryName(NormalVM.SourcePath)!, "*.cue")
                                 .FirstOrDefault(c => ConversionSource.ParseBinsFromCue(c)
                                     .Any(b => string.Equals(Path.GetFileName(b), Path.GetFileName(NormalVM.SourcePath), StringComparison.OrdinalIgnoreCase)));
@@ -105,93 +103,59 @@ public class PatchMainViewModel : ToolTabViewModel
                                 return;
                             }
 
-                            string outputCuePath = Path.Combine(outputDir, Path.GetFileName(cuePath));
-
+                            outputCuePath = Path.Combine(outputDir, Path.GetFileName(cuePath));
                             File.Copy(cuePath, outputCuePath, true);
 
                             FileConverter converter = new();
-
                             converter.LogMessage += (_, e) => Log(e.Message, e.Level);
                             converter.ProgressChanged += (_, e) => NormalVM.Progress = e.Progress;
 
                             var chdResult = await converter.ConvertFileAsync(outputCuePath, ct);
 
-                            if (!chdResult.Success)
-                            {
-                                Log($"CHD 변환 실패: {chdResult.Message}", LogLevel.Error);
-                                return;
-                            }
+                            if (!chdResult.Success) throw new Exception($"CHD 변환 실패: {chdResult.Message}");
 
-                            File.Delete(outputBinPath);
+                            File.Delete(outputPath);
                             File.Delete(outputCuePath);
-
+                            outputCuePath = null;
                             break;
                         }
                     case RomFormat.Iso:
                         {
-                            string outputFilePath = Path.Combine(outputDir, Path.GetFileName(NormalVM.SourcePath));
-
-                            await File.WriteAllBytesAsync(outputFilePath, result, ct);
-
                             FileConverter converter = new();
-
                             converter.LogMessage += (_, e) => Log(e.Message, e.Level);
                             converter.ProgressChanged += (_, e) => NormalVM.Progress = e.Progress;
 
-                            var chdResult = await converter.ConvertFileAsync(outputFilePath, ct);
+                            var chdResult = await converter.ConvertFileAsync(outputPath, ct);
 
-                            if (!chdResult.Success)
-                            {
-                                Log($"CHD 변환 실패: {chdResult.Message}", LogLevel.Error);
-                                return;
-                            }
-
-                            File.Delete(outputFilePath);
-
+                            if (!chdResult.Success) throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+                            File.Delete(outputPath);
                             break;
                         }
                     case RomFormat.Gcm:
                     case RomFormat.Wii:
                     case RomFormat.Wbfs:
                         {
-                            string outputFilePath = Path.Combine(outputDir, Path.GetFileName(NormalVM.SourcePath));
-
-                            await File.WriteAllBytesAsync(outputFilePath, result, ct);
-
                             DolphinService dolphin = new();
-
                             dolphin.LogMessage += (_, e) => Log(e.Message, e.Level);
                             dolphin.ProgressChanged += (_, e) => NormalVM.Progress = e.Progress;
 
-                            await dolphin.ConvertFileAsync(outputFilePath, detected.Format.ToString(), detected.OutputExtension, _config.Dolphin.CompressLevel, ct);
-
-                            File.Delete(outputFilePath);
-
+                            await dolphin.ConvertFileAsync(outputPath, detected.Format.ToString(), detected.OutputExtension, _config.Dolphin.CompressLevel, ct);
+                            File.Delete(outputPath);
                             break;
                         }
                     case RomFormat.Unknown:
                         {
                             string zipPath = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(NormalVM.SourcePath) + ".zip");
-
                             await Task.Run(() =>
                             {
                                 using var zipStream = new FileStream(zipPath, FileMode.Create);
-                                using var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create);
-                                var entry = archive.CreateEntry(Path.GetFileName(NormalVM.SourcePath));
-                                using var entryStream = entry.Open();
-
-                                entryStream.Write(result, 0, result.Length);
+                                using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
+                                archive.CreateEntryFromFile(outputPath, Path.GetFileName(NormalVM.SourcePath));
                             }, ct);
-
+                            File.Delete(outputPath);
                             break;
                         }
                 }
-            }
-            else
-            {
-                string outputPath = Path.Combine(outputDir, Path.GetFileName(NormalVM.SourcePath));
-
-                await File.WriteAllBytesAsync(outputPath, result, ct);
             }
 
             NormalVM.Progress = 100;
@@ -204,12 +168,23 @@ public class PatchMainViewModel : ToolTabViewModel
         {
             NormalVM.Progress = 0;
             Log($"패치 취소: {Path.GetFileName(NormalVM.SourcePath)}", LogLevel.Error);
+            Cleanup(outputPath, outputCuePath);
         }
         catch (Exception ex)
         {
             NormalVM.Progress = 0;
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
+            Cleanup(outputPath, outputCuePath);
         }
+    }
+
+    private static void Cleanup(string outputPath, string? cuePath)
+    {
+        if (File.Exists(outputPath)) 
+            File.Delete(outputPath);
+
+        if (cuePath != null && File.Exists(cuePath)) 
+            File.Delete(cuePath);
     }
 
     private async Task RunArcadeAsync(CancellationToken ct)

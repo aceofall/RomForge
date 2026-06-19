@@ -4,7 +4,7 @@ namespace PBP.Core.Services;
 
 public class SFOBuilder
 {
-    private readonly List<SFOEntry> _entries = new();
+    private readonly List<SFOEntry> _entries = [];
 
     public SFOBuilder() { }
 
@@ -22,9 +22,9 @@ public class SFOBuilder
     {
         var sfo = new SFOData
         {
-            Magic = 0x46535000, // _PSF
+            Magic = 0x46535000,
             Version = 0x00000101,
-            Entries = new List<SFODir>()
+            Entries = []
         };
 
         var validEntries = _entries
@@ -52,9 +52,7 @@ public class SFOBuilder
             var maxLength = GetMaxLength(entry.Key);
 
             if (entryLength > maxLength)
-            {
                 throw new Exception($"Value for {entry.Key} exceeds maximum allowed length");
-            }
 
             sfo.Entries.Add(new SFODir
             {
@@ -76,24 +74,21 @@ public class SFOBuilder
         return sfo;
     }
 
-    private uint GetMaxLength(string key)
+    private static uint GetMaxLength(string key) => key switch
     {
-        return key switch
-        {
-            SFOKeys.BOOTABLE => 4,
-            SFOKeys.CATEGORY => 4,
-            SFOKeys.DISC_ID => 16,
-            SFOKeys.DISC_VERSION => 8,
-            SFOKeys.LICENSE => 512,
-            SFOKeys.PARENTAL_LEVEL => 4,
-            SFOKeys.PSP_SYSTEM_VER => 8,
-            SFOKeys.REGION => 4,
-            SFOKeys.TITLE => 128,
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
+        SFOKeys.BOOTABLE => 4,
+        SFOKeys.CATEGORY => 4,
+        SFOKeys.DISC_ID => 16,
+        SFOKeys.DISC_VERSION => 8,
+        SFOKeys.LICENSE => 512,
+        SFOKeys.PARENTAL_LEVEL => 4,
+        SFOKeys.PSP_SYSTEM_VER => 8,
+        SFOKeys.REGION => 4,
+        SFOKeys.TITLE => 128,
+        _ => throw new ArgumentOutOfRangeException(nameof(key))
+    };
 
-    private ushort GetEntryType(string key)
+    private static ushort GetEntryType(string key)
     {
         const ushort stringType = 0x0204;
         const ushort intType = 0x0404;
@@ -109,18 +104,16 @@ public class SFOBuilder
             SFOKeys.PSP_SYSTEM_VER => stringType,
             SFOKeys.REGION => intType,
             SFOKeys.TITLE => stringType,
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new ArgumentOutOfRangeException(nameof(key))
         };
     }
 
-    private ushort GetEntryLength(string key, object value)
+    private static ushort GetEntryLength(string key, object value)
     {
         ushort strlen = 0;
 
         if (value is string s)
-        {
             strlen = (ushort)(s.Length + 1);
-        }
 
         return key switch
         {
@@ -133,7 +126,7 @@ public class SFOBuilder
             SFOKeys.PSP_SYSTEM_VER => strlen,
             SFOKeys.REGION => 4,
             SFOKeys.TITLE => strlen,
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new ArgumentOutOfRangeException(nameof(key))
         };
     }
 }
