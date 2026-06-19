@@ -38,8 +38,6 @@ public class InstallerMainViewModel : ToolTabViewModel
 
     public InstallMainViewModel Install { get; }
 
-    public static string AppVersion => $"3DS Easy Installer - Ver {Utils.ToAppVersionString()}";
-
     public string SdPath
     {
         get => _sdPath;

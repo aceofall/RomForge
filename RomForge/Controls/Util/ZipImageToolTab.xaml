@@ -7,22 +7,17 @@
              d:DesignHeight="600" d:DesignWidth="1000">
     <DockPanel>
 
-        <Grid DockPanel.Dock="Bottom" Height="32" Background="#1E1E2E">
+        <Grid DockPanel.Dock="Bottom" Height="32" Background="#1E1E1E">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="{Binding StatusText1}"
-               VerticalAlignment="Center" Margin="8,0"/>
-            <TextBlock Grid.Column="1" Text="{Binding StatusText2}"
-               VerticalAlignment="Center" Margin="8,0"/>
-            <ProgressBar Grid.Column="2" Width="150" Height="4"
-                 Value="{Binding Progress}" Minimum="0" Maximum="100"
-                 Background="#2A2A3A" Foreground="#4F8EF7"
-                 BorderThickness="0" Margin="8,0"
-                 VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="0" Text="{Binding StatusText1}" VerticalAlignment="Center" Margin="8,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding StatusText2}" VerticalAlignment="Center" Margin="8,0"/>
+            <ProgressBar Grid.Column="2" Width="150" Height="4" Value="{Binding Progress}" Minimum="0" Maximum="100" Background="#2A2A3A" Foreground="#4F8EF7" BorderThickness="0" Margin="8,0" VerticalAlignment="Center"
+                         Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </Grid>
 
         <Grid>
@@ -50,7 +45,7 @@
             </Grid>
 
             <!-- 탭 -->
-            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
+            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" BorderThickness="1">
 
                 <!-- 굽기 탭 -->
                 <TabItem IsEnabled="{Binding IsIdle}">
@@ -75,15 +70,9 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <Image Grid.Column="0" Source="{Binding WriteFileIcon}"
-                                   Width="24" Height="24" Margin="6,0,8,0"
-                                   VerticalAlignment="Center"/>
+                            <Image Grid.Column="0" Source="{Binding WriteFileIcon}" Width="24" Height="24" Margin="6,0,8,0" VerticalAlignment="Center"/>
 
-                            <TextBox IsEnabled="{Binding IsIdle}" Grid.Column="1"
-                                     Text="{Binding WriteImagePath, UpdateSourceTrigger=PropertyChanged}"
-                                     FontSize="12"
-                                     VerticalAlignment="Center"
-                                     VerticalContentAlignment="Center"/>
+                            <TextBox IsEnabled="{Binding IsIdle}" Grid.Column="1" Text="{Binding WriteImagePath, UpdateSourceTrigger=PropertyChanged}" FontSize="12" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
 
                             <Button Grid.Column="2" Style="{StaticResource GrayButton}" IsEnabled="{Binding IsIdle}" Command="{Binding OpenWriteFileCommand}" Margin="6,0,6,0">
                                 <StackPanel Orientation="Horizontal">
@@ -130,15 +119,9 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <Image Grid.Column="0" Source="{Binding ReadFileIcon}"
-                                   Width="24" Height="24" Margin="6,0,8,0"
-                                   VerticalAlignment="Center"/>
+                            <Image Grid.Column="0" Source="{Binding ReadFileIcon}" Width="24" Height="24" Margin="6,0,8,0" VerticalAlignment="Center"/>
 
-                            <TextBox IsEnabled="{Binding IsIdle}" Grid.Column="1"
-                                     Text="{Binding ReadImagePath, UpdateSourceTrigger=PropertyChanged}"
-                                     FontSize="12"
-                                     VerticalAlignment="Center"
-                                     VerticalContentAlignment="Center"/>
+                            <TextBox IsEnabled="{Binding IsIdle}" Grid.Column="1" Text="{Binding ReadImagePath, UpdateSourceTrigger=PropertyChanged}" FontSize="12" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
 
                             <Button Grid.Column="2" Style="{StaticResource GrayButton}" IsEnabled="{Binding IsIdle}" Command="{Binding OpenReadFileCommand}" Margin="6,0,6,0">
                                 <StackPanel Orientation="Horizontal">
@@ -149,24 +132,15 @@
                         </Grid>
 
                         <!-- 분할 크기 -->
-                        <Grid Grid.Row="1" Margin="0,0,0,6"
-                              Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Grid.Row="1" Margin="0,0,0,6" Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Image Grid.Column="0" Source="/Assets/Images/Size.png"
-                                   Width="24" Height="24" Margin="6,0,8,0"
-                                   VerticalAlignment="Center"/>
+                            <Image Grid.Column="0" Source="/Assets/Images/Size.png" Width="24" Height="24" Margin="6,0,8,0" VerticalAlignment="Center"/>
 
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding SegmentSizeOptions}"
-                                      SelectedIndex="{Binding SelectedSegmentIndex}"
-                                      FontSize="13.3"
-                                      IsEnabled="{Binding IsIdle}"
-                                      Margin="0,0,6,0"
-                                      VerticalAlignment="Center">
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding SegmentSizeOptions}" SelectedIndex="{Binding SelectedSegmentIndex}" FontSize="13.3" IsEnabled="{Binding IsIdle}" Margin="0,0,6,0" VerticalAlignment="Center">
                                 <ComboBox.ItemContainerStyle>
                                     <Style TargetType="ComboBoxItem">
                                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -177,24 +151,15 @@
                         </Grid>
 
                         <!-- 압축 레벨 -->
-                        <Grid Grid.Row="2" Margin="0,0,0,6"
-                              Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Grid.Row="2" Margin="0,0,0,6" Visibility="{Binding SegmentOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Image Grid.Column="0" Source="/Assets/Images/Compress.png"
-                                   Width="24" Height="24" Margin="6,0,8,0"
-                                   VerticalAlignment="Center"/>
+                            <Image Grid.Column="0" Source="/Assets/Images/Compress.png" Width="24" Height="24" Margin="6,0,8,0" VerticalAlignment="Center"/>
 
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding CompressionLevelOptions}"
-                                      SelectedIndex="{Binding SelectedCompressionIndex}"
-                                      FontSize="13.3"
-                                      IsEnabled="{Binding IsIdle}"
-                                      Margin="0,0,6,0"
-                                      VerticalAlignment="Center">
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding CompressionLevelOptions}" SelectedIndex="{Binding SelectedCompressionIndex}" FontSize="13.3" IsEnabled="{Binding IsIdle}" Margin="0,0,6,0" VerticalAlignment="Center">
                                 <ComboBox.ItemContainerStyle>
                                     <Style TargetType="ComboBoxItem">
                                         <Setter Property="HorizontalContentAlignment" Value="Left"/>

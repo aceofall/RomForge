@@ -49,10 +49,7 @@
         </Border>
 
         <!-- ── 탭 ── -->
-        <TabControl Grid.Row="1"
-                    x:Name="Tab"
-                    Background="Transparent"
-                    BorderThickness="0">
+        <TabControl Grid.Row="1" x:Name="Tab" Background="Transparent" BorderThickness="0">
             <TabControl.Template>
                 <ControlTemplate TargetType="TabControl">
                     <Grid>
@@ -60,11 +57,8 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0"
-                                Background="#1E1E1E"
-                                BorderBrush="#2A2A3A"
-                                BorderThickness="0,0,0,1">
-                            <TabPanel IsItemsHost="True" Margin="12,0"/>
+                        <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#2A2A3A" BorderThickness="0,0,0,0">
+                            <TabPanel IsItemsHost="True" Margin="4,0"/>
                         </Border>
                         <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
                     </Grid>

@@ -1,11 +1,4 @@
-﻿using _3DS.Core.Crypto;
-using _3DS.Core.Enums;
-using _3DS.Core.IO;
-using _3DS.Core.Models;
-using _3DS.Core.Services;
-using Common.WPF.ViewModels;
-using LibHac.Tools.Fs;
-using System.Buffers.Binary;
+﻿using Common.WPF.ViewModels;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
