@@ -16,6 +16,8 @@ base.pbp
 BASE.zip
 ICON0.PNG
 DATA.PSP
-
+DATA1.bin
+DATA2.bin
+DATA3.bin
 # 기타 로그
 *.log

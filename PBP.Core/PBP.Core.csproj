@@ -18,6 +18,9 @@
     <None Remove="BASE.PBP" />
     <None Remove="BASE.zip" />
     <None Remove="DATA.PSP" />
+    <None Remove="DATA1.bin" />
+    <None Remove="DATA2.bin" />
+    <None Remove="DATA3.bin" />
     <None Remove="ICON0.PNG" />
   </ItemGroup>
 

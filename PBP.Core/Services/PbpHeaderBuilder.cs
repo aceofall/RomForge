@@ -11,7 +11,7 @@ public static class PbpHeaderBuilder
         using var basePbp = new MemoryStream(basePbpBytes);
 
         var baseHeader = new uint[10];
-        basePbp.Read(baseHeader, 10);
+        PBP.Core.Services.StreamExtensions.Read(basePbp, baseHeader, 10);
 
         if (baseHeader[0] != PBPMAGIC)
         {
@@ -33,7 +33,7 @@ public static class PbpHeaderBuilder
         {
             var pspHeader = new uint[12];
             basePbp.Seek(baseHeader[8], SeekOrigin.Begin);
-            basePbp.Read(pspHeader, 12);
+            PBP.Core.Services.StreamExtensions.Read(basePbp, pspHeader, 12);
 
             var prxSize = pspHeader[11];
 
