@@ -15,6 +15,7 @@ public static class ImageConversion
 
         using var output = new MemoryStream();
         encoder.Save(output);
+
         return output.ToArray();
     }
 }

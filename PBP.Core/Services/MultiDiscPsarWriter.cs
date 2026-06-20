@@ -6,7 +6,7 @@ public static class MultiDiscPsarWriter
 {
     public static void WritePsar(Stream outputStream, string mainGameTitle, string mainGameId, IReadOnlyList<DiscWriteInfo> discs, uint psarOffset, int compressionLevel, CancellationToken cancellationToken, Action<long, long>? onProgress = null)
     {
-        var isoPositions = new uint[5];
+        var isoPositions = new uint[8];
         uint x, endOffset;
 
         outputStream.Write("PSTITLEIMG000000", 0, 16);
@@ -19,11 +19,11 @@ public static class MultiDiscPsarWriter
         outputStream.WriteInt32(0x06F6B4B3, 1);
         outputStream.WriteUInt32(0xB25945BA, 1);
 
-        outputStream.WriteInt32(0, 0x76);
+        outputStream.WriteInt32(0, 0x76 - (isoPositions.Length - 5));
 
         var mOffset = (uint)outputStream.Position;
 
-        outputStream.Write(isoPositions, 1, sizeof(uint) * 5);
+        outputStream.Write(isoPositions, 1, sizeof(uint) * isoPositions.Length);
 
         outputStream.WriteRandom(12);
         outputStream.WriteInt32(0, 8);

@@ -19,7 +19,7 @@ public class ConverterMainViewModel : ToolTabViewModel
 
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cue", ".m3u", ".iso", ".bin", ".chd"
+        ".cue", ".m3u", ".iso", ".chd"
     };
 
     private bool _isConverting;
@@ -28,6 +28,13 @@ public class ConverterMainViewModel : ToolTabViewModel
         get => _isConverting;
         set { _isConverting = value; OnPropertyChanged(); CommandManager.InvalidateRequerySuggested(); }
     }
+
+    private string _gameTitle;
+    public string GameTitle
+    {
+        get => _gameTitle;
+        set { _gameTitle = value; OnPropertyChanged(); }
+    }    
 
     private CancellationTokenSource _cts = new();
     private string? _lastIconGameId;
@@ -47,9 +54,9 @@ public class ConverterMainViewModel : ToolTabViewModel
     private BitmapImage? _pic1Image;
     public BitmapImage? Pic1Image { get => _pic1Image; set { _pic1Image = value; OnPropertyChanged(); } }
 
-    private byte[] _icon0Bytes = PBP.Core.Properties.Resources.ICON0;
-    private byte[] _pic0Bytes = PBP.Core.Properties.Resources.PIC0;
-    private byte[] _pic1Bytes = PBP.Core.Properties.Resources.PIC1;
+    private byte[] _icon0Bytes = PbpResources.ICON0;
+    private byte[] _pic0Bytes = PbpResources.PIC0;
+    private byte[] _pic1Bytes = PbpResources.PIC1;
 
     public ICommand RunCommand { get; }
     public ICommand CancelCommand { get; }
@@ -107,10 +114,8 @@ public class ConverterMainViewModel : ToolTabViewModel
         FileItems.Clear();
         OnPropertyChanged(nameof(HintVisibility));
         _lastIconGameId = null;
-        Icon0Image = BytesToImage(PBP.Core.Properties.Resources.ICON0);
+        Icon0Image = BytesToImage(PbpResources.ICON0);
     }
-
-    // --- ICON0/PIC0/PIC1 드래그앤드롭 교체 ---
 
     public void SetIcon0FromFile(string path) => SetImage(File.ReadAllBytes(path), bytes => { _icon0Bytes = bytes; Icon0Image = BytesToImage(bytes); });
     public void SetPic0FromFile(string path) => SetImage(File.ReadAllBytes(path), bytes => { _pic0Bytes = bytes; Pic0Image = BytesToImage(bytes); });
@@ -121,8 +126,6 @@ public class ConverterMainViewModel : ToolTabViewModel
         try { apply(ImageConversion.ToPng(rawBytes)); }
         catch { /* 이미지가 아니면 그냥 무시 */ }
     }
-
-    // --- 내부 처리 ---
 
     private async Task LoadItemInfoAsync(DiscFileItem item)
     {
@@ -142,6 +145,7 @@ public class ConverterMainViewModel : ToolTabViewModel
                 };
 
                 var gameId = GameIdReader.ReadFromDisk(source);
+
                 return (gameId, size);
             });
 
@@ -165,6 +169,7 @@ public class ConverterMainViewModel : ToolTabViewModel
             .First(l => l.Length > 0 && !l.StartsWith('#'));
 
         var fullPath = Path.IsPathRooted(firstLine) ? firstLine : Path.Combine(dir, firstLine);
+
         return Path.GetExtension(fullPath).Equals(".cue", StringComparison.OrdinalIgnoreCase)
             ? CueFileResolver.GetBinPath(fullPath)
             : fullPath;
@@ -176,41 +181,67 @@ public class ConverterMainViewModel : ToolTabViewModel
 
         for (var i = 0; i < sorted.Count; i++)
         {
-            sorted[i].No = i + 1; // 1부터 시작 (No=1이 메인 디스크)
+            sorted[i].No = i + 1;
             var oldIndex = FileItems.IndexOf(sorted[i]);
             if (oldIndex != i) FileItems.Move(oldIndex, i);
         }
 
-        _ = UpdateIconAsync();
+        _ = UpdateImageAsync();
     }
 
-    private async Task UpdateIconAsync()
+    private async Task UpdateImageAsync()
     {
         var primary = FileItems.FirstOrDefault(i => i.No == 1);
+
         if (primary == null || primary.GameId == _lastIconGameId || primary.GameId is "인식중..." or "인식실패")
             return;
 
         _lastIconGameId = primary.GameId;
         _iconCts?.Cancel();
         _iconCts = new CancellationTokenSource();
+        var ct = _iconCts.Token;
 
-        var png = await CoverArtFetcher.TryDownloadIconPngAsync(primary.GameId, _iconCts.Token);
+        var icon0Png = await CoverArtFetcher.TryDownloadIconPngAsync(primary.GameId, ct);
 
-        if (_iconCts.IsCancellationRequested) return;
+        if (ct.IsCancellationRequested) 
+            return;
 
-        _icon0Bytes = png ?? PBP.Core.Properties.Resources.ICON0;
+        _icon0Bytes = icon0Png ?? PbpResources.ICON0;
         Icon0Image = BytesToImage(_icon0Bytes);
+
+        var meta = GameMetadataLookup.Find(primary.GameId);
+
+        var pic0Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic0, ct) : null;
+
+        if (ct.IsCancellationRequested) 
+            return;
+
+        _pic0Bytes = pic0Png ?? PbpResources.PIC0;
+        Pic0Image = BytesToImage(_pic0Bytes);
+
+        var pic1Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic1, ct) : null;
+
+        if (ct.IsCancellationRequested) 
+            return;
+
+        _pic1Bytes = pic1Png ?? PbpResources.PIC1;
+        Pic1Image = BytesToImage(_pic1Bytes);
+
+        if (meta != null && !string.IsNullOrWhiteSpace(meta.Title))
+            GameTitle = meta.Title;
     }
 
     private static BitmapImage BytesToImage(byte[] bytes)
     {
         var image = new BitmapImage();
         using var ms = new MemoryStream(bytes);
+
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
         image.StreamSource = ms;
         image.EndInit();
         image.Freeze();
+
         return image;
     }
 
@@ -219,8 +250,6 @@ public class ConverterMainViewModel : ToolTabViewModel
         _cts.Dispose();
         _cts = new CancellationTokenSource();
         IsConverting = true;
-
-        
     }
 
     private static IEnumerable<string> ExpandPaths(IEnumerable<string> paths)

@@ -7,38 +7,153 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="220"/>
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="300"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-        <ListView Grid.Column="0" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="No" DisplayMemberBinding="{Binding No}"/>
-                    <GridViewColumn Header="파일명" DisplayMemberBinding="{Binding FileName}"/>
-                    <GridViewColumn Header="확장자" DisplayMemberBinding="{Binding Extension}"/>
-                    <GridViewColumn Header="게임ID" DisplayMemberBinding="{Binding GameId}"/>
-                    <GridViewColumn Header="용량" DisplayMemberBinding="{Binding FileSize}"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="400"/>
+            </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="1" Margin="10">
-            <TextBlock Text="ICON0"/>
-            <Border AllowDrop="True" Drop="Icon0_Drop">
-                <Image Source="{Binding Icon0Image}"/>
-            </Border>
+            <ListView x:Name="lvFiles" Grid.Column="0" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop" KeyUp="LvFiles_KeyUp">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="No" DisplayMemberBinding="{Binding No}"/>
+                        <GridViewColumn Header="파일명" DisplayMemberBinding="{Binding FileName}"/>
 
-            <TextBlock Text="PIC0" Margin="0,10,0,0"/>
-            <Border AllowDrop="True" Drop="Pic0_Drop">
-                <Image Source="{Binding Pic0Image}"/>
-            </Border>
+                        <GridViewColumn Width="60">
+                            <GridViewColumn.Header>
+                                <GridViewColumnHeader Tag="Extension"/>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="확장자" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.HeaderTemplate>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding ExtensionBackground}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" Margin="2,0">
+                                        <TextBlock Text="{Binding Extension}" Foreground="#111111" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
 
-            <TextBlock Text="PIC1" Margin="0,10,0,0"/>
-            <Border AllowDrop="True" Drop="Pic1_Drop">
-                <Image Source="{Binding Pic1Image}"/>
-            </Border>
-        </StackPanel>
+                        <GridViewColumn Header="게임ID" DisplayMemberBinding="{Binding GameId}" Width="80"/>
+                        <GridViewColumn Header="용량" DisplayMemberBinding="{Binding FileSize}" Width="70"/>
+                        <GridViewColumn Width="100">
+                            <GridViewColumn.Header>
+                                <GridViewColumnHeader Tag="Progress"/>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="진행률" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.HeaderTemplate>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="6,0">
+                                        <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <StackPanel  Grid.Column="1">
+
+                <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="Bold" Margin="5,5,0,5"/>
+
+                <Viewbox Stretch="Uniform">
+                    <Grid Width="480" Height="272" Margin="5,5,0,0">
+                        <Image Source="{Binding Pic1Image}" Stretch="Fill"/>
+                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10">
+                            <Image Source="{Binding Icon0Image}" Width="80" Height="80"/>
+                        </Border>
+                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10">
+                            <Image Source="{Binding Pic0Image}" Width="310" Height="180"/>
+                        </Border>
+                    </Grid>
+                </Viewbox>
+
+            </StackPanel>
+
+        </Grid>
+
+        <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="시작" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting}" Command="{Binding CancelCommand}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="취소" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFiles_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="파일 추가" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFolder_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/AddFolder.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="폴더 추가" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnRemove_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Delete.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="선택 삭제" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnClear_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="전체 삭제" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
     </Grid>
 </UserControl>

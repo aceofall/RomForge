@@ -1,5 +1,7 @@
 ﻿using Common.WPF.ViewModels;
 using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels.PS1;
 
@@ -7,7 +9,7 @@ public class DiscFileItem(string filePath) : ViewModelBase
 {
     public string FilePath { get; } = filePath;
 
-    public string FileName => Path.GetFileName(FilePath);
+    public string FileName => Path.GetFileNameWithoutExtension(FilePath);
 
     public string Extension => Path.GetExtension(FilePath).TrimStart('.').ToUpperInvariant();
 
@@ -27,4 +29,24 @@ public class DiscFileItem(string filePath) : ViewModelBase
     public string FileSize => FileSizeBytes <= 0 ? "..." : FileSizeBytes >= 1024L * 1024 * 1024
         ? $"{FileSizeBytes / (1024.0 * 1024 * 1024):F2} GB"
         : $"{FileSizeBytes / (1024.0 * 1024):F1} MB";
+
+    public Brush ExtensionBackground => Extension.ToLowerInvariant() switch
+    {
+        "chd" => Brush("#A2C4FC"),
+        "iso" => Brush("#FFF9A6"),
+        "cue" => Brush("#EAE2A6"),
+        "m3u" => Brush("#D2DAA5"),
+
+        _ => Brushes.Transparent
+    };
+
+    private static SolidColorBrush Brush(string hex)
+    {
+        var c = (Color)ColorConverter.ConvertFromString(hex);
+        var brush = new SolidColorBrush(c);
+
+        brush.Freeze();
+
+        return brush;
+    }
 }
