@@ -1,5 +1,4 @@
-﻿// PsarDiscWriter.cs
-using PBP.Core.Models;
+﻿using PBP.Core.Models;
 
 namespace PBP.Core.Services;
 
@@ -10,25 +9,25 @@ public static class PsarDiscWriter
     private const int BlockSize = 0x9300;
     private const int BufferSize = 1048576;
 
-    public static void WriteDisc(Stream outputStream, Stream isoStream, long isoLength, string gameId, string gameTitle, byte[] tocData, uint psarOffset, bool isMultiDisc, int compressionLevel, CancellationToken cancellationToken)
+    public static void WriteDisc(Stream outputStream, Stream isoStream, long isoLength, string gameId, string gameTitle, byte[] tocData, uint psarOffset, bool isMultiDisc, int compressionLevel, CancellationToken cancellationToken, Action<long, long>? onProgress = null)
     {
         var isoPosition = (uint)(outputStream.Position - psarOffset);
         var actualIsoSize = (uint)isoLength;
         var isoSize = actualIsoSize;
-        uint p1Offset = 0;
+        uint p1Offset;
         uint p2Offset = 0;
 
         if ((isoSize % BlockSize) != 0)
-            isoSize += (uint)(BlockSize - (isoSize % BlockSize));
+            isoSize += (BlockSize - (isoSize % BlockSize));
 
         outputStream.Write("PSISOIMG0000", 0, 12);
-
         p1Offset = (uint)outputStream.Position;
         outputStream.WriteUInt32(isoSize + 0x100000, 1);
         outputStream.WriteInt32(0, 0xFC);
 
         var data1 = (byte[])PbpTemplates.Data1.Clone();
         var idBytes = System.Text.Encoding.ASCII.GetBytes(gameId);
+
         Array.Copy(idBytes, 0, data1, 1, 4);
         Array.Copy(idBytes, 4, data1, 6, 5);
 
@@ -48,6 +47,7 @@ public static class PsarDiscWriter
 
         var data2 = (byte[])PbpTemplates.Data2.Clone();
         var titleBytes = System.Text.Encoding.ASCII.GetBytes(gameTitle);
+
         Array.Copy(titleBytes, 0, data2, 8, gameTitle.Length);
         outputStream.Write(data2, 0, data2.Length);
 
@@ -69,9 +69,7 @@ public static class PsarDiscWriter
         offset = (uint)outputStream.Position;
 
         for (var i = 0; i < (isoPosition + psarOffset + 0x100000) - offset; i++)
-        {
             outputStream.WriteByte(0);
-        }
 
         uint curSize = 0, totSize = 0;
 
@@ -83,8 +81,10 @@ public static class PsarDiscWriter
             while ((bytesRead = isoStream.Read(buffer, 0, BufferSize)) > 0)
             {
                 outputStream.Write(buffer, 0, bytesRead);
-                totSize += (uint)bytesRead;
+                totSize += (uint)bytesRead;                
                 curSize += (uint)bytesRead;
+
+                onProgress?.Invoke(curSize, actualIsoSize);
 
                 if (cancellationToken.IsCancellationRequested) 
                     return;
@@ -108,6 +108,7 @@ public static class PsarDiscWriter
             {
                 totSize += (uint)bytesRead;
                 curSize += (uint)bytesRead;
+                onProgress?.Invoke(curSize, actualIsoSize);
 
                 if (bytesRead < BlockSize)
                     Array.Clear(readBuffer, bytesRead, BlockSize - bytesRead);

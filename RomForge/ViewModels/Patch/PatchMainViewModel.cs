@@ -112,7 +112,8 @@ public class PatchMainViewModel : ToolTabViewModel
 
                             var chdResult = await converter.ConvertFileAsync(outputCuePath, ct);
 
-                            if (!chdResult.Success) throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+                            if (!chdResult.Success) 
+                                throw new Exception($"CHD 변환 실패: {chdResult.Message}");
 
                             File.Delete(outputPath);
                             File.Delete(outputCuePath);
@@ -127,7 +128,9 @@ public class PatchMainViewModel : ToolTabViewModel
 
                             var chdResult = await converter.ConvertFileAsync(outputPath, ct);
 
-                            if (!chdResult.Success) throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+                            if (!chdResult.Success) 
+                                throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+
                             File.Delete(outputPath);
                             break;
                         }
@@ -279,7 +282,6 @@ public class PatchMainViewModel : ToolTabViewModel
 
     private void Log(string message, LogLevel level)
     {
-        App.Current.Dispatcher.Invoke(() =>
-            LogEntries.Add(new LogEntry { Message = message, Level = level }));
+        App.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = message, Level = level }));
     }
 }

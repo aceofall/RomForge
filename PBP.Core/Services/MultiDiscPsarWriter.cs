@@ -4,7 +4,7 @@ namespace PBP.Core.Services;
 
 public static class MultiDiscPsarWriter
 {
-    public static void WritePsar(Stream outputStream, string mainGameTitle, string mainGameId, IReadOnlyList<DiscWriteInfo> discs, uint psarOffset, int compressionLevel, CancellationToken cancellationToken)
+    public static void WritePsar(Stream outputStream, string mainGameTitle, string mainGameId, IReadOnlyList<DiscWriteInfo> discs, uint psarOffset, int compressionLevel, CancellationToken cancellationToken, Action<long, long>? onProgress = null)
     {
         var isoPositions = new uint[5];
         uint x, endOffset;
@@ -46,6 +46,9 @@ public static class MultiDiscPsarWriter
         outputStream.WriteInt32(7, 1);
         outputStream.WriteInt32(0, 0x1C);
 
+        var totalBytes = discs.Sum(d => d.IsoLength);
+        long completedBytes = 0;
+
         for (var discNo = 0; discNo < discs.Count; discNo++)
         {
             var disc = discs[discNo];
@@ -60,7 +63,7 @@ public static class MultiDiscPsarWriter
 
             isoPositions[discNo] = (uint)(outputStream.Position - psarOffset);
 
-            PsarDiscWriter.WriteDisc(outputStream, disc.IsoStream, disc.IsoLength, disc.GameId, disc.GameTitle, disc.TocData, psarOffset, true, compressionLevel, cancellationToken);
+            PsarDiscWriter.WriteDisc(outputStream, disc.IsoStream, disc.IsoLength, disc.GameId, disc.GameTitle, disc.TocData, psarOffset, true, compressionLevel, cancellationToken, (cur, _) => onProgress?.Invoke(completedBytes + cur, totalBytes));
 
             if (cancellationToken.IsCancellationRequested) 
                 return;

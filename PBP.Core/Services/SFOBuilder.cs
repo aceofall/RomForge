@@ -8,15 +8,9 @@ public class SFOBuilder
 
     public SFOBuilder() { }
 
-    public SFOBuilder(IEnumerable<SFOEntry> entries)
-    {
-        _entries.AddRange(entries);
-    }
+    public SFOBuilder(IEnumerable<SFOEntry> entries) => _entries.AddRange(entries);
 
-    public void AddEntry(string key, object value)
-    {
-        _entries.Add(new SFOEntry { Key = key, Value = value });
-    }
+    public void AddEntry(string key, object value) => _entries.Add(new SFOEntry { Key = key, Value = value });
 
     public SFOData Build()
     {
@@ -36,9 +30,7 @@ public class SFOBuilder
         var keyTableSize = validEntries.Sum(x => x.Key.Length + 1);
 
         if (keyTableSize % 4 != 0)
-        {
             sfo.Padding = (uint)(4 - keyTableSize % 4);
-        }
 
         sfo.KeyTableOffset = (uint)(headerSize + indexTableSize);
         sfo.DataTableOffset = sfo.KeyTableOffset + (uint)keyTableSize + sfo.Padding;

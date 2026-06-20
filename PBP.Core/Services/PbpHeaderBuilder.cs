@@ -11,12 +11,10 @@ public static class PbpHeaderBuilder
         using var basePbp = new MemoryStream(basePbpBytes);
 
         var baseHeader = new uint[10];
-        PBP.Core.Services.StreamExtensions.Read(basePbp, baseHeader, 10);
+        basePbp.Read(baseHeader, 10);
 
         if (baseHeader[0] != PBPMAGIC)
-        {
             throw new Exception("BASE.PBP is not a valid PBP file.");
-        }
 
         if (assets.Icon0Png is null)
         {
@@ -32,14 +30,16 @@ public static class PbpHeaderBuilder
         if (assets.DataPsp is null)
         {
             var pspHeader = new uint[12];
+
             basePbp.Seek(baseHeader[8], SeekOrigin.Begin);
-            PBP.Core.Services.StreamExtensions.Read(basePbp, pspHeader, 12);
+            basePbp.Read(pspHeader, 12);
 
             var prxSize = pspHeader[11];
 
             basePbp.Seek(baseHeader[8], SeekOrigin.Begin);
 
             var dataPspBuffer = new byte[prxSize];
+
             basePbp.Read(dataPspBuffer, 0, (int)prxSize);
 
             assets.DataPsp = dataPspBuffer;
@@ -77,9 +77,7 @@ public static class PbpHeaderBuilder
         var psarOffset = header[8] + (uint)(assets.DataPsp?.Length ?? 0);
 
         if ((psarOffset % 0x10000) != 0)
-        {
             psarOffset += (0x10000 - (psarOffset % 0x10000));
-        }
 
         header[9] = psarOffset;
 

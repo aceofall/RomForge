@@ -34,10 +34,9 @@ public static class StreamExtensions
         {
             stream.Write(BitConverter.GetBytes(index.Offset), 0, sizeof(uint));
             stream.Write(BitConverter.GetBytes(index.Length), 0, sizeof(uint));
+
             for (var j = 0; j < index.Dummy.Length; j++)
-            {
                 stream.Write(BitConverter.GetBytes(index.Dummy[j]), 0, sizeof(uint));
-            }
         }
     }
 
