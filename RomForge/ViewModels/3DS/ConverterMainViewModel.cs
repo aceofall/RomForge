@@ -147,7 +147,7 @@ public class ConverterMainViewModel : ToolTabViewModel
                 int cnt = 0;
                 foreach (var item in FileItems)
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
+                    _cts.Token.ThrowIfCancellationRequested();
 
                     if (item.Status == "완료" || item.Status == "미지원")
                         continue;

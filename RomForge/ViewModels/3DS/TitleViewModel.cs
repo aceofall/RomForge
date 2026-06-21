@@ -83,8 +83,6 @@ public class TitleViewModel : ViewModelBase
 
     public string ProgressText => $"{Progress:F0}";
 
-    public string LockIcon => Crypto ? "🔒" : "🔓";
-
     public string TypeLabel => Title.Type switch
     {
         TitleType.Application => "본편",
@@ -102,7 +100,6 @@ public class TitleViewModel : ViewModelBase
         TitleType.DlcContent => new SolidColorBrush(Color.FromRgb(0xC9, 0x7B, 0xF7)),
         _ => new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x6A)),
     };
-
 
     private static string GetRegionFromProductCode(string productCode)
     {

@@ -175,7 +175,9 @@ namespace RomForge.ViewModels.Switch
                         req.TargetIdOffset = Context?.TargetIdOffset;
                     string finalResult = NspBuildService.Run(req, mode, progress, (msg, lvl) => Log(msg, lvl), token);
                     Log($"완료! 총 소요: {_totalSw.Elapsed:mm\\:ss}", LogLevel.Ok);
-                    if (Directory.Exists(req.OutputDir)) Process.Start("explorer.exe", $"\"{req.OutputDir}\"");
+
+                    if (Directory.Exists(req.OutputDir)) 
+                        Process.Start("explorer.exe", $"\"{req.OutputDir}\"");
                 }
                 catch (OperationCanceledException)
                 {

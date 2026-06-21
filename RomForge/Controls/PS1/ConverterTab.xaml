@@ -18,33 +18,9 @@
                 <ColumnDefinition Width="400"/>
             </Grid.ColumnDefinitions>
 
-            <ListView x:Name="lvFiles" Grid.Column="0" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop" KeyUp="LvFiles_KeyUp">
+            <ListView x:Name="lvFiles" Grid.Column="0" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop" KeyUp="LvFiles_KeyUp" IsEnabled="{Binding IsUnlocked}">
                 <ListView.View>
                     <GridView>
-                        
-                        <GridViewColumn Width="90">
-                            <GridViewColumn.Header>
-                                <GridViewColumnHeader Tag="Progress"/>
-                            </GridViewColumn.Header>
-                            <GridViewColumn.HeaderTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="진행률" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </GridViewColumn.HeaderTemplate>
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="6,0">
-                                        <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}"/>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                            <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
 
                         <GridViewColumn Header="파일명">
                             <GridViewColumn.CellTemplate>
@@ -87,7 +63,7 @@
                 </ListView.View>
             </ListView>
 
-            <StackPanel Grid.Column="1">
+            <StackPanel Grid.Column="1" IsEnabled="{Binding IsUnlocked}">
                 <TextBlock Text="{Binding GameTitle}" ToolTip="{Binding GameTitle}" TextTrimming="CharacterEllipsis" MaxWidth="380" FontSize="15" FontWeight="Bold" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 <Viewbox Stretch="Uniform">
                     <Border Width="480" Height="272" Margin="5" CornerRadius="18" BorderBrush="#40FFFFFF" BorderThickness="1">
@@ -100,12 +76,48 @@
                                     <ImageBrush ImageSource="{Binding Icon0Image}" Stretch="Uniform"/>
                                 </Border.Background>
                             </Border>
-                            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="15" MaxWidth="270" MaxHeight="150" BorderBrush="#80FFFFFF" BorderThickness="1.5" CornerRadius="12" Opacity="0.6">
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="15" MaxWidth="270" MaxHeight="150" BorderBrush="#80FFFFFF" BorderThickness="1.5" CornerRadius="12" Opacity="0.9">
                                 <Image Source="{Binding Pic0Image}" Stretch="Uniform"/>
                             </Border>
                         </Grid>
                     </Border>
                 </Viewbox>
+
+                <Grid Margin="5,0,5,5" x:Name="progressArea" Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="5,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" x:Name="progressLabel"
+                           Text="{Binding ProgressLabel}"
+                           FontSize="11" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Column="1" x:Name="progressPercent"
+                           Text="{Binding ProgressPercent}"
+                           Margin="10,0,15,0" FontSize="11" Foreground="#4CAF50" VerticalAlignment="Center"/>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock x:Name="progressSpeed"
+                               Text="{Binding ProgressSpeed}"
+                               Foreground="Gray" FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="progressTime"
+                               Text="{Binding ProgressTime}"
+                               FontSize="11" Foreground="#4CAF50" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <ProgressBar Grid.Row="1" x:Name="progress"
+                         Value="{Binding ProgressPct}"
+                         Minimum="0" Maximum="100" Height="4"/>
+                </Grid>
 
             </StackPanel>
 
@@ -152,7 +164,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnRemove_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsUnlocked}" Click="BtnRemove_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Delete.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -161,7 +173,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnClear_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsUnlocked}" Click="BtnClear_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>

@@ -47,18 +47,8 @@ public class CompressFileItem : ViewModelBase
     public string Status
     {
         get => _status;
-        set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); }
+        set { _status = value; OnPropertyChanged(); }
     }
-
-    public Brush StatusColor => Status switch
-    {
-        "완료"   => Brushes.LimeGreen,
-        "실패"   => Brushes.Red,
-        "취소"   => Brushes.Gray,
-        "변환중" => Brushes.DodgerBlue,
-        "건너뜀" => Brushes.Gray,
-        _        => Brushes.Transparent
-    };
 
     public Brush ExtensionBackground => Extension.ToLowerInvariant() switch
     {

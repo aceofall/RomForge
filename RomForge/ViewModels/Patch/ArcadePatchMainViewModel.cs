@@ -190,8 +190,7 @@ public class ArcadePatchMainViewModel : ToolTabViewModel
                 return;
             }
 
-            if (token.IsCancellationRequested)
-                return;
+            token.ThrowIfCancellationRequested();
 
             AvailablePatchPackages.Clear();
 
@@ -241,8 +240,7 @@ public class ArcadePatchMainViewModel : ToolTabViewModel
                 return;
             }
 
-            if (token.IsCancellationRequested)
-                return;
+            token.ThrowIfCancellationRequested();
 
             AllPatchEntries.Clear();
 

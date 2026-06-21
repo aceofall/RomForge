@@ -1,4 +1,6 @@
+using _3DS.Core.Enums;
 using Common.WPF.ViewModels;
+using LibHac.Tools.Fs;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -55,7 +57,7 @@ public class FileItemViewModel : ViewModelBase
     public string Status
     {
         get => _status;
-        set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); }
+        set { _status = value; OnPropertyChanged(); }
     }
 
     public BitmapSource? Icon
@@ -98,14 +100,24 @@ public class FileItemViewModel : ViewModelBase
         set { _crypto = value; OnPropertyChanged(); }
     }
 
-    public Brush StatusColor => Status switch
+    public TitleType Type => (TitleType)(Convert.ToUInt64(TitleId, 16) >> 32);
+
+    public string TypeLabel => Type switch
     {
-        "완료" => Brushes.LimeGreen,
-        "실패" => Brushes.Red,
-        "취소" => Brushes.Gray,
-        "변환중" => Brushes.DodgerBlue,
-        "건너뜀" => Brushes.Gray,
-        _ => Brushes.Transparent
+        TitleType.Application => "본편",
+        TitleType.SystemApplication => "시스템",
+        TitleType.Patch => "업데이트",
+        TitleType.DlcContent => "DLC",
+        _ => "기타",
+    };
+
+    public SolidColorBrush TypeBadgeColor => Type switch
+    {
+        TitleType.Application => new SolidColorBrush(Color.FromRgb(0x4F, 0x8E, 0xF7)),
+        TitleType.SystemApplication => new SolidColorBrush(Color.FromRgb(0xF7, 0x9A, 0x3D)),
+        TitleType.Patch => new SolidColorBrush(Color.FromRgb(0x3D, 0xD6, 0x8C)),
+        TitleType.DlcContent => new SolidColorBrush(Color.FromRgb(0xC9, 0x7B, 0xF7)),
+        _ => new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x6A)),
     };
 
     public Brush ExtensionBackground => Extension switch

@@ -99,7 +99,7 @@ public static class Pfs0Builder
                 var elapsed = TimeSpan.FromSeconds(elapsedSec);
                 var totalEta = TimeSpan.FromSeconds(elapsedSec + Math.Max(0, etaSec));
                 int pct = totalEstimated > 0 ? (int)(totalWritten * 100 / totalEstimated) : 0;
-                var r = Common.Utils.CalculateProgress(totalWritten, totalEstimated, displayName);
+                var r = Utils.CalculateProgress(totalWritten, totalEstimated, displayName);
 
                 progress?.Report(new ProgressInfo(pct, r.label, titleId, $"{mibPerSec:F1} MiB/s", $"{elapsed:mm\\:ss} / {totalEta:mm\\:ss}"));
                 reportSw.Restart();

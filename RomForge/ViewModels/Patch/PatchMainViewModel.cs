@@ -85,6 +85,9 @@ public class PatchMainViewModel : ToolTabViewModel
 
             await Task.Run(() => UniversalPatcher.ApplyPatch(NormalVM.SourcePath, NormalVM.PatchPath, outputPath, p => NormalVM.Progress = (int)(p * 100)), ct);
 
+            NormalVM.Progress = 100;
+            Log($"패치 완료: {outputPath}", LogLevel.Ok);
+
             if (NormalVM.AutoCompress)
             {
                 var detected = FormatDetector.Detect(NormalVM.SourcePath);
@@ -112,7 +115,7 @@ public class PatchMainViewModel : ToolTabViewModel
 
                             var chdResult = await converter.ConvertFileAsync(outputCuePath, ct);
 
-                            if (!chdResult.Success) 
+                            if (!chdResult.Success)
                                 throw new Exception($"CHD 변환 실패: {chdResult.Message}");
 
                             File.Delete(outputPath);
@@ -128,7 +131,7 @@ public class PatchMainViewModel : ToolTabViewModel
 
                             var chdResult = await converter.ConvertFileAsync(outputPath, ct);
 
-                            if (!chdResult.Success) 
+                            if (!chdResult.Success)
                                 throw new Exception($"CHD 변환 실패: {chdResult.Message}");
 
                             File.Delete(outputPath);
@@ -157,25 +160,20 @@ public class PatchMainViewModel : ToolTabViewModel
                                 using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
                                 archive.CreateEntryFromFile(outputPath, Path.GetFileName(NormalVM.SourcePath));
                             }, ct);
+
                             File.Delete(outputPath);
 
-                            Log($"압축 완료: {Path.GetFileName(outputPath)}", LogLevel.Ok);
+                            Log($"압축 완료: {zipPath}", LogLevel.Ok);
 
                             break;
                         }
                 }
             }
-
-            NormalVM.Progress = 100;
-            Log($"패치 완료: {Path.GetFileName(NormalVM.SourcePath)}", LogLevel.Ok);
-
-            if (Directory.Exists(outputDir))
-                Process.Start("explorer.exe", $"\"{outputDir}\"");
         }
         catch (OperationCanceledException)
         {
             NormalVM.Progress = 0;
-            Log($"패치 취소: {Path.GetFileName(NormalVM.SourcePath)}", LogLevel.Error);
+            Log($"패치 취소: {NormalVM.SourcePath}", LogLevel.Error);
             Cleanup(outputPath, outputCuePath);
         }
         catch (Exception ex)
@@ -239,10 +237,7 @@ public class PatchMainViewModel : ToolTabViewModel
         {
             await PatchService.ApplyPatchedZipAsync(ArcadeVM.SourcePath, outputZipPath, patchesByEntryName, progressReporter, Log, ct);
 
-            Log($"{Path.GetFileName(ArcadeVM.SourcePath)} 패치 완료.", LogLevel.Ok);
-
-            if (Directory.Exists(outputDir))
-                Process.Start("explorer.exe", $"\"{outputDir}\"");
+            Log($"패치 완료: {ArcadeVM.SourcePath}", LogLevel.Ok);
         }
         catch (OperationCanceledException)
         {

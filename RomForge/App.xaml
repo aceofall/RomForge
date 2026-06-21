@@ -83,7 +83,6 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-        
 
             <Style TargetType="ComboBox">
                 <Setter Property="Background" Value="#1E1E1E"/>
@@ -386,11 +385,7 @@
                 </Setter>
             </Style>
 
-            <Style TargetType="TextBlock">
-                <Setter Property="Foreground"        Value="#8888A8"/>
-                <Setter Property="FontSize"          Value="12"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-            </Style>
+
 
         </ResourceDictionary>
     </Application.Resources>    

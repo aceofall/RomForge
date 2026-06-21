@@ -27,13 +27,6 @@ public class ConverterMainViewModel : ToolTabViewModel
     private string? _lastIconGameId;
     private CancellationTokenSource? _iconCts;
 
-    private bool _isConverting;
-    public bool IsConverting
-    {
-        get => _isConverting;
-        set { _isConverting = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAdd)); CommandManager.InvalidateRequerySuggested(); }
-    }
-
     private string _gameTitle;
     public string GameTitle
     {
@@ -41,7 +34,43 @@ public class ConverterMainViewModel : ToolTabViewModel
         set { _gameTitle = value; OnPropertyChanged(); }
     }
 
-    public bool CanAdd => !IsConverting && FileItems.Count < MaxItems;
+    private int _progressPct;
+    private string _progressLabel = string.Empty;
+    private string _progressPercent = "0%";
+    private string _progressTime = string.Empty;
+    private string _progressSpeed = string.Empty;
+
+    public int ProgressPct
+    {
+        get => _progressPct;
+        set { _progressPct = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressLabel
+    {
+        get => _progressLabel;
+        set { _progressLabel = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressPercent
+    {
+        get => _progressPercent;
+        set { _progressPercent = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressTime
+    {
+        get => _progressTime;
+        set { _progressTime = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressSpeed
+    {
+        get => _progressSpeed;
+        set { _progressSpeed = value; OnPropertyChanged(); }
+    }
+
+    public bool CanAdd => !IsLocked && FileItems.Count < MaxItems;
 
     private BitmapImage? _icon0Image;
     public BitmapImage? Icon0Image { get => _icon0Image; set { _icon0Image = value; OnPropertyChanged(); } }
@@ -67,14 +96,20 @@ public class ConverterMainViewModel : ToolTabViewModel
 
     public ConverterMainViewModel()
     {
-        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsConverting && FileItems.Count > 0);
-        CancelCommand = new RelayCommand(_ => _cts.Cancel(), _ => IsConverting);
+        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && FileItems.Count > 0);
+        CancelCommand = new RelayCommand(_ => _cts.Cancel(), _ => IsLocked);
 
         Icon0Image = _icon0Bytes.ToBitmapImage();
         Pic0Image = _pic0Bytes.ToBitmapImage();
         Pic1Image = _pic1Bytes.ToBitmapImage();
 
         FileItems.CollectionChanged += (s, e) => OnPropertyChanged(nameof(CanAdd));
+
+        PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(IsLocked))
+                OnPropertyChanged(nameof(CanAdd));
+        };
     }
 
     public void AddPaths(IEnumerable<string> paths)
@@ -173,7 +208,7 @@ public class ConverterMainViewModel : ToolTabViewModel
     private static void SetImage(byte[] rawBytes, Action<byte[]> apply)
     {
         try { apply(ImageConversion.ToPng(rawBytes)); }
-        catch { /* 이미지가 아니면 그냥 무시 */ }
+        catch {  }
     }
 
     private async Task LoadItemInfoAsync(DiscFileItem item)
@@ -229,6 +264,11 @@ public class ConverterMainViewModel : ToolTabViewModel
         if (primary == null || primary.GameId == _lastIconGameId || primary.GameId is "인식중..." or "인식실패")
             return;
 
+        var meta = GameMetadataLookup.Find(primary.GameId);
+
+        if (meta != null && !string.IsNullOrWhiteSpace(meta.Title))
+            GameTitle = meta.Title;
+
         _lastIconGameId = primary.GameId;
         _iconCts?.Cancel();
         _iconCts = new CancellationTokenSource();
@@ -236,54 +276,45 @@ public class ConverterMainViewModel : ToolTabViewModel
 
         var icon0Png = await CoverArtFetcher.TryDownloadIconPngAsync(primary.GameId, ct);
 
-        if (ct.IsCancellationRequested) 
-            return;
+        ct.ThrowIfCancellationRequested();
 
         _icon0Bytes = icon0Png ?? PbpResources.ICON0;
         Icon0Image = _icon0Bytes.ToBitmapImage();
 
-        var meta = GameMetadataLookup.Find(primary.GameId);
-
         var pic0Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic0, ct) : null;
 
-        if (ct.IsCancellationRequested) 
-            return;
+        ct.ThrowIfCancellationRequested();
 
         _pic0Bytes = pic0Png ?? PbpResources.PIC0;
         Pic0Image = _pic0Bytes.ToBitmapImage();
 
         var pic1Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic1, ct) : null;
 
-        if (ct.IsCancellationRequested) 
-            return;
+        ct.ThrowIfCancellationRequested();
 
         _pic1Bytes = pic1Png ?? PbpResources.PIC1;
         Pic1Image = _pic1Bytes.ToBitmapImage();
-
-        if (meta != null && !string.IsNullOrWhiteSpace(meta.Title))
-            GameTitle = meta.Title;
     }
 
     private async Task RunAsync()
     {
         _cts.Dispose();
         _cts = new CancellationTokenSource();
-        IsConverting = true;
 
-        try
+        if (FileItems.Count == 0)
         {
-            if (FileItems.Count == 0)
-            {
-                AppendLog("추가된 파일이 없습니다.", LogLevel.Error);
-                return;
-            }
+            AppendLog("추가된 파일이 없습니다.", LogLevel.Error);
+            return;
+        }
 
-            if (FileItems.Any(i => i.GameId is "인식중..." or "인식실패"))
-            {
-                AppendLog("GameID 인식 오류", LogLevel.Error);
-                return;
-            }
+        if (FileItems.Any(i => i.GameId is "인식중..." or "인식실패"))
+        {
+            AppendLog("GameID 인식 오류", LogLevel.Error);
+            return;
+        }
 
+        using (BeginWork())
+        {
             var orderedItems = FileItems.OrderBy(i => i.No).ToList();
             var gameTitle = string.IsNullOrWhiteSpace(GameTitle) ? GuessTitle(orderedItems[0]) : GameTitle;
             var mainGameId = orderedItems[0].GameId;
@@ -295,17 +326,24 @@ public class ConverterMainViewModel : ToolTabViewModel
                 Pic1Png = _pic1Bytes
             };
 
+            string baseDirectory = Path.GetDirectoryName(orderedItems[0].FilePath)!;
+            string gameDirectory = Path.Combine(baseDirectory, mainGameId);
+            string targetOutputPath = Path.Combine(gameDirectory, "eboot.pbp");
+
             try
             {
-                AppendLog($"작업 시작", LogLevel.Highlight);
+                if (!Directory.Exists(gameDirectory))
+                    Directory.CreateDirectory(gameDirectory);
+
+                AppendLog($"작업 시작: {gameTitle} [{mainGameId}] ({orderedItems.Count}개 디스크)", LogLevel.Highlight);
+
+                var progress = BuildProgressReporter();
 
                 if (orderedItems.Count == 1)
                 {
                     var item = orderedItems[0];
-                    var progress = new Progress<ProgressInfo>(p => item.Progress = p.Percent);
 
-                    await PbpPackager.WriteSingleDiscAsync(item.FilePath, mainGameId, gameTitle, 9, assets,
-                        progress, (msg, lvl, id) => AppendLog(msg, lvl), _cts.Token);
+                    await PbpPackager.WriteSingleDiscAsync(item.FilePath, mainGameId, gameTitle, targetOutputPath, 9, assets, progress, _cts.Token);
                 }
                 else
                 {
@@ -313,35 +351,59 @@ public class ConverterMainViewModel : ToolTabViewModel
                         .Select(i => (InputPath: i.FilePath, GameTitle: $"{gameTitle} - Disc {i.No}"))
                         .ToList();
 
-                    var outputPath = Path.Combine(Path.GetDirectoryName(orderedItems[0].FilePath)!, $"{gameTitle}.pbp");
-                    var progress = new Progress<ProgressInfo>(p =>
-                    {
-                        foreach (var i in orderedItems) i.Progress = p.Percent;
-                    });
-
-                    await PbpPackager.WriteMultiDiscAsync(discs, mainGameId, gameTitle, outputPath, 9, assets,
-                        progress, (msg, lvl, id) => AppendLog(msg, lvl), _cts.Token);
+                    await PbpPackager.WriteMultiDiscAsync(discs, mainGameId, gameTitle, targetOutputPath, 9, assets, progress, _cts.Token);
                 }
 
-                foreach (var i in orderedItems) i.Progress = 100;
-                AppendLog($"완료: {gameTitle} ({orderedItems.Count}개 디스크)", LogLevel.Ok);
+                ProgressPct = 100;
+                AppendLog($"작업 완료: {targetOutputPath}", LogLevel.Ok);
             }
             catch (OperationCanceledException)
             {
-                throw;
+                AppendLog("작업이 취소되었습니다.", LogLevel.Error);
+                CleanupTask();
+                TryDeleteFileAndFolder(targetOutputPath, gameDirectory);
             }
             catch (Exception ex)
             {
-                AppendLog($"오류: [{gameTitle}]{ex.Message}", LogLevel.Error);                
+                AppendLog($"오류: [{gameTitle}] {ex.Message}", LogLevel.Error);
+                CleanupTask();
+                TryDeleteFileAndFolder(targetOutputPath, gameDirectory);
             }
         }
-        catch (OperationCanceledException)
+    }
+
+    private Progress<ProgressInfo> BuildProgressReporter() =>
+    new(info =>
+    {
+        ProgressPct = info.Percent;
+        ProgressLabel = info.Label;
+        ProgressPercent = $"{info.Percent}%";
+        ProgressTime = info.TimeInfo;
+        ProgressSpeed = info.Speed;
+    });
+
+    private void CleanupTask()
+    {
+        ProgressPct = 0;
+        ProgressLabel = string.Empty;
+        ProgressPercent = "0%";
+        ProgressTime = string.Empty;
+        ProgressSpeed = string.Empty;
+    }
+
+    private void TryDeleteFileAndFolder(string? filePath, string? folderPath)
+    {
+        try
         {
-            AppendLog("작업이 취소되었습니다.", LogLevel.Error);
+            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                File.Delete(filePath);
+
+            if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath) && !Directory.EnumerateFileSystemEntries(folderPath).Any())
+                Directory.Delete(folderPath);
         }
-        finally
+        catch (Exception ex)
         {
-            IsConverting = false;
+            AppendLog($"취소/실패 정리 작업 중 예외 발생: {ex.Message}", LogLevel.Error);
         }
     }
 

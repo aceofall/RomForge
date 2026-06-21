@@ -9,6 +9,8 @@ public static class MultiDiscPsarWriter
         var isoPositions = new uint[5];
         uint x, endOffset;
 
+        byte[] zeroBuffer = new byte[0x8000];
+
         outputStream.Write("PSTITLEIMG000000", 0, 16);
 
         var p1Offset = (uint)outputStream.Position;
@@ -51,6 +53,8 @@ public static class MultiDiscPsarWriter
 
         for (var discNo = 0; discNo < discs.Count; discNo++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var disc = discs[discNo];
 
             var offset = (uint)outputStream.Position;
@@ -58,15 +62,14 @@ public static class MultiDiscPsarWriter
             if (offset % 0x8000 > 0)
             {
                 x = 0x8000 - (offset % 0x8000);
-                outputStream.WriteChar(0, (int)x);
+                outputStream.Write(zeroBuffer, 0, (int)x);
             }
 
             isoPositions[discNo] = (uint)(outputStream.Position - psarOffset);
 
             PsarDiscWriter.WriteDisc(outputStream, disc.IsoStream, disc.IsoLength, disc.GameId, disc.GameTitle, disc.TocData, psarOffset, true, compressionLevel, cancellationToken, (cur, _) => onProgress?.Invoke(completedBytes + cur, totalBytes));
 
-            if (cancellationToken.IsCancellationRequested)
-                return;
+            completedBytes += disc.IsoLength;
         }
 
         x = (uint)outputStream.Position;
@@ -75,8 +78,13 @@ public static class MultiDiscPsarWriter
         {
             endOffset = x + (0x10 - (x % 0x10));
 
-            for (var i = 0; i < (endOffset - x); i++)
-                outputStream.WriteByte((byte)'0');
+            int padCount = (int)(endOffset - x);
+            byte[] padBuffer = new byte[padCount];
+            
+            for (int i = 0; i < padCount; i++) 
+                padBuffer[i] = (byte)'0';
+
+            outputStream.Write(padBuffer, 0, padCount);
         }
         else
             endOffset = x;

@@ -11,6 +11,8 @@ public static class PsarDiscWriter
 
     public static void WriteDisc(Stream outputStream, Stream isoStream, long isoLength, string gameId, string gameTitle, byte[] tocData, uint psarOffset, bool isMultiDisc, int compressionLevel, CancellationToken cancellationToken, Action<long, long>? onProgress = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var isoPosition = (uint)(outputStream.Position - psarOffset);
         var actualIsoSize = (uint)isoLength;
         var isoSize = actualIsoSize;
@@ -58,6 +60,8 @@ public static class PsarDiscWriter
 
         for (var i = 0; i < isoSize / BlockSize; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             outputStream.WriteUInt32(offset, 1);
             outputStream.WriteUInt32(x, 1);
             outputStream.Write(dummy, 0, sizeof(uint) * dummy.Length);
@@ -80,14 +84,13 @@ public static class PsarDiscWriter
 
             while ((bytesRead = isoStream.Read(buffer, 0, BufferSize)) > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 outputStream.Write(buffer, 0, bytesRead);
-                totSize += (uint)bytesRead;                
+                totSize += (uint)bytesRead;
                 curSize += (uint)bytesRead;
 
                 onProgress?.Invoke(curSize, actualIsoSize);
-
-                if (cancellationToken.IsCancellationRequested) 
-                    return;
             }
 
             for (var i = 0; i < (isoSize - actualIsoSize); i++)
@@ -106,6 +109,8 @@ public static class PsarDiscWriter
 
             while ((bytesRead = isoStream.Read(readBuffer, 0, BlockSize)) > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 totSize += (uint)bytesRead;
                 curSize += (uint)bytesRead;
                 onProgress?.Invoke(curSize, actualIsoSize);
@@ -129,9 +134,6 @@ public static class PsarDiscWriter
                     outputStream.Write(compressedBuffer, 0, (int)compressedSize);
                     offset += compressedSize;
                 }
-
-                if (cancellationToken.IsCancellationRequested) 
-                    return;
 
                 idx++;
             }

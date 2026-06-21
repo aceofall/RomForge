@@ -6,9 +6,14 @@
              xmlns:vm="clr-namespace:RomForge.ViewModels._3DS"
              xmlns:helpers="clr-namespace:RomForge.Helpers"
              xmlns:converters="clr-namespace:RomForge.Converters"
+             xmlns:converters2="clr-namespace:Common.WPF.Converters;assembly=Common.WPF"
              mc:Ignorable="d"
              d:DesignHeight="650" d:DesignWidth="1016"
              Background="#1E1E1E">
+
+    <UserControl.Resources>
+        <converters2:LockIconConverter x:Key="LockIconConverter"/>
+    </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -66,7 +71,7 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <GridViewColumn Width="350">
+                        <GridViewColumn Width="270">
                             <GridViewColumn.Header>
                                 <GridViewColumnHeader Tag="FileName"/>
                             </GridViewColumn.Header>
@@ -94,8 +99,18 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        
-                        <GridViewColumn Width="90">
+
+                        <GridViewColumn Header="종류" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding TypeBadgeColor}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" Margin="8,0">
+                                        <TextBlock Text="{Binding TypeLabel}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                    </Border>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Width="75">
                             <GridViewColumn.Header>
                                 <GridViewColumnHeader Tag="Extension"/>
                             </GridViewColumn.Header>
@@ -103,7 +118,7 @@
                                 <DataTemplate>                        
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Image Source="/Assets/Images/Input.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="확장자" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="입력" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.HeaderTemplate>
@@ -116,7 +131,7 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <GridViewColumn Width="120">
+                        <GridViewColumn Width="80">
                             <GridViewColumn.Header>
                                 <GridViewColumnHeader Tag="Extension"/>
                             </GridViewColumn.Header>
@@ -124,7 +139,7 @@
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Source="/Assets/Images/Output.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="출력 확장자" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="출력" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.HeaderTemplate>
@@ -132,7 +147,7 @@
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding AvailableFormats}" 
                                               SelectedItem="{Binding SelectedTargetFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"                                              
-                                              Width="100" 
+                                              Width="65" 
                                               Height="26"
                                               HorizontalAlignment="Center" 
                                               VerticalAlignment="Center">
@@ -142,6 +157,14 @@
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
                                     </ComboBox>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="암호화" Width="60">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Image Source="{Binding Crypto, Converter={StaticResource LockIconConverter}}" Width="24" Height="24" Margin="8,0" HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -165,7 +188,7 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <GridViewColumn Width="140">
+                        <GridViewColumn Width="120">
                             <GridViewColumn.Header>
                                 <GridViewColumnHeader Tag="Progress"/>
                             </GridViewColumn.Header>

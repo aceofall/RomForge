@@ -129,20 +129,20 @@ public class CompressMainViewModel : ToolTabViewModel
 
         using (BeginWork())
         {
+            int totalCount = FileItems.Count;
+            AppendLog($"총 {totalCount}개의 작업을 시작합니다.", LogLevel.Highlight);
 
-            try
+            int cnt = 0;
+
+            foreach (var item in FileItems)
             {
-                int totalCount = FileItems.Count;
-                AppendLog($"총 {totalCount}개의 작업을 시작합니다.", LogLevel.Highlight);
+                _cts.Token.ThrowIfCancellationRequested();
 
-                int cnt = 0;
-                foreach (var item in FileItems)
+                if (item.Status == "완료" || item.Status == "미지원")
+                    continue;
+
+                try
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
-
-                    if (item.Status == "완료" || item.Status == "미지원")
-                        continue;
-
                     item.Status = "대기중";
                     item.Progress = 0;
 
@@ -158,7 +158,6 @@ public class CompressMainViewModel : ToolTabViewModel
                     });
 
                     int switchCompressLevel = _config.Switch.CompressLevel;
-
                     if (switchCompressLevel < 3)
                         switchCompressLevel = 3;
 
@@ -223,24 +222,24 @@ public class CompressMainViewModel : ToolTabViewModel
                     item.Status = "완료";
                     cnt++;
                 }
-
-                if (cnt > 0)
+                catch (OperationCanceledException)
                 {
-                    AppendLog($"총 {cnt}개의 작업을 완료했습니다.", LogLevel.Ok);
+                    AppendLog("작업이 취소되었습니다.", LogLevel.Error);
+                    foreach (var remainingItem in FileItems.Where(i => i.Status == "대기중" || i.Status == "변환중"))
+                        remainingItem.Status = "취소";
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"오류 ([{item.FileName}]): {ex.Message}", LogLevel.Error);
+                    item.Status = "실패";
                 }
             }
-            catch (OperationCanceledException)
+
+            if (cnt > 0)
             {
-                AppendLog("작업이 취소되었습니다.", LogLevel.Error);
-                foreach (var item in FileItems.Where(i => i.Status == "대기중" || i.Status == "변환중"))
-                    item.Status = "취소";
+                AppendLog($"총 {cnt}개의 작업을 완료했습니다.", LogLevel.Ok);
             }
-            catch (Exception ex)
-            {
-                AppendLog($"오류: {ex.Message}", LogLevel.Error);
-                foreach (var item in FileItems.Where(i => i.Status == "변환중"))
-                    item.Status = "실패";
-            }         
         }
     }
 
