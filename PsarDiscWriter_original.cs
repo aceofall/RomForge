@@ -54,7 +54,7 @@ public static class PsarDiscWriter
         Array.Copy(titleBytes, 0, data2, 8, gameTitle.Length);
         data2[8 + titleBytes.Length] = 0;
 
-        outputStream.Write(data2, 0, data2.Length);
+        outputStream.Write(data2, 0, data2.Length);        
 
         var indexOffset = (uint)outputStream.Position;
         uint offset = 0;
@@ -69,7 +69,7 @@ public static class PsarDiscWriter
             outputStream.WriteUInt32(x, 1);
             outputStream.Write(dummy, 0, sizeof(uint) * dummy.Length);
 
-            if (compressionLevel == 0)
+            if (compressionLevel == 0) 
                 offset += BlockSize;
         }
 

@@ -93,7 +93,7 @@ public static class GameIdReader
         };
     }
 
-    private static uint GetTrack1FileOffset(LibChdrWrapper chd)
+    public static uint GetTrack1FileOffset(LibChdrWrapper chd)
     {
         var meta = chd.GetMetadata(0x54524B32, 0);
 

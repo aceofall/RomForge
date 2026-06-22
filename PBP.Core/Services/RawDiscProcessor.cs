@@ -11,9 +11,7 @@ public static class RawDiscProcessor
         string ext = Path.GetExtension(filePath).ToLower();
 
         if (ext == ".cue")
-        {
             return CuePreprocessor.Resolve(filePath);
-        }
         else if (ext == ".chd")
         {
             var wrapper = new LibChdrWrapper();
@@ -23,9 +21,7 @@ public static class RawDiscProcessor
 
             var info = ChdInfoReader.ReadChdInfo(filePath);
             long totalSize = ChdmanService.CalculateOriginalSize(info);
-
-            var stream = new ChdReadStream(wrapper, totalSize);
-
+            var stream = new ChdReadStream(wrapper, totalSize, info);
             var cueFile = CueFileReader.BuildCueFromChdInfo(info);
             byte[] tocData = TocBuilder.BuildToc(cueFile, (uint)totalSize);
 
