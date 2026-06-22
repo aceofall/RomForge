@@ -313,6 +313,7 @@ public class InstallerMainViewModel : ToolTabViewModel
 
                 StatusMessage = $"설치 완료: {selected.ShortDescription}";
                 AppendLog($"설치 완료: {selected.ShortDescription}", LogLevel.Ok);
+                AppendLog($"3DS에서 [홈브루 런처]를 이용해, 3ds 폴더 내부의 'custom-install-finalize'를 실행해야 게임 아이콘이 생성됩니다.", LogLevel.Highlight);
             }
             catch (OperationCanceledException)
             {
