@@ -1,10 +1,12 @@
-﻿using NSW.WPF.Services;
+﻿using Microsoft.Win32;
+using NSW.WPF.Services;
 using RomForge.ViewModels;
 using RomForge.ViewModels.PS1;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 namespace RomForge.Controls.PS1;
 
@@ -88,6 +90,49 @@ public partial class ConverterTab : UserControl
 
         byte[] rawBytes = File.ReadAllBytes(files[0]);
         ViewModel?.SetPic1FromBytes(rawBytes);
+    }
+
+
+    private void Icon0_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        ExportImage(ViewModel?.Icon0Image,  "Cover.PNG");
+    }
+
+    private void Pic0_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        ExportImage(ViewModel?.Pic0Image, "Logo.PNG");
+    }
+
+    private void Pic1_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        ExportImage(ViewModel?.Pic1Image, "Background.PNG");
+    }
+
+    private void ExportImage(BitmapImage bmp, string fileNameBase)
+    {
+        string fileName = !string.IsNullOrEmpty(ViewModel?.GameTitle) ? $"{ViewModel.GameTitle}_{fileNameBase}" : fileNameBase;
+        string tempFilePath = Path.Combine(Path.GetTempPath(), fileName);
+
+        using (var fs = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bmp));
+            encoder.Save(fs);
+        }
+
+        try
+        {
+            var dataObject = new DataObject();
+            dataObject.SetFileDropList([tempFilePath]);
+            DragDrop.DoDragDrop(this, dataObject, DragDropEffects.Copy);
+        }
+        finally
+        {
+            if (File.Exists(tempFilePath))
+            {
+                try { File.Delete(tempFilePath); } catch { }
+            }
+        }
     }
 
     private void BtnAddFiles_Click(object sender, RoutedEventArgs e)

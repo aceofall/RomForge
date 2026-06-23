@@ -95,15 +95,18 @@ public class ConverterMainViewModel : ToolTabViewModel
 
     public ICommand RunCommand { get; }
     public ICommand CancelCommand { get; }
+    public byte[] Icon0Bytes { get => _icon0Bytes; set => _icon0Bytes = value; }
+    public byte[] Pic0Bytes { get => _pic0Bytes; set => _pic0Bytes = value; }
+    public byte[] Pic1Bytes { get => _pic1Bytes; set => _pic1Bytes = value; }
 
     public ConverterMainViewModel()
     {
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && FileItems.Count > 0);
         CancelCommand = new RelayCommand(_ => _cts.Cancel(), _ => IsLocked);
 
-        Icon0Image = _icon0Bytes.ToBitmapImage();
-        Pic0Image = _pic0Bytes.ToBitmapImage();
-        Pic1Image = _pic1Bytes.ToBitmapImage();
+        Icon0Image = Icon0Bytes.ToBitmapImage();
+        Pic0Image = Pic0Bytes.ToBitmapImage();
+        Pic1Image = Pic1Bytes.ToBitmapImage();
 
         FileItems.CollectionChanged += (s, e) => OnPropertyChanged(nameof(CanAdd));
 
@@ -203,9 +206,9 @@ public class ConverterMainViewModel : ToolTabViewModel
         Pic1Image = PbpResources.PIC1.ToBitmapImage();
     }
 
-    public void SetIcon0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { _icon0Bytes = bytes; Icon0Image = img; }, 80, 80);
-    public void SetPic0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { _pic0Bytes = bytes; Pic0Image = img; }, 270, 150);
-    public void SetPic1FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { _pic1Bytes = bytes; Pic1Image = img; }, 480, 272);
+    public void SetIcon0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Icon0Bytes = bytes; Icon0Image = img; }, 80, 80);
+    public void SetPic0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Pic0Bytes = bytes; Pic0Image = img; }, 270, 150);
+    public void SetPic1FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Pic1Bytes = bytes; Pic1Image = img; }, 480, 272);
 
     private static void SetImage(byte[] rawBytes, Action<byte[], BitmapImage> apply, int targetWidth, int targetHeight)
     {
@@ -315,22 +318,22 @@ public class ConverterMainViewModel : ToolTabViewModel
 
         ct.ThrowIfCancellationRequested();
 
-        _icon0Bytes = icon0Png ?? PbpResources.ICON0;        
-        Icon0Image = _icon0Bytes.ToBitmapImage();
+        Icon0Bytes = icon0Png ?? PbpResources.ICON0;        
+        Icon0Image = Icon0Bytes.ToBitmapImage();
 
         var pic0Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic0, ct) : null;
 
         ct.ThrowIfCancellationRequested();
 
-        _pic0Bytes = pic0Png ?? PbpResources.PIC0;
-        Pic0Image = _pic0Bytes.ToBitmapImage();
+        Pic0Bytes = pic0Png ?? PbpResources.PIC0;
+        Pic0Image = Pic0Bytes.ToBitmapImage();
 
         var pic1Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic1, ct) : null;
 
         ct.ThrowIfCancellationRequested();
 
-        _pic1Bytes = pic1Png ?? PbpResources.PIC1;
-        Pic1Image = _pic1Bytes.ToBitmapImage();
+        Pic1Bytes = pic1Png ?? PbpResources.PIC1;
+        Pic1Image = Pic1Bytes.ToBitmapImage();
     }
 
     private async Task RunAsync()
@@ -358,9 +361,9 @@ public class ConverterMainViewModel : ToolTabViewModel
 
             var assets = new PbpAssets
             {
-                Icon0Png = _icon0Bytes.ResizePng(80, 80),
-                Pic0Png = _pic0Bytes.ResizePng(480, 272),
-                Pic1Png = _pic1Bytes.ResizePng(480, 272),
+                Icon0Png = Icon0Bytes.ResizePng(80, 80),
+                Pic0Png = Pic0Bytes.ResizePng(480, 272),
+                Pic1Png = Pic1Bytes.ResizePng(480, 272),
                 DataPsp = PbpResources.DATA
             };
 
