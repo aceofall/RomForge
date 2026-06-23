@@ -15,6 +15,25 @@ public static class StreamExtensions
         }
     }
 
+    public static ushort ReadUInt16(this Stream stream)
+    {
+        var buf = new byte[2];
+        stream.Read(buf, 0, 2);
+
+        return BitConverter.ToUInt16(buf, 0);
+    }
+
+    public static string ReadNullTerminatedString(this Stream stream)
+    {
+        var bytes = new List<byte>();
+        int b;
+
+        while ((b = stream.ReadByte()) > 0)
+            bytes.Add((byte)b);
+
+        return System.Text.Encoding.ASCII.GetString(bytes.ToArray());
+    }
+
     public static void Write(this Stream stream, uint[] buffer, int count, int size)
     {
         var p = 0;
