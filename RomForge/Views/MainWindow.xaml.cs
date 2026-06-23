@@ -1,7 +1,9 @@
 ﻿using NSW.WPF.UI;
+using PBP.Core.Services;
 using RomForge.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -17,6 +19,22 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         InitializeComponent();
         Closing += MainWindow_Closing;
+
+
+
+        var unpacker = new PbpUnpacker
+        {
+            OnNotify = msg => Debug.WriteLine(msg),
+            OnProgress = bytes => Debug.WriteLine($"{bytes} bytes written")
+        };
+
+        unpacker.Unpack(
+            pbpPath: @"\\CDH5\download\게임\한글패치\멀트트랙\SLPS00600\RAGE RACER.pbp",
+            outputDir: @"D:\",
+            createCuesheet: true,
+            cancellationToken: CancellationToken.None
+        );
+
     }
 
     protected override void OnSourceInitialized(EventArgs e)

@@ -1,9 +1,9 @@
-﻿using PBP.Core.Models;
-using System.Security.AccessControl;
+﻿using PBP.Core.Enums;
+using PBP.Core.Models;
 
 namespace PBP.Core.Services;
 
-/*
+
 public class PbpReader
 {
     private const int HEADER_SFO_OFFSET = 0x08;
@@ -48,10 +48,10 @@ public class PbpReader
 
         if (header == "PSISOIMG0000")
         {
-            Discs = new List<PbpDiscEntry>
-            {
+            Discs =
+            [
                 new PbpDiscEntry(stream, psarOffset, 1)
-            };
+            ];
         }
         else
         {
@@ -64,10 +64,17 @@ public class PbpReader
             stream.ReadInteger(); // skip
             stream.ReadInteger(); // skip
 
-            if (stream.ReadUInteger() != 0x2CC9C5BC) throw new Exception("Invalid header");
-            if (stream.ReadUInteger() != 0x33B5A90F) throw new Exception("Invalid header");
-            if (stream.ReadUInteger() != 0x06F6B4B3) throw new Exception("Invalid header");
-            if (stream.ReadUInteger() != 0xB25945BA) throw new Exception("Invalid header");
+            if (stream.ReadUInteger() != 0x2CC9C5BC) 
+                throw new Exception("Invalid header");
+
+            if (stream.ReadUInteger() != 0x33B5A90F) 
+                throw new Exception("Invalid header");
+
+            if (stream.ReadUInteger() != 0x06F6B4B3) 
+                throw new Exception("Invalid header");
+
+            if (stream.ReadUInteger() != 0xB25945BA) 
+                throw new Exception("Invalid header");
 
             for (var i = 0; i < 0x76; i++)
                 stream.ReadInteger();
@@ -75,14 +82,13 @@ public class PbpReader
             var isoPositions = new uint[5];
             stream.Read(isoPositions, 5);
 
-            Discs = isoPositions
+            Discs = [.. isoPositions
                 .Where(x => x > 0)
-                .Select((x, i) => new PbpDiscEntry(stream, psarOffset + (int)x, i + 1))
-                .ToList();
+                .Select((x, i) => new PbpDiscEntry(stream, psarOffset + (int)x, i + 1))];
         }
     }
 
-    public int Seek(ResourceType resource, Stream stream)
+    public static int Seek(ResourceType resource, Stream stream)
     {
         int offset = resource switch
         {
@@ -104,20 +110,24 @@ public class PbpReader
             : (int)stream.Length;
 
         stream.Seek(start, SeekOrigin.Begin);
+
         return end - start;
     }
 
-    public bool TryGetResourceStream(ResourceType resource, Stream stream, out Stream? outputStream)
+    public static bool TryGetResourceStream(ResourceType resource, Stream stream, out Stream? outputStream)
     {
         var length = Seek(resource, stream);
+
         if (length > 0)
         {
             var buffer = new byte[length];
             stream.Read(buffer, 0, length);
             outputStream = new MemoryStream(buffer);
+
             return true;
         }
         outputStream = null;
+
         return false;
     }
-}*/
+}

@@ -17,4 +17,15 @@ public static class Compression
 
         return (int)ms.Position;
     }
+
+    public static byte[] Decompress(byte[] input, int outputSize)
+    {
+        var output = new byte[outputSize];
+        using var ms = new MemoryStream(input);
+        using var inflater = new InflaterInputStream(ms, new Inflater(true));
+
+        inflater.Read(output, 0, outputSize);
+
+        return output;
+    }
 }

@@ -15,12 +15,86 @@ public static class StreamExtensions
         }
     }
 
+    public static void Read(this Stream stream, int[] buffer, int count)
+    {
+        var intBuffer = new byte[sizeof(int)];
+        for (var i = 0; i < count; i++)
+        {
+            stream.Read(intBuffer, 0, 4);
+            buffer[i] = BitConverter.ToInt32(intBuffer, 0);
+        }
+    }
+
     public static ushort ReadUInt16(this Stream stream)
     {
         var buf = new byte[2];
         stream.Read(buf, 0, 2);
 
         return BitConverter.ToUInt16(buf, 0);
+    }
+
+    public static int ReadInteger(this Stream stream)
+    {
+        var buf = new byte[4];
+        stream.Read(buf, 0, 4);
+
+        return BitConverter.ToInt32(buf, 0);
+    }
+
+    public static uint ReadUInteger(this Stream stream)
+    {
+        var buf = new byte[4];
+        stream.Read(buf, 0, 4);
+
+        return BitConverter.ToUInt32(buf, 0);    
+    }
+
+    public static SFOData ReadSFO(this Stream stream, long sfoOffset)
+    {
+        var sfo = new SFOData
+        {
+            Magic = stream.ReadUInteger(),
+            Version = stream.ReadUInteger(),
+            KeyTableOffset = stream.ReadUInteger(),
+            DataTableOffset = stream.ReadUInteger()
+        };
+
+        var entryCount = stream.ReadInteger();
+
+        for (var i = 0; i < entryCount; i++)
+        {
+            sfo.Entries.Add(new SFODir
+            {
+                KeyOffset = stream.ReadUInt16(),
+                Format = stream.ReadUInt16(),
+                Length = stream.ReadUInteger(),
+                MaxLength = stream.ReadUInteger(),
+                DataOffset = stream.ReadUInteger(),
+            });
+        }
+
+        var keyBase = sfoOffset + sfo.KeyTableOffset;
+
+        foreach (var entry in sfo.Entries)
+        {
+            stream.Seek(keyBase + entry.KeyOffset, SeekOrigin.Begin);
+            entry.Key = stream.ReadNullTerminatedString();
+        }
+
+        var dataBase = sfoOffset + sfo.DataTableOffset;
+
+        foreach (var entry in sfo.Entries)
+        {
+            stream.Seek(dataBase + entry.DataOffset, SeekOrigin.Begin);
+            entry.Value = entry.Format switch
+            {
+                0x0204 => stream.ReadNullTerminatedString(),
+                0x0404 => stream.ReadInteger(),
+                _ => null
+            };
+        }
+
+        return sfo;
     }
 
     public static string ReadNullTerminatedString(this Stream stream)
@@ -31,7 +105,7 @@ public static class StreamExtensions
         while ((b = stream.ReadByte()) > 0)
             bytes.Add((byte)b);
 
-        return System.Text.Encoding.ASCII.GetString(bytes.ToArray());
+        return System.Text.Encoding.ASCII.GetString([.. bytes]);
     }
 
     public static void Write(this Stream stream, uint[] buffer, int count, int size)
