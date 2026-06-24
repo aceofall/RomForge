@@ -4,6 +4,7 @@ using RomForge.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -21,20 +22,18 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
 
 
+        string path = @"D:\download\PS1\Xenogears\SLUS00664\eboot.pbp";
 
-        //var unpacker = new PbpUnpacker
-        //{
-        //    OnNotify = msg => Debug.WriteLine(msg),
-        //    OnProgress = bytes => Debug.WriteLine($"{bytes} bytes written")
-        //};
+        if (File.Exists(path))
+        {    
+            var unpacker = new PbpUnpacker
+            {
+                OnNotify = msg => Debug.WriteLine(msg),
+                OnProgress = bytes => Debug.WriteLine($"{bytes} bytes written")
+            };
 
-        //unpacker.Unpack(
-        //    pbpPath: @"\\CDH5\download\게임\한글패치\멀트트랙\SLPS00600\c_eboot.pbp",
-        //    outputDir: @"D:\",
-        //    createCuesheet: true,
-        //    cancellationToken: CancellationToken.None
-        //);
-
+            unpacker.Unpack(pbpPath: path, outputDir: @"D:\", createCuesheet: true, cancellationToken: CancellationToken.None );
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)

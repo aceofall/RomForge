@@ -143,7 +143,7 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
     {
         var thisOffset = _psarOffset + PSAR_ISO_OFFSET + IsoIndex[blockNo].Offset;
 
-        _stream.Seek((long)thisOffset, SeekOrigin.Begin);
+        _stream.Seek(thisOffset, SeekOrigin.Begin);
 
         if (IsoIndex[blockNo].Length == 16 * ISO_BLOCK_SIZE)
         {

@@ -9,35 +9,23 @@ public class ChdReadStream(LibChdrWrapper wrapper, long totalLength, ChdInfo inf
     private byte[]? _currentHunk;
     private uint _cachedHunkIndex = uint.MaxValue;
     private readonly uint _sectorsPerHunk = (wrapper.Header?.hunkbytes ?? 0) / 2448u;
-    private readonly TrackRegion[] _tracks = BuildTrackRegions(info);
+    private readonly TrackInfo[] _tracks = info.Tracks;
 
-    private record TrackRegion(long StartSector, long EndSector, bool IsAudio);
-
-    private static TrackRegion[] BuildTrackRegions(ChdInfo info)
+    private (long chdsector, int tracknum) PhysicalToChdLba(long physlba)
     {
-        var regions = new TrackRegion[info.Tracks.Length];
-        long current = 0;
-
-        for (int i = 0; i < info.Tracks.Length; i++)
+        for (int i = 0; i < _tracks.Length - 1; i++)
         {
-            var track = info.Tracks[i];
-            bool isAudio = track.TrackType?.ToUpperInvariant().Contains("AUDIO", StringComparison.InvariantCultureIgnoreCase) == true;
-            regions[i] = new TrackRegion(current, current + track.Frames, isAudio);
-            current += track.Frames;
+            if (physlba < _tracks[i + 1].PhysFrameOfs)
+            {
+                long chdsector = physlba - _tracks[i].PhysFrameOfs + _tracks[i].ChdFrameOfs;
+                return (chdsector, i);
+            }
         }
-
-        return regions;
+        return (physlba, 0);
     }
 
-    private bool IsAudioSector(long sectorIdx)
-    {
-        foreach (var t in _tracks)
-        {
-            if (sectorIdx < t.EndSector)
-                return t.IsAudio;
-        }
-        return false;
-    }
+    private bool IsAudio(int tracknum) =>
+        _tracks[tracknum].TrackType?.ToUpperInvariant().Contains("AUDIO", StringComparison.InvariantCultureIgnoreCase) == true;
 
     public override int Read(byte[] buffer, int offset, int count)
     {
@@ -45,11 +33,13 @@ public class ChdReadStream(LibChdrWrapper wrapper, long totalLength, ChdInfo inf
 
         while (bytesRead < count && _position < totalLength)
         {
-            uint sectorIdx = (uint)(_position / 2352);
+            long physlba = _position / 2352;
             int posInSector = (int)(_position % 2352);
 
-            uint hunkIdx = (uint)(sectorIdx / _sectorsPerHunk);
-            int hunkOffset = (int)(sectorIdx % _sectorsPerHunk) * 2448;
+            var (chdsector, tracknum) = PhysicalToChdLba(physlba);
+
+            uint hunkIdx = (uint)(chdsector / _sectorsPerHunk);
+            int hunkOffset = (int)(chdsector % _sectorsPerHunk) * 2448;
 
             if (_cachedHunkIndex != hunkIdx)
             {
@@ -60,7 +50,7 @@ public class ChdReadStream(LibChdrWrapper wrapper, long totalLength, ChdInfo inf
             if (_currentHunk == null)
                 throw new NullReferenceException(nameof(_currentHunk));
 
-            if (IsAudioSector(sectorIdx) && posInSector == 0)
+            if (IsAudio(tracknum) && posInSector == 0)
             {
                 for (int i = hunkOffset; i < hunkOffset + 2352; i += 2)
                     (_currentHunk[i], _currentHunk[i + 1]) = (_currentHunk[i + 1], _currentHunk[i]);

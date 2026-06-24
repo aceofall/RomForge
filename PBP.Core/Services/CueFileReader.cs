@@ -88,7 +88,7 @@ public static class CueFileReader
         var entry = new CueFileEntry { FileType = "BINARY", Tracks = [] };
         long currentFrame = 0;
 
-        foreach (var track in info.Tracks)
+        foreach (var track in info.Tracks.Take(info.TrackCount))
         {
             var indexes = new List<CueIndex>();
 
@@ -117,8 +117,6 @@ public static class CueFileReader
             });
 
             currentFrame += track.Frames;
-
-            System.Diagnostics.Debug.WriteLine($"TrackNumber:{track.TrackNumber}/Frames:{track.Frames}/PreGap{track.PreGap}/{((track.Frames + 3) / 4) * 4}");
         }
 
         return new CueFile { FileEntries = [entry] };
