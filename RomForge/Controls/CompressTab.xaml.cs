@@ -1,7 +1,6 @@
 ﻿using Microsoft.Win32;
 using NSW.WPF.Services;
 using RomForge.ViewModels;
-using RomForge.ViewModels.Util;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -98,6 +97,11 @@ public partial class CompressTab : UserControl
     }
 
     private void BtnClear_Click(object sender, RoutedEventArgs e) => ViewModel.CompressVM.ClearItems();
+
+    private async void BtnSettings_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.NavigateCompressSettings();
+    }    
 
     private void LvFiles_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {

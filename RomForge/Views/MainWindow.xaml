@@ -94,7 +94,7 @@
                         <TextBlock Text="설정" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <settings:SettingsTab DataContext="{Binding Settings}"/>
+                <settings:MainTab DataContext="{Binding Settings}"/>
             </TabItem>
 
         </TabControl>

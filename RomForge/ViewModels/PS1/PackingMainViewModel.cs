@@ -97,15 +97,19 @@ public class PackingMainViewModel : ToolTabViewModel
 
     public ICommand RunCommand { get; }
     public ICommand CancelCommand { get; }
+    public ICommand SettingsCommand { get; }
     public byte[] Icon0Bytes { get => _icon0Bytes; set => _icon0Bytes = value; }
     public byte[] Pic0Bytes { get => _pic0Bytes; set => _pic0Bytes = value; }
     public byte[] Pic1Bytes { get => _pic1Bytes; set => _pic1Bytes = value; }
+
+    public event EventHandler RunNavigateSettings;
 
     public PackingMainViewModel(AppConfig config)
     {
         _config = config;
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && FileItems.Count > 0);
         CancelCommand = new RelayCommand(_ => _cts.Cancel(), _ => IsLocked);
+        SettingsCommand = new RelayCommand(async _ => RunNavigateSettings?.Invoke(this, EventArgs.Empty), _ => !IsLocked);
 
         Icon0Image = Icon0Bytes.ToBitmapImage();
         Pic0Image = Pic0Bytes.ToBitmapImage();

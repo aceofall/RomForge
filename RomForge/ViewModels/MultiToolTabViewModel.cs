@@ -9,7 +9,6 @@ namespace RomForge.ViewModels;
 public abstract class MultiToolTabViewModel : ToolTabViewModel
 {
     private int _subTabIndex;
-    private readonly List<ToolTabViewModel> _tools = [];
 
     public int SubTabIndex
     {
@@ -22,23 +21,31 @@ public abstract class MultiToolTabViewModel : ToolTabViewModel
         }
     }
 
+    public ToolTabViewModel SelectedViewModel
+    {
+        set
+        {
+            var index = Tools.IndexOf(value);
+
+            if (index != -1)
+                SubTabIndex = index;
+        }
+    }
+
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
-    public List<ToolTabViewModel> Tools => _tools;
-
-    public ToolTabViewModel? SelectedTool => (SubTabIndex >= 0 && SubTabIndex < _tools.Count) ? _tools[SubTabIndex] : null;
+    public ToolTabViewModel? SelectedTool => (SubTabIndex >= 0 && SubTabIndex < Tools.Count) ? Tools[SubTabIndex] : null;
 
     protected void InitializeMultiTools()
     {
-        foreach (var tool in _tools)
+        foreach (var tool in Tools)
         {
             RegisterChild(tool);
 
             var logProp = tool.GetType().GetProperty("LogEntries");
+
             if (logProp?.GetValue(tool) is ObservableCollection<LogEntry> childLogs)
-            {
                 childLogs.CollectionChanged += (_, e) => LogEntries_CollectionChanged(e, tool);
-            }
         }
 
         SyncLogEntries();
@@ -46,7 +53,7 @@ public abstract class MultiToolTabViewModel : ToolTabViewModel
 
     private void LogEntries_CollectionChanged(NotifyCollectionChangedEventArgs e, ToolTabViewModel tool)
     {
-        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count || _tools[SubTabIndex] != tool)
+        if (SubTabIndex < 0 || SubTabIndex >= Tools.Count || Tools[SubTabIndex] != tool)
             return;
 
         if (Application.Current?.Dispatcher != null)
@@ -87,10 +94,10 @@ public abstract class MultiToolTabViewModel : ToolTabViewModel
     {
         LogEntries.Clear();
 
-        if (SubTabIndex < 0 || SubTabIndex >= _tools.Count)
+        if (SubTabIndex < 0 || SubTabIndex >= Tools.Count)
             return;
 
-        var currentTool = _tools[SubTabIndex];
+        var currentTool = Tools[SubTabIndex];
         var logProp = currentTool.GetType().GetProperty("LogEntries");
 
         if (logProp?.GetValue(currentTool) is ObservableCollection<LogEntry> childLogs)

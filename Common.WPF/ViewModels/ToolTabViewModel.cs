@@ -5,17 +5,18 @@ namespace Common.WPF.ViewModels;
 public abstract class ToolTabViewModel : ViewModelBase
 {
     private int _lockCount;
-    private readonly List<ToolTabViewModel> _children = [];
+    private readonly List<ToolTabViewModel> _tools = [];
 
     public bool IsLocked => _lockCount > 0;
-    public bool IsUnlocked => _lockCount == 0;
-    public bool IsIdle => !IsLocked && Children.All(c => c.IsIdle);
 
-    public List<ToolTabViewModel> Children => _children;
+    public bool IsUnlocked => _lockCount == 0;
+
+    public bool IsIdle => !IsLocked && Tools.All(c => c.IsIdle);
+
+    public List<ToolTabViewModel> Tools => _tools;
 
     protected void RegisterChild(ToolTabViewModel child)
     {
-        Children.Add(child);
         child.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(IsLocked) or nameof(IsIdle))

@@ -2,10 +2,10 @@
 
 namespace RomForge.Controls.Settings;
 
-public partial class SettingsTab : UserControl
+public partial class MainTab : UserControl
 {
 
-    public SettingsTab()
+    public MainTab()
     {
         InitializeComponent();
     }

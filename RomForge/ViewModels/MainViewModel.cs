@@ -9,7 +9,6 @@ using RomForge.ViewModels.Settings;
 using RomForge.ViewModels.Switch;
 using RomForge.ViewModels.Util;
 using System.Collections.ObjectModel;
-using System.Windows;
 
 namespace RomForge.ViewModels;
 
@@ -43,6 +42,17 @@ public class MainViewModel : ToolTabViewModel
         }
     }
 
+    public ToolTabViewModel SelectedViewModel
+    {
+        set
+        {
+            var index = Tools.IndexOf(value);
+
+            if (index != -1)
+                SelectedTabIndex = index;
+        }
+    }
+
     public ObservableCollection<LogEntry> ActiveLogEntries => _selectedTabIndex switch
     {
         0 => PatchVM.LogEntries,
@@ -63,34 +73,43 @@ public class MainViewModel : ToolTabViewModel
         SwitchMainVM = new SwitchMainViewModel(_config);
         Main3DsVM = new _3DSMainViewModel();
         PS1MainVM = new PS1MainViewModel(_config);
+        PS1MainVM.RunNavigatePackingSettings += PS1MainVM_RunNavigatePackingSettings;
         UtilMainVM = new UtilMainViewModel();
         Settings = new SettingsMainViewModel(_config);
 
-        RegisterChild(PatchVM);
-        RegisterChild(CompressVM);
-        RegisterChild(SwitchMainVM);
-        RegisterChild(Main3DsVM);
-        RegisterChild(PS1MainVM);
-        RegisterChild(UtilMainVM);
-        RegisterChild(Settings);
+        Tools.Add(PatchVM);
+        Tools.Add(CompressVM);
+        Tools.Add(SwitchMainVM);
+        Tools.Add(Main3DsVM);
+        Tools.Add(PS1MainVM);
+        Tools.Add(UtilMainVM);
+        Tools.Add(Settings);
+
+        foreach(var tool in Tools)
+            RegisterChild(tool);
     }
 
     public async Task MapsToHashAndProcess(string fileName)
     {
-        var utilIndex = Children.IndexOf(UtilMainVM);
-
-        if (utilIndex != -1)
-            SelectedTabIndex = utilIndex;
-
-        var hashIndex = UtilMainVM.Tools.IndexOf(UtilMainVM.HashVM);
-
-        if (hashIndex != -1)
-            UtilMainVM.SubTabIndex = hashIndex;
+        SelectedViewModel = UtilMainVM;
+        UtilMainVM.SelectedViewModel = UtilMainVM.HashVM;
 
         await UtilMainVM.HashVM.AddPaths([fileName]);
 
         if (UtilMainVM.HashVM.RunCommand.CanExecute(null))
             UtilMainVM.HashVM.RunCommand.Execute(null);
+    }
+
+    public async Task NavigateCompressSettings()
+    {
+        SelectedViewModel = Settings;
+        Settings.SelectedViewModel = Settings.Compress;
+    }
+
+    private void PS1MainVM_RunNavigatePackingSettings(object? sender, EventArgs e)
+    {
+        SelectedViewModel = Settings;
+        Settings.SelectedViewModel = Settings.PS1;
     }
 
     public void SaveConfig() => _config.Save();
