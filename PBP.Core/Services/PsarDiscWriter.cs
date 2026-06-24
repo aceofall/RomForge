@@ -104,7 +104,7 @@ public static class PsarDiscWriter
         {
             var indexes = new IsoIndex[isoSize / BlockSize];
             var idx = 0;
-            var blockNo = 0;
+
             offset = 0;
 
             int bytesRead;
@@ -121,12 +121,6 @@ public static class PsarDiscWriter
 
                 if (bytesRead < BlockSize)
                     Array.Clear(readBuffer, bytesRead, BlockSize - bytesRead);
-
-                if (blockNo == 1)
-                {
-                    bool patched = PatchVolumeSpaceSize(readBuffer, isoSize);
-                    Debug.WriteLine($"PVD Patch: {patched}");
-                }
 
                 var compressedSize = (uint)Compression.Compress(readBuffer, compressedBuffer, compressionLevel);
 
@@ -146,7 +140,6 @@ public static class PsarDiscWriter
                 }
 
                 idx++;
-                blockNo++;
             }
 
             if (idx != isoSize / BlockSize)
@@ -187,47 +180,5 @@ public static class PsarDiscWriter
 
             outputStream.Seek(offset, SeekOrigin.Begin);
         }
-    }
-
-    private static bool PatchVolumeSpaceSize(byte[] buffer, uint actualIsoSize)
-    {
-        byte[] cd001 = { 0x43, 0x44, 0x30, 0x30, 0x31 }; // "CD001"
-
-        for (int i = 0; i <= buffer.Length - cd001.Length; i++)
-        {
-            bool found = true;
-
-            for (int j = 0; j < cd001.Length; j++)
-            {
-                if (buffer[i + j] != cd001[j])
-                {
-                    found = false;
-                    break;
-                }
-            }
-
-            if (!found)
-                continue;
-
-            uint sectors = actualIsoSize / 2352;
-
-            int volumeSpaceOffset = i + 0x50;
-
-            // Little Endian
-            buffer[volumeSpaceOffset + 0] = (byte)(sectors);
-            buffer[volumeSpaceOffset + 1] = (byte)(sectors >> 8);
-            buffer[volumeSpaceOffset + 2] = (byte)(sectors >> 16);
-            buffer[volumeSpaceOffset + 3] = (byte)(sectors >> 24);
-
-            // Big Endian
-            buffer[volumeSpaceOffset + 4] = (byte)(sectors >> 24);
-            buffer[volumeSpaceOffset + 5] = (byte)(sectors >> 16);
-            buffer[volumeSpaceOffset + 6] = (byte)(sectors >> 8);
-            buffer[volumeSpaceOffset + 7] = (byte)(sectors);
-
-            return true;
-        }
-
-        return false;
     }
 }

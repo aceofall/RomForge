@@ -174,7 +174,7 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85">
                     <Image Source="/Assets/Images/drag.png" Width="28" Height="28" Margin="0,0,0,8"/>
                     <TextBlock Text="파일 또는 폴더를 여기에 드래그하세요" Foreground="White" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
-                    <TextBlock Text="(지원 확장자 : 3ds, cci, cia, zcci)" Foreground="#A0A0A0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/>
+                    <TextBlock Text="(지원 확장자: pbp)" Foreground="#A0A0A0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
         </Grid>

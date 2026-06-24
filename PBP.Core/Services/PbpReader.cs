@@ -61,8 +61,8 @@ public class PbpReader
             if (header16 != "PSTITLEIMG000000")
                 throw new Exception("Invalid header");
 
-            stream.ReadInteger(); // skip
-            stream.ReadInteger(); // skip
+            stream.ReadInteger();
+            stream.ReadInteger();
 
             if (stream.ReadUInteger() != 0x2CC9C5BC) 
                 throw new Exception("Invalid header");
@@ -85,6 +85,9 @@ public class PbpReader
             Discs = [.. isoPositions
                 .Where(x => x > 0)
                 .Select((x, i) => new PbpDiscEntry(stream, psarOffset + (int)x, i + 1))];
+
+            if (Discs.Any(d => d.IsPvdMismatch))
+                throw new Exception("PVD 섹터 수가 실제 데이터보다 작습니다. 수정된 ROM일 수 있습니다.");
         }
     }
 

@@ -46,12 +46,15 @@ public partial class ConverterTab : UserControl
         e.Handled = true;
     }
 
-    private void LvFiles_Drop(object sender, DragEventArgs e)
+    private async void LvFiles_Drop(object sender, DragEventArgs e)
     {
+        if (ViewModel == null)
+            return;
+
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
             return;
 
-        ViewModel?.AddPaths(paths);
+        await ViewModel.AddPaths(paths);
     }
 
     private void LvFiles_KeyUp(object sender, KeyEventArgs e)
@@ -93,8 +96,11 @@ public partial class ConverterTab : UserControl
         _lastSortDirection = direction;
     }
 
-    private void BtnAddFiles_Click(object sender, RoutedEventArgs e)
+    private async void BtnAddFiles_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewModel == null)
+            return;
+
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "변환할 파일 선택",
@@ -103,11 +109,14 @@ public partial class ConverterTab : UserControl
         };
 
         if (dialog.ShowDialog() == true)
-            ViewModel?.AddPaths(dialog.FileNames);
+            await ViewModel.AddPaths(dialog.FileNames);
     }
 
-    private void BtnAddFolder_Click(object sender, RoutedEventArgs e)
+    private async void BtnAddFolder_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewModel == null)
+            return;
+
         var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
         {
             Description = "추가할 폴더를 선택하세요",
@@ -115,7 +124,7 @@ public partial class ConverterTab : UserControl
         };
 
         if (dialog.ShowDialog() == true)
-            ViewModel?.AddPaths([dialog.SelectedPath]);
+            await ViewModel.AddPaths([dialog.SelectedPath]);
     }
 
     private void BtnRemove_Click(object sender, RoutedEventArgs e)

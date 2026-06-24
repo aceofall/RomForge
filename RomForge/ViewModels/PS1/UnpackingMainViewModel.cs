@@ -1,5 +1,6 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
+using LibHac.Diag;
 using PBP.Core.Enums;
 using PBP.Core.Services;
 using RomForge.Core.Services.PS1;
@@ -66,42 +67,49 @@ public class UnpackingMainViewModel : ToolTabViewModel
 
     public async Task AddPaths(IEnumerable<string> paths)
     {
-        var existing = FileItems.Select(f => f.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var path in ExpandPaths(paths))
+        try
         {
-            if (!existing.Add(path))
-                continue;
+            var existing = FileItems.Select(f => f.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var vm = new PbpFileItem(path);
-
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
-            var reader = new PbpReader(stream);
-            var meta = GameMetadataLookup.Find(reader.Discs[0].DiscID);
-
-            vm.TitleName = meta?.Title;
-            vm.TitleId = string.Join(", ", reader.Discs.Select(d => d.DiscID));
-
-            if (PbpReader.TryGetResourceStream(ResourceType.ICON0, stream, out var iconStream))
+            foreach (var path in ExpandPaths(paths))
             {
-                var bitmap = new BitmapImage();
+                if (!existing.Add(path))
+                    continue;
 
-                bitmap.BeginInit();
-                bitmap.StreamSource = iconStream;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                bitmap.Freeze();
+                var vm = new PbpFileItem(path);
 
-                vm.Icon = bitmap;
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
+                var reader = new PbpReader(stream);
+                var meta = GameMetadataLookup.Find(reader.Discs[0].DiscID);
+
+                vm.TitleName = meta?.Title;
+                vm.TitleId = string.Join(", ", reader.Discs.Select(d => d.DiscID));
+
+                if (PbpReader.TryGetResourceStream(ResourceType.ICON0, stream, out var iconStream))
+                {
+                    var bitmap = new BitmapImage();
+
+                    bitmap.BeginInit();
+                    bitmap.StreamSource = iconStream;
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+
+                    vm.Icon = bitmap;
+                }
+
+                vm.No = FileItems.Count + 1;
+
+                FileItems.Add(vm);
             }
 
-            vm.No = FileItems.Count + 1;
-
-            FileItems.Add(vm);
+            OnPropertyChanged(nameof(HintVisibility));
+            CommandManager.InvalidateRequerySuggested();
         }
-
-        OnPropertyChanged(nameof(HintVisibility));
-        CommandManager.InvalidateRequerySuggested();
+        catch(Exception ex)
+        {
+            AppendLog($"오류: {ex.Message}", LogLevel.Error);
+        }
     }
 
     public void RemoveItems(IEnumerable<PbpFileItem> items)
@@ -161,10 +169,10 @@ public class UnpackingMainViewModel : ToolTabViewModel
                             var unpacker = new PbpUnpacker
                             {
                                 OnNotify = msg => AppendLog(msg),
-                                OnProgress = bytes => item.Progress = (int)bytes
+                                OnProgress = percent => item.Progress = percent
                             };
 
-                            unpacker.Unpack(item.FilePath, Path.GetDirectoryName(item.FilePath), true, _cts.Token);
+                            await unpacker.UnpackAsync(item.FilePath, Path.GetDirectoryName(item.FilePath), true, _cts.Token);
                         }
 
                         item.Progress = 100;

@@ -27,6 +27,9 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
 
     public string DiscID { get; }
 
+    public bool IsPvdMismatch { get; }
+
+
     public PbpDiscEntry(Stream stream, int psarOffset, int index)
     {
         _stream = stream;
@@ -35,7 +38,8 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
         DiscID = GetDiscID();
         TOC = ReadTOC();
         IsoIndex = ReadIsoIndexes();
-        IsoSize = GetIsoSize();
+        IsoSize = GetIsoSize(out bool mismatch);
+        IsPvdMismatch = mismatch;
     }
 
     private string GetDiscID()
@@ -164,12 +168,19 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
         }
     }
 
-    private uint GetIsoSize()
+    private uint GetIsoSize(out bool mismatch)
     {
         var outBuffer = new byte[16 * ISO_BLOCK_SIZE];
+
         ReadBlock(1, outBuffer);
 
-        return (uint)((outBuffer[104] + (outBuffer[105] << 8) + (outBuffer[106] << 16) + (outBuffer[107] << 24)) * ISO_BLOCK_SIZE);
+        var pvdSectors = (uint)(outBuffer[104] + (outBuffer[105] << 8) + (outBuffer[106] << 16) + (outBuffer[107] << 24));
+        var pvdSize = pvdSectors * ISO_BLOCK_SIZE;
+        var maxSize = (uint)(IsoIndex.Count * 16 * ISO_BLOCK_SIZE);
+
+        mismatch = pvdSize > maxSize || pvdSize == 0;
+
+        return pvdSize;
     }
 
     public long EndOffset

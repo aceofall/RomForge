@@ -88,7 +88,7 @@
                         <Image Source="/Assets/Images/drag.png" Width="32" Height="32" Margin="0,0,0,12"/>
                         <TextBlock Text="파일 또는 폴더를 여기에 드래그하세요" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
                         <TextBlock Text="최대 5개의 파일까지 패키징 가능" Foreground="#D4AF37" FontSize="13" FontWeight="Bold" Margin="0,8,0,0" HorizontalAlignment="Center"/>
-                        <TextBlock Text="지원 확장자: m3u, cue, chd" Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                        <TextBlock Text="(지원 확장자: m3u, cue, chd)" Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>
