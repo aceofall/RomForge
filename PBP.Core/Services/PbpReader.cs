@@ -87,7 +87,7 @@ public class PbpReader
                 .Select((x, i) => new PbpDiscEntry(stream, psarOffset + (int)x, i + 1))];
 
             if (Discs.Any(d => d.IsPvdMismatch))
-                throw new Exception("PVD 섹터 수가 실제 데이터보다 작습니다. 수정된 ROM일 수 있습니다.");
+                throw new Exception("손상되거나 변형된 게임 파일입니다.");
         }
     }
 

@@ -176,7 +176,7 @@
         <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">
+                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding CanRun}" Command="{Binding RunCommand}" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -242,6 +242,15 @@
                 </StackPanel>
             </DockPanel>
         </Border>
+
+        <Grid Grid.RowSpan="2" Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}" Panel.ZIndex="999">
+            <Rectangle Fill="#CC1E1E2E"/>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="⏳" FontSize="36" HorizontalAlignment="Center"/>
+                <TextBlock Text="이미지 다운로드 중..." Foreground="#8888A8" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                <ProgressBar IsIndeterminate="True"  Width="240" Height="3" Margin="0,16,0,0" Background="#2A2A3A" Foreground="#4F8EF7" BorderThickness="0"/>
+            </StackPanel>
+        </Grid>
 
     </Grid>
 </UserControl>

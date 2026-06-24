@@ -27,22 +27,28 @@ public class PackingMainViewModel : ToolTabViewModel
     };
 
     private CancellationTokenSource _cts = new();
-    private string? _lastIconGameId;
     private CancellationTokenSource? _iconCts;
 
-    private string _gameTitle = string.Empty;
-    public string GameTitle
-    {
-        get => _gameTitle;
-        set { _gameTitle = value; OnPropertyChanged(); }
-    }
+    private readonly AppConfig _config;
 
+    private string? _lastIconGameId;
+    private string _gameTitle = string.Empty;
     private int _progressPct;
     private string _progressLabel = string.Empty;
     private string _progressPercent = "0%";
     private string _progressTime = string.Empty;
     private string _progressSpeed = string.Empty;
-    private readonly AppConfig _config;
+    private bool _isDownloading;    
+
+    private byte[] _icon0Bytes = PbpResources.ICON0;
+    private byte[] _pic0Bytes = PbpResources.PIC0;
+    private byte[] _pic1Bytes = PbpResources.PIC1;
+
+    public string GameTitle
+    {
+        get => _gameTitle;
+        set { _gameTitle = value; OnPropertyChanged(); }
+    }
 
     public int ProgressPct
     {
@@ -74,7 +80,34 @@ public class PackingMainViewModel : ToolTabViewModel
         set { _progressSpeed = value; OnPropertyChanged(); }
     }
 
-    public bool CanAdd => !IsLocked && FileItems.Count < MaxItems;
+    public bool IsDownloading
+    {
+        get => _isDownloading;
+        set 
+        { 
+            _isDownloading = value; 
+            OnPropertyChanged(); 
+            OnPropertyChanged(nameof(CanRun));
+        }
+    }
+
+    public byte[] Icon0Bytes 
+    { 
+        get => _icon0Bytes; 
+        set => _icon0Bytes = value; 
+    }
+
+    public byte[] Pic0Bytes 
+    { 
+        get => _pic0Bytes; 
+        set => _pic0Bytes = value; 
+    }
+
+    public byte[] Pic1Bytes 
+    { 
+        get => _pic1Bytes; 
+        set => _pic1Bytes = value;
+    }
 
     private BitmapImage? _icon0Image;
     public BitmapImage? Icon0Image { get => _icon0Image; set { _icon0Image = value; OnPropertyChanged(); } }
@@ -85,29 +118,28 @@ public class PackingMainViewModel : ToolTabViewModel
     private BitmapImage? _pic1Image;
     public BitmapImage? Pic1Image { get => _pic1Image; set { _pic1Image = value; OnPropertyChanged(); } }
 
-    private byte[] _icon0Bytes = PbpResources.ICON0;
-    private byte[] _pic0Bytes = PbpResources.PIC0;
-    private byte[] _pic1Bytes = PbpResources.PIC1;
-
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
     public ObservableCollection<DiscFileItem> FileItems { get; } = [];
 
     public Visibility HintVisibility => FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
+    public bool CanAdd => !IsLocked && FileItems.Count < MaxItems;
+
+    public bool CanRun => !IsLocked && FileItems.Count > 0 && !IsDownloading;
+
+
     public ICommand RunCommand { get; }
     public ICommand CancelCommand { get; }
     public ICommand SettingsCommand { get; }
-    public byte[] Icon0Bytes { get => _icon0Bytes; set => _icon0Bytes = value; }
-    public byte[] Pic0Bytes { get => _pic0Bytes; set => _pic0Bytes = value; }
-    public byte[] Pic1Bytes { get => _pic1Bytes; set => _pic1Bytes = value; }
+    
 
     public event EventHandler RunNavigateSettings;
 
     public PackingMainViewModel(AppConfig config)
     {
         _config = config;
-        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && FileItems.Count > 0);
+        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => CanRun);
         CancelCommand = new RelayCommand(_ => _cts.Cancel(), _ => IsLocked);
         SettingsCommand = new RelayCommand(async _ => RunNavigateSettings?.Invoke(this, EventArgs.Empty), _ => !IsLocked);
 
@@ -273,6 +305,10 @@ public class PackingMainViewModel : ToolTabViewModel
         {
             item.GameId = "인식실패";
             AppendLog($"[{item.FileName}] GameID 인식 실패: {ex.Message}", LogLevel.Error);
+            FileItems.Remove(item);
+            OnPropertyChanged(nameof(HintVisibility));
+            CommandManager.InvalidateRequerySuggested();
+            return;
         }
 
         ResortAndRenumber();
@@ -319,6 +355,8 @@ public class PackingMainViewModel : ToolTabViewModel
 
             var ct = _iconCts.Token;
 
+            IsDownloading = true;
+
             var icon0Png = await CoverArtFetcher.TryDownloadIconPngAsync(primary.GameId, ct);
             ct.ThrowIfCancellationRequested();
             Icon0Bytes = icon0Png ?? PbpResources.ICON0;
@@ -335,6 +373,10 @@ public class PackingMainViewModel : ToolTabViewModel
             Pic1Image = Pic1Bytes.ToBitmapImage();
         }
         catch (OperationCanceledException) { }
+        finally
+        {
+            IsDownloading = false;
+        }
     }
 
     private async Task RunAsync()
