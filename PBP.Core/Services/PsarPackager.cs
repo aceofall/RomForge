@@ -35,7 +35,10 @@ public static class PsarPackager
         outputStream.WriteInt32(0, 2);
         outputStream.Write(PbpTemplateProvider.GetSystemConfigTemplate(), 0, PbpTemplateProvider.GetSystemConfigTemplate().Length);
         outputStream.Write(mainGameTitle, 0, mainGameTitle.Length);
-        outputStream.WriteChar(0, 0x80 - mainGameTitle.Length);
+
+        var padCharCount = Math.Max(0, 0x80 - mainGameTitle.Length);
+        outputStream.WriteChar(0, padCharCount);
+
         outputStream.WriteInt32(7, 1);
         outputStream.WriteInt32(0, 0x1C);
 
@@ -67,8 +70,8 @@ public static class PsarPackager
         uint endOffset = (x % 0x10 != 0) ? x + (0x10 - (x % 0x10)) : x;
         int padCount = (int)(endOffset - x);
 
-        if (padCount > 0) 
-            outputStream.Write([.. new byte[padCount].Select(_ => (byte)'0')], 0, padCount);
+        if (padCount > 0)
+            outputStream.WriteChar((byte)'0', padCount);
 
         uint finalOffset = (uint)outputStream.Position;
 

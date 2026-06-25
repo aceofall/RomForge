@@ -13,7 +13,11 @@ public sealed class ResolvedDisc : IDisposable
 
         if (_tempFile != null && File.Exists(_tempFile))
         {
-            try { File.Delete(_tempFile); } catch { }
+            try
+            {
+                File.Delete(_tempFile);
+            } 
+            catch { }
         }
     }
 

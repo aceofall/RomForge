@@ -62,14 +62,14 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
         if (buffer[2] != 0xA0) 
             throw new Exception("Invalid TOC!");
 
-        int startTrack = TOCHelper.FromBinaryDecimal(buffer[7]);
+        int startTrack = TocHelper.FromBinaryDecimal(buffer[7]);
 
         _stream.Read(buffer, 0, 0xA);
 
         if (buffer[2] != 0xA1) 
             throw new Exception("Invalid TOC!");
 
-        int endTrack = TOCHelper.FromBinaryDecimal(buffer[7]);
+        int endTrack = TocHelper.FromBinaryDecimal(buffer[7]);
 
         _stream.Read(buffer, 0, 0xA);
 
@@ -80,7 +80,7 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
         {
             _stream.Read(buffer, 0, 0xA);
 
-            var trackNo = TOCHelper.FromBinaryDecimal(buffer[2]);
+            var trackNo = TocHelper.FromBinaryDecimal(buffer[2]);
 
             if (trackNo != c) 
                 throw new Exception("Invalid TOC!");
@@ -89,9 +89,9 @@ public class PbpDiscEntry : IDisposable, IAsyncDisposable
             {
                 TrackType = (TrackType)buffer[0],
                 TrackNo = trackNo,
-                Minutes = TOCHelper.FromBinaryDecimal(buffer[3]),
-                Seconds = TOCHelper.FromBinaryDecimal(buffer[4]),
-                Frames = TOCHelper.FromBinaryDecimal(buffer[5])
+                Minutes = TocHelper.FromBinaryDecimal(buffer[3]),
+                Seconds = TocHelper.FromBinaryDecimal(buffer[4]),
+                Frames = TocHelper.FromBinaryDecimal(buffer[5])
             });
         }
 

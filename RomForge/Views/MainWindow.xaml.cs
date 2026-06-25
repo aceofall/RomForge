@@ -1,9 +1,12 @@
-﻿using _3DS.Core.Services;
+﻿using _3DS.Core.Models;
+using _3DS.Core.Services;
 using NSW.WPF.UI;
 using RomForge.Helpers;
 using RomForge.ViewModels;
+using System.Buffers.Binary;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -20,7 +23,18 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += MainWindow_Closing;
 
-        _ = TestExeFsAsync();
+        Loaded += async (_, _) =>
+        {
+            try
+            {
+                await TestExeFsAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"예외: {ex}");
+                MessageBox.Show(ex.ToString());
+            }
+        };
     }
 
     private static async Task TestExeFsAsync()
@@ -32,22 +46,30 @@ public partial class MainWindow : Window
         var (ncchStream, _) = cciSource.OpenContentDecrypted(0);
         await using (ncchStream)
         {
-            // 언팩
-            var result = await ExeFsUnpacker.UnpackAsync(ncchStream, cciSource.MainHeader, ct);
+            var unpack = await RomFsUnpacker.UnpackAsync(ncchStream, cciSource.MainHeader, ct);
+            byte[] repacked = await RomFsPacker.PackAsync(ncchStream, unpack, ct);
 
-            // 재패킹
-            byte[] repacked = ExeFsPacker.Pack(result.Files);
-
-            // 원본 읽기
-            long exefsOffset = (long)cciSource.MainHeader.ExefsOffset * 0x200;
-            long exefsSize = (long)cciSource.MainHeader.ExefsSize * 0x200;
-            byte[] original = new byte[exefsSize];
-            ncchStream.Position = exefsOffset;
+            // 원본 RomFS 블록
+            long romfsOffset = (long)cciSource.MainHeader.RomfsOffset * 0x200;
+            byte[] original = new byte[repacked.Length];
+            ncchStream.Position = romfsOffset;
             await ncchStream.ReadExactlyAsync(original, ct);
 
-            // 비교 (재패킹은 실제 데이터 크기만큼만 비교)
-            bool match = repacked.AsSpan().SequenceEqual(original.AsSpan(0, repacked.Length));
-            Debug.WriteLine($"ExeFS 재패킹 검증: {(match ? "OK ✅" : "FAIL ❌")}");
+            ulong realOff3 = 0x1000;
+
+            int l3Base = (int)realOff3;
+            var origRomfs = RomFsHeader.Parse(original, l3Base);
+
+
+            int dirEntryBase = l3Base + (int)origRomfs.DirEntryOffset;
+
+            int entryBase = dirEntryBase + 0xA4;
+            Debug.WriteLine($"parentOffset    orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x00)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x00)):X8}");
+            Debug.WriteLine($"siblingOffset   orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x04)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x04)):X8}");
+            Debug.WriteLine($"childDirOffset  orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x08)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x08)):X8}");
+            Debug.WriteLine($"childFileOffset orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x0C)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x0C)):X8}");
+            Debug.WriteLine($"hashSibling     orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x10)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x10)):X8}");
+            Debug.WriteLine($"nameSize        orig={BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(entryBase + 0x14)):X8} mine={BinaryPrimitives.ReadUInt32LittleEndian(repacked.AsSpan(entryBase + 0x14)):X8}");
         }
     }
 

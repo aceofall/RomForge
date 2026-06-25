@@ -3,13 +3,13 @@ using PBP.Core.Models;
 
 namespace PBP.Core.Services;
 
-public class SFOBuilder
+public class SfoBuilder
 {
     private readonly List<SfoEntry> _entries = [];
 
-    public SFOBuilder() { }
+    public SfoBuilder() { }
 
-    public SFOBuilder(IEnumerable<SfoEntry> entries) => _entries.AddRange(entries);
+    public SfoBuilder(IEnumerable<SfoEntry> entries) => _entries.AddRange(entries);
 
     public void AddEntry(string key, object value) => _entries.Add(new SfoEntry { Key = key, Value = value });
 

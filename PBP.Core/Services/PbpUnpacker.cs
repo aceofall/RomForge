@@ -46,7 +46,7 @@ public class PbpUnpacker
 
                 if (createCuesheet)
                 {
-                    var cueFile = TOCHelper.TOCtoCUE(disc.TOC, Path.GetFileName(binPath));
+                    var cueFile = TocHelper.TOCtoCUE(disc.TOC, Path.GetFileName(binPath));
 
                     createdFiles.Add(cuePath); // 👈
                     CueFileWriter.Write(cueFile, cuePath);

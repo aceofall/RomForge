@@ -3,7 +3,7 @@ using PBP.Core.Models;
 
 namespace PBP.Core.Services;
 
-public static class TOCHelper
+public static class TocHelper
 {
     public static int FromBinaryDecimal(int value) => (value >> 4) * 10 + (value & 0x0F);
 
