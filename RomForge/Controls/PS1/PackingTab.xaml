@@ -118,7 +118,7 @@
                                         <Image Source="{Binding Icon0Image}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" MouseLeftButtonDown="Icon0_MouseLeftButtonDown" />
                                     </Border>
                                 </Grid>
-                                <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="15" MaxWidth="270" MaxHeight="150" BorderBrush="#80FFFFFF" BorderThickness="1.5" CornerRadius="12" Opacity="0.9" AllowDrop="True" Drop="Pic0_Drop">
+                                <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="15" MaxWidth="270" MaxHeight="150" BorderBrush="#80FFFFFF" BorderThickness="1.5" CornerRadius="12" Opacity="0.8" AllowDrop="True" Drop="Pic0_Drop">
                                     <Border.OpacityMask>
                                         <VisualBrush>
                                             <VisualBrush.Visual>
@@ -243,7 +243,7 @@
             </DockPanel>
         </Border>
 
-        <Grid Grid.RowSpan="2" Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}" Panel.ZIndex="999">
+        <Grid Grid.RowSpan="2" Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}" Panel.ZIndex="999" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" d:IsHidden="True">
             <Rectangle Fill="#CC1E1E2E"/>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock Text="⏳" FontSize="36" HorizontalAlignment="Center"/>
