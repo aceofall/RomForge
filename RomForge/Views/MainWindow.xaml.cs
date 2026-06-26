@@ -28,8 +28,8 @@ public partial class MainWindow : Window
         {
             try
             {
-                string fileName = @"D:\3ds\Ocarina of Time 3D.cci";
-                await TestRepackAsync(fileName);
+                string fileName = @"D:\3ds\BRAVELY DEFAULT.cci";
+                await CompareUnpackedAsync(fileName);
             }
             catch (Exception ex)
             {
