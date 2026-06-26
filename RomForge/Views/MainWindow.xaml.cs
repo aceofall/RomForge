@@ -28,7 +28,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                await TestRepackAsync();
+                //await TestRepackAsync();
             }
             catch (Exception ex)
             {
