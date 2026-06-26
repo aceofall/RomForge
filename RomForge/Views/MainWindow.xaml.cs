@@ -24,19 +24,19 @@ public partial class MainWindow : Window
         InitializeComponent();
         Closing += MainWindow_Closing;
 
-        Loaded += async (_, _) =>
-        {
-            try
-            {
-                string fileName = @"D:\3ds\BRAVELY DEFAULT.cci";
-                await TestRepackAsync(fileName);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"오류: {ex}");
-                MessageBox.Show(ex.ToString());
-            }
-        };
+        //Loaded += async (_, _) =>
+        //{
+        //    try
+        //    {
+        //        string fileName = @"D:\3ds\BRAVELY DEFAULT.cci";
+        //        await TestRepackAsync(fileName);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Debug.WriteLine($"오류: {ex}");
+        //        MessageBox.Show(ex.ToString());
+        //    }
+        //};
     }
 
     private static async Task TestRepackAsync(string fileName)
