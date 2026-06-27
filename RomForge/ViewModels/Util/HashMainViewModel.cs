@@ -218,8 +218,8 @@ public class HashMainViewModel : ToolTabViewModel
                 return ProcessNonCryptoStream(fs, totalBytes, item, (buf, len) => crc.Append(new ReadOnlySpan<byte>(buf, 0, len)), () =>
                 {
                     byte[] hashBytes = crc.GetHashAndReset();
-
-                    return FormatHex(BitConverter.ToUInt32([.. hashBytes.Reverse()], 0).ToString("X8"));
+                    uint crcValue = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(hashBytes);
+                    return crcValue.ToString("x8");
                 }, token);
             }
 
