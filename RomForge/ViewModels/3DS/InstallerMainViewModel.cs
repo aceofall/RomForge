@@ -99,6 +99,12 @@ public class InstallerMainViewModel : ToolTabViewModel
         RegisterChild(InstalledTitles);
         RegisterChild(Install);
 
+        InstalledTitles.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(InstalledTitles.IsUnlocked))
+                OnPropertyChanged(nameof(CanLoad));
+        };
+
         Install.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(Install.IsInstalling) or nameof(Install.IsLocked))
@@ -191,12 +197,9 @@ public class InstallerMainViewModel : ToolTabViewModel
                 AppendLog($"오류: {ex.Message}", LogLevel.Error);
                 throw;
             }
-            finally
-            {
-                SetLoading(false);
-            }
         }
 
+        SetLoading(false);
         OnPropertyChanged(nameof(CanLoad));
     }
 

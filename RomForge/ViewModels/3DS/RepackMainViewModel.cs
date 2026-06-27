@@ -26,9 +26,10 @@ public class RepackMainViewModel : ToolTabViewModel
     private string _patchPath = string.Empty;
     private string _outputPath = string.Empty;
     private int _progressPct;
-    private string _progressLabel = "대기 중...";
+    private string _progressLabel = "대기 중...";    
+    private string _progressPercent = string.Empty;
     private string _progressTime = "00:00 경과";
-    private string _speedLabel = string.Empty;
+    private string _progressSpeed = string.Empty;
 
     public string InputPath
     {
@@ -60,16 +61,22 @@ public class RepackMainViewModel : ToolTabViewModel
         set { _progressLabel = value; OnPropertyChanged(); }
     }
 
+    public string ProgressPercent
+    {
+        get => _progressPercent;
+        set { _progressPercent = value; OnPropertyChanged(); }
+    }
+
     public string ProgressTime
     {
         get => _progressTime;
         set { _progressTime = value; OnPropertyChanged(); }
     }
 
-    public string SpeedLabel
+    public string ProgressSpeed
     {
-        get => _speedLabel;
-        set { _speedLabel = value; OnPropertyChanged(); }
+        get => _progressSpeed;
+        set { _progressSpeed = value; OnPropertyChanged(); }
     }
 
     public Visibility InputHintVisibility => string.IsNullOrEmpty(InputPath) ? Visibility.Visible : Visibility.Collapsed;
@@ -138,7 +145,9 @@ public class RepackMainViewModel : ToolTabViewModel
         string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, Path.GetFileNameWithoutExtension(InputPath) + "_Repack.cci"));
         var sw = System.Diagnostics.Stopwatch.StartNew();
         long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
-        Action<long, long> reporter = CreateProgressReporter(startTime);
+        var progress = BuildProgressReporter();
+        string inputFileName = Path.GetFileNameWithoutExtension(InputPath);
+        var reporter = new ProgressReporter(inputFileName, string.Empty, 0, progress);
         bool isCompleted = false;
 
         try
@@ -149,13 +158,13 @@ public class RepackMainViewModel : ToolTabViewModel
             switch (mode)
             {
                 case BuildMode.UnpackOnly:
-                    await UnpackAsync(keyStore, unpackedPath, ct);
+                    await UnpackAsync(keyStore, unpackedPath, reporter.CreateAction(), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    await RepackAsync(keyStore, unpackedPath, outputCci, reporter, ct);
+                    await RepackAsync(keyStore, unpackedPath, outputCci, reporter.CreateAction(), ct);
                     break;
                 case BuildMode.FullProcess:
-                    await RepackDirectAsync(keyStore, outputCci, reporter, ct);
+                    await RepackDirectAsync(keyStore, outputCci, reporter.CreateAction(), ct);
                     break;
             }
 
@@ -184,7 +193,17 @@ public class RepackMainViewModel : ToolTabViewModel
         }
     }
 
-    private async Task UnpackAsync(KeyStore keyStore, string unpackedPath, CancellationToken ct)
+    private Progress<ProgressInfo> BuildProgressReporter() =>
+        new(info =>
+        {
+            ProgressPct = info.Percent;
+            ProgressLabel = info.Label;
+            ProgressPercent = $"{info.Percent}%";
+            ProgressTime = info.TimeInfo;
+            ProgressSpeed = info.Speed;
+        });
+
+    private async Task UnpackAsync(KeyStore keyStore, string unpackedPath, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         Log("언팩 시작...", LogLevel.Highlight);
 
@@ -202,23 +221,23 @@ public class RepackMainViewModel : ToolTabViewModel
                 var ncchHeader = NcchHeader.Parse(hdrBuf);
                 ncchStream.Position = 0;
 
-                var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader, ct);
+                var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader,  ct);
                 string partDir = Path.Combine(unpackedPath, $"partition{idx}");
 
-                await NcchUnpacker.SaveToDirectoryAsync(ncchStream, unpack, partDir, ct);
+                await NcchUnpacker.SaveToDirectoryAsync(ncchStream, unpack, partDir, reporter, ct);
                 Log($"파티션 {idx} 언팩 완료", LogLevel.Info);
             }
         }
     }
 
-    private async Task RepackAsync(KeyStore keyStore, string unpackedPath, string outputCci, Action<long, long> reporter, CancellationToken ct)
+    private async Task RepackAsync(KeyStore keyStore, string unpackedPath, string outputCci, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         Log("리팩 시작...", LogLevel.Highlight);
 
         throw new NotImplementedException("폴더 기반 리팩은 추후 구현 예정");
     }
 
-    private async Task RepackDirectAsync(KeyStore keyStore, string outputCci, Action<long, long> reporter, CancellationToken ct)
+    private async Task RepackDirectAsync(KeyStore keyStore, string outputCci, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         Log("메모리 기반 리팩 시작...", LogLevel.Highlight);
 
@@ -236,7 +255,7 @@ public class RepackMainViewModel : ToolTabViewModel
             var ncchHeader = NcchHeader.Parse(hdrBuf);
             ncchStream.Position = 0;
 
-            var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader, ct);
+            var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader,  ct);
 
             string? exefsPatchDir = GetPatchDir("exefs");
             string? romfsPatchDir = GetPatchDir("romfs");
@@ -278,64 +297,6 @@ public class RepackMainViewModel : ToolTabViewModel
             ".cia" => await new CiaReader(keyStore).OpenAsync(inputPath, log, ct),
             ".cci" or ".3ds" => await CciSource.OpenAsync(inputPath, keyStore, log, ct),
             _ => throw new NotSupportedException($"지원하지 않는 파일 형식: {ext}")
-        };
-    }
-
-    private Action<long, long> CreateProgressReporter(long startTime)
-    {
-        var reportLock = new object();
-        var reportSw = System.Diagnostics.Stopwatch.StartNew();
-        var window = new Queue<(long ts, long written)>();
-        double windowSec = 2.0;
-
-        return (cur, total) =>
-        {
-            lock (reportLock)
-            {
-                if (cur < total && reportSw.ElapsedMilliseconds < 100)
-                    return;
-
-                long now = System.Diagnostics.Stopwatch.GetTimestamp();
-                window.Enqueue((now, cur));
-
-                double freq = System.Diagnostics.Stopwatch.Frequency;
-
-                while (window.Count > 1 && (now - window.Peek().ts) / freq > windowSec)
-                    window.Dequeue();
-
-                double mibPerSec = 0;
-                double etaSec = 0;
-
-                if (window.Count >= 2)
-                {
-                    var (ts, written) = window.Peek();
-                    double secSpan = (now - ts) / freq;
-                    long bytesSpan = cur - written;
-                    double avgSpeed = cur / ((now - startTime) / freq);
-                    double windowSpeed = secSpan > 0 ? bytesSpan / secSpan : 0;
-                    double progressRatio = total > 0 ? (double)cur / total : 0;
-                    double blendedSpeed = avgSpeed * (1 - progressRatio) + windowSpeed * progressRatio;
-
-                    mibPerSec = blendedSpeed / (1024.0 * 1024.0);
-                    etaSec = blendedSpeed > 0 ? (total - cur) / blendedSpeed : 0;
-                }
-
-                double elapsedSec = (now - startTime) / freq;
-                var elapsed = TimeSpan.FromSeconds(elapsedSec);
-                var totalEta = TimeSpan.FromSeconds(elapsedSec + Math.Max(0, etaSec));
-                int pct = total > 0 ? (int)(cur * 100 / total) : 0;
-                if (pct > 100) pct = 100;
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    ProgressPct = pct;
-                    ProgressLabel = $"{pct}%";
-                    ProgressTime = $"{elapsed:mm\\:ss} / {totalEta:mm\\:ss}";
-                    SpeedLabel = $"{mibPerSec:F1} MiB/s";
-                });
-
-                reportSw.Restart();
-            }
         };
     }
 
@@ -389,7 +350,7 @@ public class RepackMainViewModel : ToolTabViewModel
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Title = "원본 파일 선택",
-            Filter = "3DS ROM 파일|*.cci;*.3ds;*.cia|모든 파일|*.*"
+            Filter = "3DS ROM 파일|*.cci;*.3ds;*.cia"
         };
         if (dlg.ShowDialog() == true)
             InputPath = dlg.FileName;

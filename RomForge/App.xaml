@@ -19,7 +19,8 @@
             <converters:LevelToColorConverter x:Key="LevelToColorConverter"/>
             <converters:CompressLevelTextConverter x:Key="CompressLevelTextConverter"/>            
             <converters:BoolToImageConverter x:Key="BoolToImageConverter"/>
-            <wpfconverters:PbpLanguageToFlagConverter x:Key="PbpLanguageToFlagConverter"/>
+            <converters:ProgressToStarConverter x:Key="ProgressToStarConverter"/>
+            <wpfconverters:PbpLanguageToFlagConverter x:Key="PbpLanguageToFlagConverter"/>            
             
             <Style TargetType="TabControl">
                 <Setter Property="Background" Value="Transparent"/>

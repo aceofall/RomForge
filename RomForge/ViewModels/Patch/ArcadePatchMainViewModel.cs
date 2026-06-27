@@ -73,7 +73,18 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public int TotalProgress
     {
         get => _totalProgress;
-        set { _totalProgress = value; OnPropertyChanged(); }
+        set 
+        { 
+            _totalProgress = value; 
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(TotalProgressText));
+
+        }
+    }
+
+    public string TotalProgressText
+    {
+        get => $"{_totalProgress}%";
     }
 
     private string _progressSummary = string.Empty;

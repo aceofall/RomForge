@@ -59,7 +59,17 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public int Progress
     {
         get => _progress;
-        set { _progress = value; OnPropertyChanged(); }
+        set 
+        { 
+            _progress = value; 
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ProgressText));
+        }
+    }
+
+    public string ProgressText
+    {
+        get => $"{_progress}%";
     }
 
     private string _progressStatus = "대기 중";

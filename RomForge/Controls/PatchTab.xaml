@@ -21,19 +21,18 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="16"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="16"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-
                     <Grid Grid.Row="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="2"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-
                         <Border IsEnabled="{Binding IsIdle}" Grid.Column="0" Style="{StaticResource DropZone}" AllowDrop="True" Drop="NormalSourceDrop_Drop" MouseLeftButtonDown="NormalSourceDrop_Click">
                             <Grid Margin="14,0">
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -47,7 +46,6 @@
                                 <TextBlock Text="원본" Foreground="#888" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8" ToolTip="{Binding PatchVM.NormalVM.SourcePath}"/>
                             </Grid>
                         </Border>
-
                         <Border IsEnabled="{Binding IsIdle}" Grid.Column="2" Style="{StaticResource DropZone}" AllowDrop="True" Drop="NormalPatchDrop_Drop" MouseLeftButtonDown="NormalPatchDrop_Click">
                             <Grid Margin="14,0">
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -62,28 +60,7 @@
                             </Grid>
                         </Border>
                     </Grid>
-
-                    <Grid Grid.Row="2">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="24"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <Grid Grid.Row="0">
-                            <ProgressBar Value="{Binding PatchVM.NormalVM.Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="24"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Foreground="White" FontSize="11" FontWeight="Bold">
-                                    <TextBlock.Text>
-                                        <MultiBinding StringFormat="{}{0} ({1}%)">
-                                            <Binding Path="PatchVM.NormalVM.ProgressStatus"/>
-                                            <Binding Path="PatchVM.NormalVM.Progress"/>
-                                        </MultiBinding>
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
-                    <Border Grid.Row="4" BorderBrush="#333337" BorderThickness="1" CornerRadius="5" Padding="10,8" Margin="0,0,0,2">   
+                    <Border Grid.Row="2" BorderBrush="#333337" BorderThickness="1" CornerRadius="5" Padding="5,5" Margin="0,2,0,2" VerticalAlignment="Top">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/Patch.png" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="#909090">
@@ -92,7 +69,7 @@
                             </TextBlock>
                         </StackPanel>
                     </Border>
-                    <GroupBox Grid.Row="5" Header="옵션" >
+                    <GroupBox Grid.Row="4" Header="옵션" Margin="0,0,0,12">
                         <ToggleButton Style="{StaticResource ToggleStyle}" IsChecked="{Binding PatchVM.NormalVM.AutoCompress}" Margin="0,2,0,2">
                             <StackPanel Orientation="Horizontal">
                                 <Image Width="18" Margin="0,0,10,0" Source="{Binding PatchVM.NormalVM.AutoCompress, Converter={StaticResource BoolToImageConverter}}"/>
@@ -100,6 +77,30 @@
                             </StackPanel>
                         </ToggleButton>
                     </GroupBox>
+                    <Border Grid.Row="6" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+                        <Grid Height="28">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="140"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding PatchVM.NormalVM.ProgressStatus}" Foreground="#A0A0A0" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Column="1" Margin="0,0,10,0" Text="{Binding PatchVM.NormalVM.ProgressText}" Foreground="#4CAF50" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+
+                            <Grid Grid.Column="2" Height="10" VerticalAlignment="Center">
+                                <Border Background="#25FFFFFF" CornerRadius="5"/>
+                                <Border CornerRadius="5" ClipToBounds="True">
+                                    <Border Background="#4CAF50" CornerRadius="5" RenderTransformOrigin="0,0.5">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform ScaleX="{Binding PatchVM.NormalVM.Progress, Converter={StaticResource ProgressToStarConverter}, FallbackValue=0}"/>
+                                        </Border.RenderTransform>
+                                    </Border>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 
@@ -154,7 +155,7 @@
 
                         <TextBlock Grid.Column="0" Text="패치 선택:" Foreground="#DCDCDC" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"/>
 
-                        <ComboBox Grid.Column="1" Height="22" Padding="2,0" FontSize="9" VerticalAlignment="Center" 
+                        <ComboBox Grid.Column="1" Height="22" Padding="2,0" FontSize="11" VerticalAlignment="Center" 
                                   ItemsSource="{Binding DataContext.PatchVM.ArcadeVM.AvailablePatchPackages, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
                                   DisplayMemberPath="DisplayName" 
                                   SelectedItem="{Binding DataContext.PatchVM.ArcadeVM.SelectedPatchPackage, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -222,7 +223,7 @@
                                                     </TextBlock>
                                                 </Border>
 
-                                                <ComboBox Grid.Column="3" Width="140" Height="22" Margin="4,0,0,0" Padding="2,0" FontSize="9" VerticalAlignment="Center" 
+                                                <ComboBox Grid.Column="3" Width="140" Height="22" Margin="4,0,0,0" Padding="2,0" FontSize="11" VerticalAlignment="Center" 
                                                           ItemsSource="{Binding DataContext.PatchVM.ArcadeVM.AllPatchEntries, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
                                                           DisplayMemberPath="DisplayName" SelectedItem="{Binding PatchEntry, Mode=OneWay}" SelectionChanged="PatchPicker_SelectionChanged" Tag="{Binding}" ToolTip="다른 패치 파일로 변경">
                                                     <ComboBox.ItemContainerStyle>
@@ -271,7 +272,7 @@
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
-                                                
+
                                                 <Grid Grid.Column="6" Margin="6,0,0,0">
                                                     <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="20"/>
                                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -298,14 +299,30 @@
                         </StackPanel>
                     </Border>
 
-                    <Grid Grid.Row="3" Margin="0,2,0,4">
-                        <ProgressBar Value="{Binding PatchVM.ArcadeVM.TotalProgress}" Maximum="100" Style="{StaticResource ProgressBarStyle}" Height="24"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding PatchVM.ArcadeVM.TotalProgress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                            <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
-                        </StackPanel>
-                        <TextBlock Text="{Binding PatchVM.ArcadeVM.ProgressSummary}" Foreground="#DDDDDD" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0"/>
-                    </Grid>
+                    <Border Grid.Row="4" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+                        <Grid Height="28">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="140"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding PatchVM.ArcadeVM.ProgressSummary}" Foreground="#A0A0A0" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Column="1" Margin="0,0,10,0" Text="{Binding PatchVM.ArcadeVM.TotalProgressText}" Foreground="#4CAF50" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+
+                            <Grid Grid.Column="2" Height="10" VerticalAlignment="Center">
+                                <Border Background="#25FFFFFF" CornerRadius="5"/>
+                                <Border CornerRadius="5" ClipToBounds="True">
+                                    <Border Background="#4CAF50" CornerRadius="5" RenderTransformOrigin="0,0.5">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform ScaleX="{Binding PatchVM.ArcadeVM.TotalProgress, Converter={StaticResource ProgressToStarConverter}, FallbackValue=0}"/>
+                                        </Border.RenderTransform>
+                                    </Border>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 
@@ -331,7 +348,7 @@
                     <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding PatchVM.IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding PatchVM.ClearCommand}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="초기화" VerticalAlignment="Center"/>                            
+                            <TextBlock Text="초기화" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GrayButton}" Command="{Binding PatchVM.CalculateHashCommand}" Margin="0,0,6,0">
