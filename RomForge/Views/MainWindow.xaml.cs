@@ -1,8 +1,10 @@
-﻿using NSW.WPF.UI;
+﻿using LibHac.Fs.Shim;
+using NSW.WPF.UI;
 using RomForge.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 
 namespace RomForge.Views;
@@ -27,6 +29,12 @@ public partial class MainWindow : Window
         int value = 1;
 
         _ = Win32API.DwmSetWindowAttribute(hWnd, 20, ref value, sizeof(int));
+    }
+
+    private void GridSplitter_DragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        vm.LogBoxHeight = LogRow.Height.Value;
     }
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)

@@ -5,6 +5,16 @@ using System.Text.Json;
 
 namespace RomForge.Core;
 
+public class CommonConfig : ViewModelBase
+{
+    private double _logBoxHeight = 130;
+    public double LogBoxHeight
+    {
+        get => _logBoxHeight;
+        set { SetProperty(ref _logBoxHeight, value); }
+    }
+}
+
 public class PatchConfig : ViewModelBase
 {
     private bool _autoCompress;
@@ -77,6 +87,8 @@ public class AppConfig : ViewModelBase
     private PS1Config _ps1 = new();
     public PS1Config PS1 { get => _ps1; set => SetProperty(ref _ps1, value); }
 
+    public CommonConfig Common { get; set; } = new();
+
     public AppConfig Load()
     {
         if (!File.Exists(DefaultFilePath)) { Save(); return this; }
@@ -85,6 +97,7 @@ public class AppConfig : ViewModelBase
             var loaded = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(DefaultFilePath));
             if (loaded != null)
             {
+                Common = loaded.Common ?? new();
                 Patch = loaded.Patch ?? new();
                 Switch = loaded.Switch ?? new();
                 Azahar = loaded.Azahar ?? new();
@@ -102,6 +115,7 @@ public class AppConfig : ViewModelBase
     {
         void AutoSave(object? s, PropertyChangedEventArgs e) => Save();
 
+        Common.PropertyChanged += AutoSave;
         Switch.PropertyChanged += AutoSave;
         Azahar.PropertyChanged += AutoSave;
         Dolphin.PropertyChanged += AutoSave;

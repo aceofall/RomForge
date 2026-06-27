@@ -18,6 +18,12 @@ public class MainViewModel : ToolTabViewModel
     private int _selectedTabIndex;
     private readonly AppConfig _config = new AppConfig().Load();
 
+    public double LogBoxHeight
+    {
+        get => _config.Common.LogBoxHeight;
+        set { _config.Common.LogBoxHeight = value; }
+    }
+
     public PatchMainViewModel PatchVM { get; }
 
     public CompressMainViewModel CompressVM { get; }

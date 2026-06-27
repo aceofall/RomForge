@@ -171,6 +171,10 @@ public class CsoService
         using var wrapper = new LibChdrWrapper();
         var err = wrapper.Open(chdPath);
 
+        var h = wrapper.ReadHunk(0);
+
+        Debug.WriteLine(BitConverter.ToString(h.Skip(0).Take(64).ToArray()));
+
         if (err != ChdrError.CHDERR_NONE)
             throw new InvalidDataException($"CHD 열기 실패: {LibChdrWrapper.GetErrorString(err)}");
 
