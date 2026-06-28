@@ -81,7 +81,7 @@ public class MainViewModel : ToolTabViewModel
         PatchVM = new PatchMainViewModel(_config, async (file) => await MapsToHashAndProcess(file));
         CompressVM = new CompressMainViewModel(_config);
         SwitchMainVM = new SwitchMainViewModel(_config);
-        SwitchMainVM.MergeVM.SettingsClicked += async (s, e) => await NavigateCompressSettings();
+        SwitchMainVM.MergeVM.SettingsClicked += async (s, e) => await NavigateSwitchCompressSettings();
         Main3DsVM = new _3DSMainViewModel();
         PS1MainVM = new PS1MainViewModel(_config);
         PS1MainVM.RunNavigatePackingSettings += PS1MainVM_RunNavigatePackingSettings;
@@ -117,6 +117,13 @@ public class MainViewModel : ToolTabViewModel
     {
         SelectedViewModel = Settings;
         Settings.SelectedViewModel = Settings.Compress;
+    }
+
+    private async Task NavigateSwitchCompressSettings()
+    {
+        SelectedViewModel = Settings;
+        Settings.SelectedViewModel = Settings.Compress;
+        Settings.Compress.SelectedTabIndex = 1;
     }
 
     private void PS1MainVM_RunNavigatePackingSettings(object? sender, EventArgs e)

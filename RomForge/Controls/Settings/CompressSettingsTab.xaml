@@ -2,8 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:RomForge.Converters">
-    <TabControl>
-
+    
+    <TabControl SelectedIndex = "{Binding SelectedTabIndex}">
         <TabItem>
             <TabItem.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
