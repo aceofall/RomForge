@@ -1,5 +1,6 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
+using NSW.Core;
 using NSW.WPF.Services;
 using NSW.WPF.ViewModels;
 using RomForge.Core;
@@ -188,7 +189,16 @@ public class MergeMainViewModel : ToolTabViewModel
                 var progress = BuildProgressReporter();
                 int compressLevel = GetCompressLevel();
 
-                List<string> results = await SwitchMergeService.Merge(inputPaths, outputDir, compressLevel, UseBlockMode, VerifyCompress, ForceKeyGen0, UseNSP, progress, Log, _cts.Token);
+                var keySet = KeySetProvider.Instance.KeySet.Clone();
+                var results = new List<string>();
+                bool useCompression = compressLevel > 0;
+
+                List<string> output = 
+                    UseXCI
+                    ? await XciMergeService.RunMergeAll(inputPaths, outputDir, useCompression, compressLevel, UseBlockMode, VerifyCompress, ForceKeyGen0, keySet.Clone(), progress, Log, _cts.Token)
+                    : await NspMergeService.RunMergeAll(inputPaths, outputDir, useCompression, compressLevel, UseBlockMode, VerifyCompress, ForceKeyGen0, keySet.Clone(), progress, Log, _cts.Token);
+
+                results.AddRange(output);
 
                 if (results?.Count > 0)
                 {
@@ -248,7 +258,7 @@ public class MergeMainViewModel : ToolTabViewModel
                 for (int i = 0; i < gameFiles.Count; i++)
                 {
                     _cts.Token.ThrowIfCancellationRequested();
-                    resultCount += await NspSplitService.Split(
+                    resultCount += await SwitchSplitService.Split(
                         gameFiles[i].FilePath, outputDir, compressLevel, UseBlockMode,
                         VerifyCompress, ForceKeyGen0, i + 1, gameFiles.Count,
                         progress, Log, _cts.Token);

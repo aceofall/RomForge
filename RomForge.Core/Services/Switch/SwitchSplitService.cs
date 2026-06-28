@@ -20,7 +20,7 @@ using Res = NSW.Core.Properties.Resources;
 
 namespace RomForge.Core.Services.Switch;
 
-public class NspSplitService : BaseSwitchService
+public class SwitchSplitService : BaseSwitchService
 {
     public static async Task<int> Split(string sourcePath, string outputDir, int compressionLevel, bool useBlockMode, bool isValidationEnabled, bool forceKeyGen0, int index, int groupCount, IProgress<ProgressInfo> progress, Action<string, LogLevel, string> log, CancellationToken ct = default)
     {

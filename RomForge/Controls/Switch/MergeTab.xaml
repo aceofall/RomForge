@@ -21,7 +21,7 @@
             <!-- Row 0: File Manager -->
             <core:FileManagerControl x:Name="fileMgr" Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsIdle}"/>
 
-            <Border Grid.Row="1" Style="{StaticResource OptionBorder}" Margin="5,0,5,5" >
+            <Border Grid.Row="1" Style="{StaticResource OptionBorder}" Margin="5,0,5,5" IsEnabled="{Binding IsIdle}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
