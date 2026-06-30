@@ -31,8 +31,9 @@ public class PbpUnpacker
                 disc.ProgressEvent = bytes => OnProgress?.Invoke((int)Math.Round((capturedBase + bytes) * 100.0 / totalSize));
 
                 var discSuffix = isMultiDisc ? $" (Disc {disc.Index})" : string.Empty;
-                var binPath = Path.Combine(outputDir, $"{baseName}{discSuffix}.bin");
-                var cuePath = Path.Combine(outputDir, $"{baseName}{discSuffix}.cue");
+                var candidateBaseName = $"{baseName}{discSuffix}";
+
+                var (binPath, cuePath) = GetUniquePairedPaths(outputDir, candidateBaseName);
 
                 OnNotify?.Invoke($"언팩중 {binPath}...");
                 createdFiles.Add(binPath);
@@ -48,7 +49,7 @@ public class PbpUnpacker
                 {
                     var cueFile = TocHelper.TOCtoCUE(disc.TOC, Path.GetFileName(binPath));
 
-                    createdFiles.Add(cuePath); // 👈
+                    createdFiles.Add(cuePath);
                     CueFileWriter.Write(cueFile, cuePath);
                     OnNotify?.Invoke($"언팩중 {cuePath}...");
                 }
@@ -67,5 +68,23 @@ public class PbpUnpacker
         }
 
         OnNotify?.Invoke("언팩 완료");
+    }
+
+    private static (string BinPath, string CuePath) GetUniquePairedPaths(string outputDir, string baseName)
+    {
+        var candidate = baseName;
+        var suffix = 0;
+
+        while (true)
+        {
+            var binPath = Path.Combine(outputDir, $"{candidate}.bin");
+            var cuePath = Path.Combine(outputDir, $"{candidate}.cue");
+
+            if (!File.Exists(binPath) && !File.Exists(cuePath))
+                return (binPath, cuePath);
+
+            suffix++;
+            candidate = $"{baseName}{new string('_', suffix)}";
+        }
     }
 }

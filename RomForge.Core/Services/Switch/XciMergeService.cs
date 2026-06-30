@@ -13,6 +13,7 @@ using NSW.Core;
 using NSW.Core.Models;
 using NSW.Utils;
 using RomForge.Core.Models.Switch;
+using System.DirectoryServices.ActiveDirectory;
 using System.IO;
 using Path = System.IO.Path;
 using Res = NSW.Core.Properties.Resources;
@@ -281,13 +282,11 @@ public class XciMergeService : BaseSwitchService
 
             log?.Invoke(string.Format(Res.Log_FinalId, meta.TitleId, meta.DisplayVersion), LogLevel.Ok, req.TargetBaseTitleId);
 
-            string finalFileName = NspNameBuilder.FileNameBuild("Merged", meta.KrTitle, meta.EnTitle, meta.TitleId, meta.DisplayVersion, meta.TitleVersion, meta.DlcCount, hasBase, hasUpdate, req.UseCompression);
+            string finalFileName = NspNameBuilder.FileNameBuild("Merged", meta.KrTitle, meta.EnTitle, meta.TitleId, meta.DisplayVersion, meta.TitleVersion, meta.DlcCount, hasBase, hasUpdate, req.UseCompression ? NswContainerFormat.Xcz: NswContainerFormat.Xci);
 
-            finalFileName = Path.ChangeExtension(finalFileName, req.UseCompression ? ".xcz" : ".xci");
             finalPath = Utils.GetUniqueFilePath(Path.Combine(req.OutputDir, finalFileName));
 
-            string displayName = NspNameBuilder.DisplayNameBuild(meta.EnTitle, meta.TitleId, meta.DisplayVersion, meta.DlcCount, hasBase, hasUpdate, req.UseCompression);
-            displayName = Path.ChangeExtension(finalFileName, req.UseCompression ? ".xcz" : ".xci");
+            string displayName = NspNameBuilder.DisplayNameBuild(meta.EnTitle, meta.TitleId, meta.DisplayVersion, meta.DlcCount, hasBase, hasUpdate, req.UseCompression ? NswContainerFormat.Xcz : NswContainerFormat.Xci);
 
             LocalStorage? baseStorage = xciBasePath != null ? new LocalStorage(xciBasePath, FileAccess.Read) : null;
 

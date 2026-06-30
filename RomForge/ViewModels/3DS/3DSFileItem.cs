@@ -1,11 +1,11 @@
-﻿using _3DS.Core.Enums;
+using _3DS.Core.Enums;
 using Common.WPF.ViewModels;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels._3DS;
 
-public class DecryptorFileItem(string filePath) : FileItemBase(filePath)
+public class _3DSFileItem(string filePath) : ConvertibleFileItemBase(filePath, "미지원")
 {
     private BitmapSource? _icon;
     private string _titleId = string.Empty;
@@ -77,6 +77,16 @@ public class DecryptorFileItem(string filePath) : FileItemBase(filePath)
         ["3ds"] = "#FFE094",
         ["cci"] = "#FFCE73",
         ["cia"] = "#C96F2C",
+        ["zcci"] = "#D48843",
+    };
+
+    protected override IReadOnlyList<string> GetAvailableFormats(string extension) => extension switch
+    {
+        "3ds" => ["CIA", "ZCCI"],
+        "cci" => ["CIA", "ZCCI"],
+        "cia" => ["CCI", "ZCCI"],
+        "zcci" => ["CCI"],
+        _ => []
     };
 
     protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);

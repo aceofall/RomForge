@@ -1,13 +1,10 @@
-﻿using NSW.WPF.ViewModels;
+﻿using Common.WPF.ViewModels;
 
 namespace RomForge.ViewModels.Switch;
 
-public class ConverterFileItem : GameFile
+public class ConverterFileItem : NSW.WPF.ViewModels.GameFile, Common.WPF.ViewModels.IConvertible
 {
-    private int _progress;
-    private string _status = "대기중";
-    private string _selectedTargetFormat = string.Empty;
-    private int _no;
+    private string _selectedTargetFormat;
 
     public ConverterFileItem(string filePath) : base(filePath)
     {
@@ -20,25 +17,7 @@ public class ConverterFileItem : GameFile
     public string SelectedTargetFormat
     {
         get => _selectedTargetFormat;
-        set { _selectedTargetFormat = value; OnPropertyChanged(); }
-    }
-
-    public int Progress
-    {
-        get => _progress;
-        set { _progress = value; OnPropertyChanged(); }
-    }
-
-    public string Status
-    {
-        get => _status;
-        set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); }
-    }
-
-    public int No
-    {
-        get => _no;
-        set { _no = value; OnPropertyChanged(); }
+        set => SetProperty(ref _selectedTargetFormat, value);
     }
 
     public string StatusColor => Status switch
@@ -50,7 +29,13 @@ public class ConverterFileItem : GameFile
         _ => "#888888"
     };
 
-    private static List<string> GetAvailableFormats(string ext) => ext.ToLower() switch
+    protected override void OnStatusChanged()
+    {
+        base.OnStatusChanged();
+        OnPropertyChanged(nameof(StatusColor));
+    }
+
+    private static List<string> GetAvailableFormats(string ext) => ext.ToLowerInvariant() switch
     {
         "nsp" => ["XCI", "NSZ", "XCZ"],
         "xci" => ["NSP", "NSZ", "XCZ"],

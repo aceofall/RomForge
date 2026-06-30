@@ -237,14 +237,14 @@ public class SwitchSplitService : BaseSwitchService
                 fileEntries.Add((result.Value.FinalName, result.Value.Writer, result.Value.Size, result.Value.Label));
             }
 
-            string outExt = outputAsXci ? (useCompression ? ".xcz" : ".xci") : (useCompression ? ".nsz" : ".nsp");
-            string outName = NspNameBuilder.SplitFileNameBuild(meta.KrTitle, meta.EnTitle, meta.TitleId, meta.GetEffectiveDisplayVersion(), typeTag, useCompression);
+            NswContainerFormat format = outputAsXci
+                ? (useCompression ? NswContainerFormat.Xcz : NswContainerFormat.Xci)
+                : (useCompression ? NswContainerFormat.Nsz : NswContainerFormat.Nsp);
 
-            outName = Path.ChangeExtension(outName, outExt);
+            string outName = NspNameBuilder.SplitFileNameBuild(meta.KrTitle, meta.EnTitle, meta.TitleId, meta.GetEffectiveDisplayVersion(), typeTag, format);
             finalPath = Utils.GetUniqueFilePath(Path.Combine(outputDir, outName));
 
             string displayName = NspNameBuilder.DisplayNameBuild(meta.EnTitle, meta.TitleId, meta.DisplayVersion);
-            displayName = Path.ChangeExtension(displayName, useCompression ? ".xcz" : ".xci");
 
             using var fout = File.Open(finalPath, FileMode.Create, FileAccess.ReadWrite);
 

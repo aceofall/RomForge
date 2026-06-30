@@ -26,7 +26,7 @@ public class ConverterMainViewModel : ToolTabViewModel
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
-    public ObservableCollection<FileItem> FileItems { get; } = [];
+    public ObservableCollection<_3DSFileItem> FileItems { get; } = [];
 
     #endregion
 
@@ -48,7 +48,7 @@ public class ConverterMainViewModel : ToolTabViewModel
 
     #endregion
 
-    public event Action<FileItem>? ScrollToItemRequested;
+    public event Action<_3DSFileItem>? ScrollToItemRequested;
 
     #region Constructor
 
@@ -77,7 +77,7 @@ public class ConverterMainViewModel : ToolTabViewModel
             try
             {
                 var result = await Util.ParseFile(path);
-                var vm = new FileItem(path)
+                var vm = new _3DSFileItem(path)
                 {
                     TitleId = result.Title!.TitleId,
                     ProductCode = result.ProductCode,
@@ -108,7 +108,7 @@ public class ConverterMainViewModel : ToolTabViewModel
         CommandManager.InvalidateRequerySuggested();
     }
 
-    public void RemoveItems(IEnumerable<FileItem> items)
+    public void RemoveItems(IEnumerable<_3DSFileItem> items)
     {
         foreach (var item in items.ToList())
             FileItems.Remove(item);

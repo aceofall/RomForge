@@ -38,7 +38,8 @@ public class PackingMainViewModel : ToolTabViewModel
     private string _progressPercent = "0%";
     private string _progressTime = string.Empty;
     private string _progressSpeed = string.Empty;
-    private bool _isDownloading;    
+    private bool _isDownloading;
+    private bool _isValidating;
 
     private byte[] _icon0Bytes = EmbeddedAssetProvider.GetDefaultIcon0();
     private byte[] _pic0Bytes = EmbeddedAssetProvider.GetDefaultPic0();
@@ -89,6 +90,17 @@ public class PackingMainViewModel : ToolTabViewModel
             OnPropertyChanged(); 
             OnPropertyChanged(nameof(CanRun));
             Application.Current.Dispatcher.InvokeAsync(CommandManager.InvalidateRequerySuggested);
+        }
+    }
+
+    public bool IsValidating
+    {
+        get => _isValidating;
+        set 
+        {
+            _isValidating = value; 
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanAdd));
         }
     }
 
@@ -157,11 +169,24 @@ public class PackingMainViewModel : ToolTabViewModel
         };
     }
 
-    public void AddPaths(IEnumerable<string> paths)
+    public async void AddPaths(IEnumerable<string> paths)
+    {
+        try
+        {
+            await AddPathsCoreAsync(paths);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"파일 추가 중 오류: {ex.Message}", LogLevel.Error);
+            IsValidating = false;
+        }
+    }
+
+    private async Task AddPathsCoreAsync(IEnumerable<string> paths)
     {
         var inputPaths = paths.ToList();
 
-        if (inputPaths.Count == 0) 
+        if (inputPaths.Count == 0)
             return;
 
         var rawFiles = ExpandPaths(inputPaths).ToList();
@@ -180,30 +205,102 @@ public class PackingMainViewModel : ToolTabViewModel
 
         foreach (var p in explodedPaths)
         {
-            if (!SupportedExtensions.Contains(Path.GetExtension(p))) 
+            if (!SupportedExtensions.Contains(Path.GetExtension(p)))
                 continue;
 
             if (existing.Add(p))
                 newCandidates.Add(p);
         }
 
-        var room = MaxItems - FileItems.Count;
-        var toAdd = newCandidates.Take(Math.Max(room, 0)).ToList();
+        if (newCandidates.Count == 0)
+            return;
 
-        foreach (var path in toAdd)
+        var room = MaxItems - FileItems.Count;
+        var toValidate = newCandidates.Take(Math.Max(room, 0)).ToList();
+        int userRejectedCount = newCandidates.Count - toValidate.Count;
+
+        if (toValidate.Count == 0)
         {
-            var item = new DiscFileItem(path);
-            FileItems.Add(item);
-            _ = LoadItemInfoAsync(item);
+            if (userRejectedCount > 0)
+                AppendLog($"최대 {MaxItems}개까지만 등록할 수 있습니다. {userRejectedCount}개 파일이 제외되었습니다.", LogLevel.Error);
+
+            return;
         }
 
-        int userRejectedCount = newCandidates.Count - toAdd.Count;
+        IsValidating = true;
+
+        List<(string Path, string GameId, long Size)> validated;
+        int failedCount;
+
+        try
+        {
+            var results = await Task.WhenAll(toValidate.Select(ValidateCandidateAsync));
+
+            validated = [.. results.Where(r => r != null).Select(r => r!.Value)];
+            failedCount = results.Length - validated.Count;
+        }
+        finally
+        {
+            IsValidating = false;
+        }
+
+        foreach (var v in validated)
+        {
+            var item = new DiscFileItem(v.Path)
+            {
+                GameId = v.GameId,
+                FileSizeBytes = v.Size
+            };
+
+            FileItems.Add(item);
+        }
 
         if (userRejectedCount > 0)
             AppendLog($"최대 {MaxItems}개까지만 등록할 수 있습니다. {userRejectedCount}개 파일이 제외되었습니다.", LogLevel.Error);
 
-        OnPropertyChanged(nameof(HintVisibility));
+        if (failedCount > 0)
+            AppendLog($"{failedCount}개 파일에서 GameID 인식에 실패해 제외되었습니다.", LogLevel.Error);
+
+        if (validated.Count > 0)
+        {
+            OnPropertyChanged(nameof(HintVisibility));
+            ResortAndRenumber();
+        }
+
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    private async Task<(string Path, string GameId, long Size)?> ValidateCandidateAsync(string path)
+    {
+        try
+        {
+            return await Task.Run(() =>
+            {
+                var ext = Path.GetExtension(path).ToLowerInvariant();
+                var size = DiscSizeResolver.GetTotalSize(path);
+
+                if (ext == ".chd")
+                    return (path, GameIdReader.ReadFromDisk(DiskSource.FromChd(path)), size);
+
+                if (ext == ".cue")
+                {
+                    var binPath = CueFileResolver.GetBinPath(path);
+                    using var stream = new FileStream(binPath, FileMode.Open, FileAccess.Read);
+
+                    return (path, GameIdReader.ReadFromStream(stream, stream.Length), size);
+                }
+
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+
+                return (path, GameIdReader.ReadFromStream(fs, fs.Length), size);
+            });
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[{Path.GetFileName(path)}] GameID 인식 실패: {ex.Message}", LogLevel.Error);
+
+            return null;
+        }
     }
 
     private static List<string> ResolveM3uAllDiscs(string m3uPath)
@@ -271,48 +368,6 @@ public class PackingMainViewModel : ToolTabViewModel
         bitmapImage.Freeze();
 
         apply(finalBytes, bitmapImage);
-    }
-
-    private async Task LoadItemInfoAsync(DiscFileItem item)
-    {
-        try
-        {
-            var (gameId, size) = await Task.Run(() =>
-            {
-                var ext = Path.GetExtension(item.FilePath).ToLowerInvariant();
-                var size = DiscSizeResolver.GetTotalSize(item.FilePath);
-
-                if (ext == ".chd")
-                    return (GameIdReader.ReadFromDisk(DiskSource.FromChd(item.FilePath)), size);
-
-                if (ext == ".cue")
-                {
-                    var cueFile = CueFileReader.Read(item.FilePath);
-                    var binPath = CueFileResolver.GetBinPath(item.FilePath);
-                    using var stream = new FileStream(binPath, FileMode.Open, FileAccess.Read);
-
-                    return (GameIdReader.ReadFromStream(stream, stream.Length), size);
-                }
-
-                using var fs = new FileStream(item.FilePath, FileMode.Open, FileAccess.Read);
-
-                return (GameIdReader.ReadFromStream(fs, fs.Length), size);
-            });
-
-            item.GameId = gameId;
-            item.FileSizeBytes = size;
-        }
-        catch (Exception ex)
-        {
-            item.GameId = "인식실패";
-            AppendLog($"[{item.FileName}] GameID 인식 실패: {ex.Message}", LogLevel.Error);
-            FileItems.Remove(item);
-            OnPropertyChanged(nameof(HintVisibility));
-            CommandManager.InvalidateRequerySuggested();
-            return;
-        }
-
-        ResortAndRenumber();
     }
 
     private void ResortAndRenumber()

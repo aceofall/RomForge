@@ -3,49 +3,19 @@ using System.IO;
 
 namespace RomForge.ViewModels.Util;
 
-public class HashFileItem : ViewModelBase
+public class HashFileItem(string filePath) : FileItemBase(filePath)
 {
-    private int _progress;
-    private string _status = string.Empty;
     private string _hashResult = string.Empty;
-    private int _no;
 
-    public string FilePath { get; }
-
-    public string FileName => Path.GetFileName(FilePath);
-
-    public string FileSize { get; }
-
-    public int Progress
-    {
-        get => _progress;
-        set { _progress = value; OnPropertyChanged(); }
-    }
-
-    public string Status
-    {
-        get => _status;
-        set { _status = value; OnPropertyChanged(); }
-    }
-
-    public string RawHash { get; set; }
+    public string RawHash { get; set; } = string.Empty;
 
     public string HashResult
     {
         get => _hashResult;
-        set { _hashResult = value; OnPropertyChanged(); }
+        set => SetProperty(ref _hashResult, value);
     }
 
-    public int No
-    {
-        get => _no;
-        set { _no = value; OnPropertyChanged(); }
-    }
+    public override string FileName => Path.GetFileName(FilePath);
 
-    public HashFileItem(string filePath)
-    {
-        FilePath = filePath;
-        var info = new FileInfo(filePath);
-        FileSize = PickPack.Disk.ETC.FileSize.FormatSize(info.Exists ? info.Length : 0);
-    }
+    protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
 }

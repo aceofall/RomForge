@@ -30,7 +30,7 @@ public partial class ConverterTab : UserControl
             newVm.ScrollToItemRequested += OnScrollToItemRequested;
     }
 
-    private void OnScrollToItemRequested(FileItem item)
+    private void OnScrollToItemRequested(_3DSFileItem item)
     {
         Dispatcher.InvokeAsync(() =>
         {
@@ -62,7 +62,7 @@ public partial class ConverterTab : UserControl
         if (e.Key != Key.Delete) 
             return;
 
-        var selected = lvFiles.SelectedItems.Cast<FileItem>().ToList();
+        var selected = lvFiles.SelectedItems.Cast<_3DSFileItem>().ToList();
         ViewModel?.RemoveItems(selected);
     }
 
@@ -129,7 +129,7 @@ public partial class ConverterTab : UserControl
 
     private void BtnRemove_Click(object sender, RoutedEventArgs e)
     {
-        var selected = lvFiles.SelectedItems.Cast<FileItem>().ToList();
+        var selected = lvFiles.SelectedItems.Cast<_3DSFileItem>().ToList();
         ViewModel?.RemoveItems(selected);
     }
 
@@ -146,7 +146,7 @@ public partial class ConverterTab : UserControl
 
     private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        var selected = lvFiles.SelectedItems.Cast<FileItem>().ToList();
+        var selected = lvFiles.SelectedItems.Cast<_3DSFileItem>().ToList();
 
         if (selected.Count == 0)
             return;

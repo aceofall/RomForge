@@ -169,11 +169,11 @@ public class DecryptorMainViewModel : ToolTabViewModel
 
                     ScrollToItemRequested?.Invoke(item);
 
+                    string outputPath = Path.Combine(item.Directory, $"{item.FileName}_dec.{item.Extension}");
+                    outputPath = Utils.GetUniqueFilePath(outputPath);
+
                     try
                     {
-                        string outputPath = Path.Combine(item.Directory, $"{item.FileName}_dec.{item.Extension}");
-                        outputPath = Utils.GetUniqueFilePath(outputPath);
-
                         await DecryptAsync(item, outputPath, _cts.Token);
 
                         item.Progress = 100;
@@ -182,13 +182,18 @@ public class DecryptorMainViewModel : ToolTabViewModel
                     }
                     catch (OperationCanceledException)
                     {
+                        DeletePartialOutput(outputPath);
+
                         throw;
                     }
                     catch (Exception ex)
                     {
                         AppendLog($"[{item.FileName}] 복호화 실패: {ex.Message}", LogLevel.Error);
+
                         item.Status = "실패";
                         item.Progress = 0;
+
+                        DeletePartialOutput(outputPath);
                     }
                 }
 
@@ -200,12 +205,14 @@ public class DecryptorMainViewModel : ToolTabViewModel
             catch (OperationCanceledException)
             {
                 AppendLog("작업이 취소되었습니다.", LogLevel.Error);
+
                 foreach (var item in FileItems.Where(i => i.Status is "대기중" or "복호화중"))
                     item.Status = "취소";
             }
             catch (Exception ex)
             {
                 AppendLog($"오류: {ex.Message}", LogLevel.Error);
+
                 foreach (var item in FileItems.Where(i => i.Status == "복호화중"))
                     item.Status = "실패";
             }
@@ -213,6 +220,19 @@ public class DecryptorMainViewModel : ToolTabViewModel
             {
                 IsDecrypting = false;
             }
+        }
+    }
+
+    private void DeletePartialOutput(string outputPath)
+    {
+        try
+        {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"미완성 파일 삭제 실패: {ex.Message}", LogLevel.Error);
         }
     }
 
