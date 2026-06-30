@@ -1,0 +1,331 @@
+﻿using LibHac.Ns;
+using NSW.Core;
+using NSW.HacPack.Models;
+using NSW.WPF.Converters;
+using NSW.WPF.Models;
+using NSW.WPF.Services;
+using NSW.WPF.ViewModels;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using System.Collections.ObjectModel;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using PixelFormat = System.Drawing.Imaging.PixelFormat;
+
+namespace NSW.WPF.UI;
+
+public partial class LanguageTabControl : UserControl
+{
+    public ObservableCollection<LanguageItem> LanguageList { get; } = [];
+
+    public GameMetadata? CurrentMetadata { get; private set; }
+
+    public ApplicationControlProperty.Language ForcedLanguage { get; private set; } = ApplicationControlProperty.Language.None;
+
+    public byte? TargetIdOffset
+    {
+        get
+        {
+            if (cbxMultiRom.Dispatcher.CheckAccess())
+                return cbxMultiRom.SelectedItem is byte offset ? offset : null;
+            else
+                return cbxMultiRom.Dispatcher.Invoke(new Func<byte?>(() => TargetIdOffset));
+        }
+    }
+
+    private readonly string[] SupportedExts = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
+
+    public LanguageTabControl()
+    {
+        Resources.Add("LanguageToFlagConverter", new LanguageToFlagConverter());
+        Resources.Add("LanguageToFlagImageConverter", new LanguageToFlagImageConverter());
+
+        InitializeComponent();
+
+        lbLanguages.ItemsSource = LanguageList;
+        lbLanguages.SelectionChanged += LbLanguages_SelectionChanged;
+        txtGameName.TextChanged += TxtGameName_TextChanged;
+        txtPublisher.TextChanged += TxtPublisher_TextChanged;
+    }
+
+    public async Task UpdateLanguageTabAsync(IList<GameFile> gameFiles, string? unpackedDir = null)
+    {
+        ResetUI();
+
+        GameMetadata? metadata = await Task.Run(() => LoadGameMetadata(gameFiles, unpackedDir));
+
+        if (metadata != null)
+        {
+            CurrentMetadata = metadata;
+            BindMetadataToUI(metadata);
+        }
+    }
+
+    public void SyncMetadataFromUI()
+    {
+        if (CurrentMetadata == null) 
+            return;
+
+        foreach (var item in LanguageList)
+        {
+            var target = CurrentMetadata.Languages
+                .FirstOrDefault(l => l.Language == item.Language);
+            if (target != null) target.Flag = item.IsSelected;
+        }
+    }
+
+    private void ResetUI()
+    {
+        LanguageList.Clear();
+        txtGameName.Text = string.Empty;
+        txtPublisher.Text = string.Empty;
+        imgGame.Source = null;
+    }
+
+    private static GameMetadata? LoadGameMetadata(IList<GameFile> gameFiles, string? unpackedDir = null)
+    {
+        var keySet = KeySetProvider.Instance.KeySet;
+
+        if (keySet == null) 
+            return null;
+
+        var validPaths = gameFiles
+            .Where(f => !f.IsKeyMissing)
+            .Select(f => f.FilePath)
+            .ToList();
+
+        if (validPaths.Count > 0)
+            return MetadataService.GetGameMetadata(keySet, validPaths);
+
+        if (unpackedDir != null)
+            return MetadataService.GetGameMetadataFromUnpacked(unpackedDir);
+
+        return null;
+    }
+
+    private void BindMetadataToUI(GameMetadata metadata)
+    {
+        var items = metadata.Languages.Select(info => new LanguageItem
+        {
+            Language = info.Language,
+            TitleName = info.TitleName,
+            Publisher = info.Publisher,
+            Indices = metadata.Indices,
+            Logo = info.LogoData,
+            IsSelected = info.Flag
+        }).ToList();
+
+        LanguageList.Clear();
+
+        foreach (var item in items)
+            LanguageList.Add(item);
+
+        if (LanguageList.Count > 0)
+            lbLanguages.SelectedIndex = 0;
+    }
+
+    private void LbLanguages_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem) 
+            return;
+
+        txtGameName.Text = selectedItem.TitleName;
+        txtPublisher.Text = selectedItem.Publisher;
+        cbxMultiRom.ItemsSource = selectedItem.Indices;
+
+        imgGame.Source = selectedItem.Logo is { Length: > 0 } ? selectedItem.Logo.ToBitmapImage() : null;
+    }
+
+    private void TxtGameName_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null) 
+            return;
+
+        selectedItem.TitleName = txtGameName.Text;
+
+        var target = CurrentMetadata.Languages
+            .FirstOrDefault(l => l.Language == selectedItem.Language);
+
+        if (target != null) target.TitleName = txtGameName.Text;
+    }
+
+    private void TxtPublisher_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null) 
+            return;
+
+        selectedItem.Publisher = txtPublisher.Text;
+
+        var target = CurrentMetadata.Languages
+            .FirstOrDefault(l => l.Language == selectedItem.Language);
+        if (target != null) target.Publisher = txtPublisher.Text;
+    }
+
+    private void BtnForceLanguage_Click(object sender, RoutedEventArgs e)
+    {
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem) 
+            return;
+
+        ForcedLanguage = selectedItem.Language;
+        MessageBoxHelper.ShowInfo($"강제 언어가 {selectedItem.Language}로 설정되었습니다.");
+    }
+
+    private void BtnForceLanguageCancel_Click(object sender, RoutedEventArgs e)
+    {
+        ForcedLanguage = ApplicationControlProperty.Language.None;
+        MessageBoxHelper.ShowInfo("강제 언어 설정이 취소되었습니다.");
+    }
+
+    private void ImgGame_DragEnter(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+
+            if (files?.Length > 0 && SupportedExts.Contains(Path.GetExtension(files[0]).ToLowerInvariant()))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+                return;
+            }
+        }
+        e.Effects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ImgGame_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+
+        if (files is not { Length: > 0 }) 
+            return;
+
+        string ext = Path.GetExtension(files[0]).ToLowerInvariant();
+
+        if (!SupportedExts.Contains(ext)) 
+            return;
+
+        try
+        {
+            byte[] finalBytes;
+            BitmapSource bitmapSource;
+
+            using (var image = SixLabors.ImageSharp.Image.Load<Bgra32>(files[0]))
+            {
+                image.Mutate(x => x.Resize(256, 256));
+
+                byte[] pixels = new byte[image.Width * image.Height * 4];
+                image.CopyPixelDataTo(pixels);
+
+                using (var tempBitmap = new System.Drawing.Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb))
+                {
+                    var bitmapData = tempBitmap.LockBits(
+                        new System.Drawing.Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height),
+                        ImageLockMode.WriteOnly,
+                        tempBitmap.PixelFormat);
+
+                    System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bitmapData.Scan0, pixels.Length);
+                    tempBitmap.UnlockBits(bitmapData);
+
+                    using var cleanBitmap = new System.Drawing.Bitmap(256, 256, PixelFormat.Format32bppArgb);
+                    using (var graphics = System.Drawing.Graphics.FromImage(cleanBitmap))
+                    {
+                        graphics.CompositingQuality = CompositingQuality.HighQuality;
+                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        graphics.SmoothingMode = SmoothingMode.HighQuality;
+                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                        graphics.Clear(System.Drawing.Color.Transparent);
+                        graphics.DrawImage(tempBitmap, 0, 0, 256, 256);
+                    }
+
+                    using var ms = new MemoryStream();
+                    var encoder = ImageCodecInfo.GetImageEncoders()
+                        .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+
+                    if (encoder != null)
+                    {
+                        var encoderParameters = new EncoderParameters(1);
+                        encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 95L);
+                        cleanBitmap.Save(ms, encoder, encoderParameters);
+                    }
+                    else
+                        cleanBitmap.Save(ms, ImageFormat.Jpeg);
+
+                    finalBytes = ms.ToArray();
+                }
+
+                var wb = new WriteableBitmap(image.Width, image.Height, 96, 96, PixelFormats.Bgra32, null);
+                wb.WritePixels(new Int32Rect(0, 0, image.Width, image.Height), pixels, image.Width * 4, 0);
+                wb.Freeze();
+
+                bitmapSource = wb;
+            }
+
+            imgGame.Source = bitmapSource;
+
+            if (lbLanguages.SelectedItem is LanguageItem selectedItem && CurrentMetadata != null)
+            {
+                selectedItem.Logo = finalBytes;
+
+                var target = CurrentMetadata.Languages
+                    .FirstOrDefault(l => l.Language == selectedItem.Language);
+
+                if (target != null)
+                    target.LogoData = finalBytes;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBoxHelper.ShowError($"이미지 로드 실패: {ex.Message}");
+        }
+    }
+
+    private void ImgGame_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (imgGame.Source is not BitmapSource bitmapSource) 
+            return;
+
+        var selectedLanguage = lbLanguages.SelectedItem as LanguageItem;
+        string fileName = $"{selectedLanguage?.TitleName}_{selectedLanguage?.Language}.png";
+
+        foreach (char c in Path.GetInvalidFileNameChars())
+            fileName = fileName.Replace(c, '_');
+
+        string tempFilePath = Path.Combine(Path.GetTempPath(), fileName);
+
+        try
+        {
+            using (var fs = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+                encoder.Save(fs);
+            }
+
+            var data = new DataObject();
+
+            data.SetFileDropList([tempFilePath]);
+            DragDrop.DoDragDrop(imgGame, data, DragDropEffects.Copy);
+        }
+        finally
+        {
+            if (File.Exists(tempFilePath))
+                try 
+                { 
+                    File.Delete(tempFilePath); 
+                }
+                catch 
+                {
+                }
+        }
+    }
+}

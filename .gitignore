@@ -12,6 +12,8 @@ prod.keys
 aes_keys.txt
 seeddb.bin
 certs.bin
+boot9.bin
+custom-install-finalize.3dsx
 base.pbp
 BASE.zip
 ICON0.png

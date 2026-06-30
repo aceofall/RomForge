@@ -33,7 +33,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RomZip\CHD.Core\CHD.Core.csproj" />
+    <ProjectReference Include="..\CHD.Core\CHD.Core.csproj" />
+    <ProjectReference Include="..\Common\Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

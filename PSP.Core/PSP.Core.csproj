@@ -20,8 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RomZip\CHD.Core\CHD.Core.csproj" />
-    <ProjectReference Include="..\..\RomZip\Common\Common.csproj" />
+    <ProjectReference Include="..\CHD.Core\CHD.Core.csproj" />
   </ItemGroup>
 
 </Project>

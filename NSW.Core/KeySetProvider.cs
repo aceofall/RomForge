@@ -1,0 +1,40 @@
+﻿using LibHac.Common.Keys;
+
+namespace NSW.Core;
+
+public sealed class KeySetProvider
+{
+    private static KeySetProvider _instance;
+    private static readonly object _lock = new();
+
+    private KeySet _keySet;
+
+    public KeySet KeySet
+    {
+        get
+        {
+            if (_keySet == null) TryLoadKeys();
+            return _keySet;
+        }
+    }
+
+    public static KeySetProvider Instance
+    {
+        get
+        {
+            lock (_lock) return _instance ??= new KeySetProvider();
+        }
+    }
+
+    private KeySetProvider() { }
+
+    public void TryLoadKeys()
+    {
+        string keysPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prod.keys");
+        if (File.Exists(keysPath))
+        {
+            try { _keySet = ExternalKeyReader.ReadKeyFile(keysPath); }
+            catch { }
+        }
+    }
+}
