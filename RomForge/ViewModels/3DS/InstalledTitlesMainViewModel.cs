@@ -5,6 +5,7 @@ using _3DS.Core.IO;
 using _3DS.Core.Models;
 using _3DS.Core.Services;
 using Common.WPF.ViewModels;
+using RomForge.Core.Models._3DS;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;

@@ -1,5 +1,5 @@
 ﻿using PBP.Core.Services;
-using RomForge.Core.Models.PS1;
+using RomForge.Core.Models.PS;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;

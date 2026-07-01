@@ -3,8 +3,9 @@ using _3DS.Core.Models;
 using _3DS.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
-using RomForge.Helpers;
-using RomForge.Models;
+using RomForge.Core.Models;
+using RomForge.Core.Models._3DS;
+using RomForge.Core.UI.Command;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -78,7 +79,7 @@ public class ConverterMainViewModel : ToolTabViewModel
 
             try
             {
-                var result = await Util.ParseFile(path);
+                var result = await Core.Services._3DS.Util.ParseFile(path);
                 var vm = new _3DSFileItem(path)
                 {
                     TitleId = result.Title!.TitleId,

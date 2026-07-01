@@ -1,7 +1,8 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
-using RomForge.Helpers;
-using RomForge.Models;
+using RomForge.Core.UI.Command;
+using RomForge.Core.Models;
+using RomForge.Core.Models.Util;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Security.Cryptography;

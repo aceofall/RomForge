@@ -1,4 +1,5 @@
 ﻿using NSW.WPF.Services;
+using RomForge.Core.Models.PS;
 using RomForge.ViewModels.PS;
 using System.IO;
 using System.Windows;

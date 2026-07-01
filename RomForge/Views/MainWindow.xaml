@@ -9,7 +9,7 @@
         xmlns:util="clr-namespace:RomForge.Controls.Util"
         xmlns:settings="clr-namespace:RomForge.Controls.Settings"
         xmlns:vm="clr-namespace:RomForge.ViewModels"
-        xmlns:helpers="clr-namespace:RomForge.Helpers"
+        xmlns:helpers="clr-namespace:RomForge.Core.UI.Helpers;assembly=RomForge.Core"
         Title="{Binding AppVersion}"
         Height="720" Width="900"
         MinHeight="480" MinWidth="900"

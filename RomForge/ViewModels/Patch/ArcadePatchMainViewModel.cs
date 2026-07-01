@@ -1,9 +1,9 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using NSW.WPF.Services;
+using RomForge.Core.Models;
 using RomForge.Core.Models.Patch;
 using RomForge.Core.Services.Patch;
-using RomForge.Models;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;

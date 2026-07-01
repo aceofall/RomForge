@@ -2,9 +2,10 @@
 using Common.WPF.ViewModels;
 using NSW.Core;
 using NSW.WPF.Services;
+using RomForge.Core.UI.Command;
+using RomForge.Core.Models;
+using RomForge.Core.Models.Switch;
 using RomForge.Core.Services.Switch;
-using RomForge.Helpers;
-using RomForge.Models;
 using RomZip.Core.Services;
 using System.Collections.ObjectModel;
 using System.IO;

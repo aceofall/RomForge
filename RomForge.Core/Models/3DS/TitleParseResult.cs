@@ -1,6 +1,6 @@
 ﻿using _3DS.Core.Models;
 
-namespace RomForge.ViewModels._3DS;
+namespace RomForge.Core.Models._3DS;
 
 public class TitleParseResult
 {

@@ -1,8 +1,8 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using NSW.WPF.ViewModels;
+using RomForge.Core.Models;
 using RomForge.Core.Services.Switch;
-using RomForge.Models;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;

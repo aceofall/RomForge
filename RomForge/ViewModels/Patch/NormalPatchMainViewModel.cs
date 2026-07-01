@@ -2,8 +2,8 @@
 using Common.WPF.ViewModels;
 using NSW.WPF.Services;
 using Patch.Core;
-using RomForge.Models;
-using RomForge.ViewModels.Patch.Services;
+using RomForge.Core.Models;
+using RomForge.Core.Services.Patch;
 using RomZip.Core.Services;
 using System.IO;
 using System.Windows;

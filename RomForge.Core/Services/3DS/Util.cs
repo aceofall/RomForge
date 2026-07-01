@@ -3,10 +3,11 @@ using _3DS.Core.Enums;
 using _3DS.Core.IO;
 using _3DS.Core.Models;
 using _3DS.Core.Services;
+using RomForge.Core.Models._3DS;
 using System.Buffers.Binary;
 using System.IO;
 
-namespace RomForge.ViewModels._3DS;
+namespace RomForge.Core.Services._3DS;
 
 public static class Util
 {

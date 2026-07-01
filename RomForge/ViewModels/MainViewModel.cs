@@ -1,7 +1,7 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using RomForge.Core;
-using RomForge.Models;
+using RomForge.Core.Models;
 using RomForge.ViewModels._3DS;
 using RomForge.ViewModels.Patch;
 using RomForge.ViewModels.PS;

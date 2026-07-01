@@ -3,8 +3,9 @@ using _3DS.Core.IO;
 using _3DS.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
-using RomForge.Helpers;
-using RomForge.Models;
+using RomForge.Core.UI.Command;
+using RomForge.Core.Models;
+using RomForge.Core.Models._3DS;
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -80,7 +81,7 @@ public class DecryptorMainViewModel : ToolTabViewModel
 
             try
             {
-                var result = await Util.ParseFile(path);
+                var result = await Core.Services._3DS.Util.ParseFile(path);
                 var vm = new DecryptorFileItem(path)
                 {
                     TitleId = result.Title!.TitleId,

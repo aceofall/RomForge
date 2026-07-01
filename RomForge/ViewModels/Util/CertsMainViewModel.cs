@@ -1,8 +1,9 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
-using RomForge.Helpers;
-using RomForge.Models;
-using RomForge.ViewModels._3DS;
+using RomForge.Core.UI.Command;
+using RomForge.Core.Models;
+using RomForge.Core.Models._3DS;
+using RomForge.Core.Models.Util;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -137,7 +138,7 @@ public class CertsMainViewModel : ToolTabViewModel
     {
         try
         {
-            var result = await Task.Run(() => _3DS.Util.ParseFile(path));
+            var result = await Task.Run(() => Core.Services._3DS.Util.ParseFile(path));
 
 
             BitmapSource? icon = null;

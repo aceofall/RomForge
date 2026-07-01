@@ -1,4 +1,5 @@
 ﻿using Common.WPF.ViewModels;
+using RomForge.Core.Models._3DS;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -35,7 +36,7 @@ public class InstallMainViewModel : ToolTabViewModel
             if (!SupportedExtensions.Contains(ext) || Items.Any(f => f.FilePath == fullPath))
                 continue;
 
-            var result = await Util.ParseFile(fullPath);
+            var result = await Core.Services._3DS.Util.ParseFile(fullPath);
             var vm = new TitleViewModel()
             {
                 Title = result.Title!,

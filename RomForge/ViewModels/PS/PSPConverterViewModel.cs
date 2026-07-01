@@ -2,8 +2,9 @@
 using Common.WPF.ViewModels;
 using PSP.Core.Services;
 using RomForge.Core;
-using RomForge.Helpers;
-using RomForge.Models;
+using RomForge.Core.UI.Command;
+using RomForge.Core.Models;
+using RomForge.Core.Models.PS;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;

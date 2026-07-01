@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using NSW.WPF.Services;
+using RomForge.Core.Models;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.IO;

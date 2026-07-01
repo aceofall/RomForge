@@ -1,6 +1,5 @@
-﻿using LibHac.Fs.Shim;
-using NSW.WPF.UI;
-using RomForge.Helpers;
+﻿using NSW.WPF.UI;
+using RomForge.Core.UI.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.Windows;
