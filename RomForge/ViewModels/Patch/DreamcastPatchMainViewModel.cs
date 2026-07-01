@@ -119,11 +119,12 @@ public class DreamcastPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         {
             Directory.CreateDirectory(outputDir);
 
-            await DcpGdRomApplier.ApplyAsync(SourcePath, PatchPath, outputDir, p =>
+            await DcpGdRomApplier.ApplyAsync(SourcePath, PatchPath, outputDir, (p, msg) =>
             {
                 Application.Current?.Dispatcher?.Invoke(() =>
                 {
                     Progress = AutoCompress ? (int)(p * 50) : (int)(p * 100);
+                    ProgressStatus = msg;
                 });
             }, ct);
 
@@ -160,13 +161,27 @@ public class DreamcastPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             Progress = 0;
             ProgressStatus = "취소됨";
             Log($"패치 취소: {SourcePath}", LogLevel.Error);
+
+            DeleteOutputDirectory(outputDir);
         }
         catch (Exception ex)
         {
             Progress = 0;
             ProgressStatus = "실패";
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
+
+            DeleteOutputDirectory(outputDir);
         }
+    }
+
+    private static void DeleteOutputDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
+        }
+        catch { }
     }
 
     public void Cancel() => _runCts?.Cancel();

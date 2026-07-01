@@ -2,10 +2,12 @@
 
 public static class GdRomWriter
 {
-    public static void WriteDataTrack(string outputPath, uint trackStartLba, IReadOnlyCollection<(uint Lba, byte[] Sector2048)> sectors, Action<double>? onProgress = null, CancellationToken ct = default)
+    public static void WriteDataTrack(string outputPath, uint trackStartLba, IReadOnlyCollection<(uint Lba, byte[] Sector2048)> sectors, Action<double, string>? onProgress = null, CancellationToken ct = default)
     {
         if (sectors.Count == 0) 
             return;
+
+        onProgress?.Invoke(0.0, "데이터 트랙 섹터 정렬 중...");
 
         var sortedSectors = sectors.OrderBy(s => s.Lba).ToList();
         using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 256 * 1024);
@@ -32,6 +34,8 @@ public static class GdRomWriter
         int completedCount = 0;
         int totalSectors = sortedSectors.Count;
 
+        onProgress?.Invoke(0.0, "데이터 트랙 원시 섹터 병렬 연산 중 (EDC 계산)...");
+
         Parallel.For(0, totalRequiredSectors, new ParallelOptions { CancellationToken = ct }, i =>
         {
             var (Lba, UserData) = fullSectorArray[i];
@@ -43,11 +47,11 @@ public static class GdRomWriter
                 int current = Interlocked.Increment(ref completedCount);
 
                 if (totalSectors > 0 && current % 500 == 0)
-                    onProgress?.Invoke((double)current / totalSectors);
+                    onProgress?.Invoke((double)current / totalSectors, "데이터 트랙 원시 섹터 병렬 연산 중 (EDC 계산)...");
             }
         });
 
-        onProgress?.Invoke(1.0);
+        onProgress?.Invoke(1.0, "데이터 트랙 파일 디스크 쓰기 중...");
 
         int sectorSize = 2352;
         int writeBufferSize = 2000;
@@ -59,7 +63,6 @@ public static class GdRomWriter
             ct.ThrowIfCancellationRequested();
 
             Buffer.BlockCopy(rawSectors[i], 0, writeBuffer, bufferedCount * sectorSize, sectorSize);
-
             bufferedCount++;
 
             if (bufferedCount >= writeBufferSize)
@@ -70,9 +73,7 @@ public static class GdRomWriter
         }
 
         if (bufferedCount > 0)
-        {
             fs.Write(writeBuffer, 0, bufferedCount * sectorSize);
-        }
     }
 
     public static byte[] BuildRawSector(uint absoluteLba, byte[] userData2048)
