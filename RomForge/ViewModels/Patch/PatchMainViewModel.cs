@@ -13,6 +13,8 @@ public class PatchMainViewModel : MultiToolTabViewModel
 
     public ArcadePatchMainViewModel ArcadeVM { get; } = new();
 
+    public DreamcastPatchMainViewModel DreamcastVM { get; }
+
     public ICommand RunCommand { get; }
 
     public ICommand ClearCommand { get; }
@@ -27,6 +29,7 @@ public class PatchMainViewModel : MultiToolTabViewModel
         _navigateToHashAction = navigateToHashAction;
 
         NormalVM = new NormalPatchMainViewModel(_config);
+        DreamcastVM = new DreamcastPatchMainViewModel(_config);
 
         RunCommand = new RelayCommand(async _ => await RunAsync());
         CancelCommand = new RelayCommand(_ => Cancel());
@@ -44,6 +47,7 @@ public class PatchMainViewModel : MultiToolTabViewModel
 
         Tools.Add(NormalVM);
         Tools.Add(ArcadeVM);
+        Tools.Add(DreamcastVM);
 
         InitializeMultiTools();
     }

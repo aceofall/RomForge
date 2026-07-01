@@ -1,36 +1,30 @@
 ﻿using Microsoft.Win32;
-using RomForge.Core.Models.Patch;
 using RomForge.ViewModels;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace RomForge.Controls;
+namespace RomForge.Controls.Patch;
 
-public partial class PatchTab : UserControl
+public partial class NormalTab : UserControl
 {
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
     private static class PatchExtensions
     {
         public static readonly string[] AllowedExtensions = [".ips", ".bps", ".ups", ".ppf", ".aps", ".xdelta"];
-
         public static string FileFilter => $"패치 파일|{string.Join(";", AllowedExtensions.Select(ext => "*" + ext))}|모든 파일|*.*";
     }
 
-    public PatchTab()
+    public NormalTab()
     {
         InitializeComponent();
     }
 
-
     private void NormalSourceDrop_Click(object sender, MouseButtonEventArgs e)
     {
-        var dlg = new OpenFileDialog
-        {
-            Title = "원본 파일 선택",
-        };
+        var dlg = new OpenFileDialog { Title = "원본 파일 선택" };
 
         if (dlg.ShowDialog() == true)
             ViewModel.PatchVM.NormalVM.SourcePath = dlg.FileName;
@@ -41,8 +35,8 @@ public partial class PatchTab : UserControl
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
             var patchFiles = files
-            .Where(f => PatchExtensions.AllowedExtensions.Contains(Path.GetExtension(f).ToLower()))
-            .ToList();
+                .Where(f => PatchExtensions.AllowedExtensions.Contains(Path.GetExtension(f).ToLower()))
+                .ToList();
 
             var sourceFiles = files.Except(patchFiles).ToList();
 
@@ -56,8 +50,8 @@ public partial class PatchTab : UserControl
 
     private void NormalPatchDrop_Click(object sender, MouseButtonEventArgs e)
     {
-        var dlg = new OpenFileDialog 
-        { 
+        var dlg = new OpenFileDialog
+        {
             Title = "패치 파일 선택",
             Filter = PatchExtensions.FileFilter
         };
@@ -82,63 +76,5 @@ public partial class PatchTab : UserControl
             if (sourceFiles.Count > 0)
                 ViewModel.PatchVM.NormalVM.SourcePath = sourceFiles[0];
         }
-    }
-
-    private void ArcadeSourceDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.ArcadeVM.SourcePath = files[0];
-    }
-
-    private void ArcadePatchDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0)
-            return;
-
-        ViewModel.PatchVM.ArcadeVM.PatchPath = files[0];
-    }
-
-    private void MatchCard_DragOver(object sender, DragEventArgs e)
-    {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void MatchCard_PatchDrop(object sender, DragEventArgs e)
-    {
-        if (sender is not Border border)
-            return;
-
-        if (border.Tag is not ArcadeMatchItem item) 
-            return;
-
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0)
-            return;
-
-        string path = files[0];
-        var patchEntry = new PatchEntry
-        {
-            DisplayName = Path.GetFileName(path),
-            EntryPath = path
-        };
-
-        ViewModel.PatchVM.ArcadeVM.ManualMatch(item, patchEntry);
-    }
-
-    private void PatchPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is not ComboBox combo)
-            return;
-
-        if (combo.Tag is not ArcadeMatchItem item) 
-            return;
-
-        if (combo.SelectedItem is not PatchEntry entry) 
-            return;
-
-        if (ReferenceEquals(entry, item.PatchEntry)) 
-            return;
-
-        ViewModel.PatchVM.ArcadeVM.ManualMatch(item, entry);
     }
 }

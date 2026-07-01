@@ -20,6 +20,7 @@
   <ItemGroup>
     <None Remove="Assets\Images\Certs.png" />
     <None Remove="Assets\Images\CUE.png" />
+    <None Remove="Assets\Images\Dreamcast.png" />
     <None Remove="Assets\Images\FontSize.png" />
     <None Remove="Assets\Images\Hash.png" />
     <None Remove="Assets\Images\Keygen.png" />
@@ -45,6 +46,7 @@
     <Resource Include="Assets\Images\Certs.png" />
     <Resource Include="Assets\Images\Convert.png" />
     <Resource Include="Assets\Images\CUE.png" />
+    <Resource Include="Assets\Images\Dreamcast.png" />
     <Resource Include="Assets\Images\FontSize.png" />
     <Resource Include="Assets\Images\Hash.png" />
     <Resource Include="Assets\Images\HDD.png" />
