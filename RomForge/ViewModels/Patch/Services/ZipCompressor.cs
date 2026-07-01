@@ -2,7 +2,7 @@
 using System.IO;
 using System.IO.Compression;
 
-namespace RomForge.ViewModels.Patch;
+namespace RomForge.ViewModels.Patch.Services;
 
 public class ZipCompressor(Action<string, LogLevel> log, Action<int> setProgress)
 {
@@ -11,6 +11,7 @@ public class ZipCompressor(Action<string, LogLevel> log, Action<int> setProgress
         log($"압축 시작: {Path.GetFileName(sourcePath)}", LogLevel.Highlight);
 
         string zipPath = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(sourcePath) + ".zip");
+
         zipPath = Utils.GetUniqueFilePath(zipPath);
 
         await Task.Run(() =>

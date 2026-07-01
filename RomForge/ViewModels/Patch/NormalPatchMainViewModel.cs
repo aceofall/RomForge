@@ -3,6 +3,7 @@ using Common.WPF.ViewModels;
 using NSW.WPF.Services;
 using Patch.Core;
 using RomForge.Models;
+using RomForge.ViewModels.Patch.Services;
 using RomZip.Core.Services;
 using System.IO;
 using System.Windows;
@@ -163,11 +164,13 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public void Clear()
     {
         _runCts?.Cancel();
+
         SourcePath = null;
         PatchPath = null;
         Progress = 0;
         ProgressStatus = "대기 중";
         AutoCompress = false;
+
         LogEntries.Clear();
     }
 }

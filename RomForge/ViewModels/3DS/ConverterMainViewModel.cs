@@ -143,6 +143,7 @@ public class ConverterMainViewModel : ToolTabViewModel
             try
             {
                 int totalCount = FileItems.Count;
+
                 AppendLog($"총 {totalCount}개의 3DS 변환 작업을 시작합니다.", LogLevel.Highlight);
 
                 int cnt = 0;
@@ -224,14 +225,8 @@ public class ConverterMainViewModel : ToolTabViewModel
                     }
                 }
 
-                if (cnt > 0)
-                {
-                    AppendLog($"총 {cnt}개의 작업을 성공적으로 완료했습니다.", LogLevel.Ok);
-                }
-                else
-                {
-                    AppendLog("성공한 작업이 없습니다.", LogLevel.Error);
-                }
+                AppendLog(cnt > 0 ? $"총 {cnt}개의 작업을 성공적으로 완료했습니다." : "성공한 작업이 없습니다.", cnt > 0 ? LogLevel.Ok : LogLevel.Error);
+
             }
             catch (OperationCanceledException)
             {

@@ -113,8 +113,11 @@ public class PSPConverterViewModel : ToolTabViewModel
     private async Task RunAsync()
     {
         IsConverting = true;
+
         _cts.Dispose();
+
         _cts = new CancellationTokenSource();
+
         ClearLog();
 
         using (BeginWork())
@@ -122,9 +125,11 @@ public class PSPConverterViewModel : ToolTabViewModel
             try
             {
                 int totalCount = FileItems.Count;
+
                 AppendLog($"총 {totalCount}개의 PSP 변환 작업을 시작합니다.", LogLevel.Highlight);
 
                 int cnt = 0;
+
                 foreach (var item in FileItems)
                 {
                     _cts.Token.ThrowIfCancellationRequested();
@@ -135,12 +140,14 @@ public class PSPConverterViewModel : ToolTabViewModel
                     item.Status = "대기중";
                     item.Progress = 0;
                     item.Status = "변환중";
+
                     ScrollToItemRequested?.Invoke(item);
 
                     var progressHandler = new Progress<double>(p => item.Progress = (int)(p * 100));
                     string inputExt = item.Extension.ToLowerInvariant();
                     string outputExt = item.SelectedTargetFormat.ToLowerInvariant();
                     string outPath = Path.ChangeExtension(item.FilePath, outputExt);
+
                     outPath = Utils.GetUniqueFilePath(outPath);
 
                     try
@@ -191,24 +198,25 @@ public class PSPConverterViewModel : ToolTabViewModel
                     catch (Exception ex)
                     {
                         AppendLog($"[{item.FileName}] 변환 실패: {ex.Message}", LogLevel.Error);
+
                         item.Status = "실패";
                         item.Progress = 0;
                     }
                 }
 
-                AppendLog(cnt > 0
-                    ? $"총 {cnt}개의 작업을 성공적으로 완료했습니다."
-                    : "성공한 작업이 없습니다.", cnt > 0 ? LogLevel.Ok : LogLevel.Error);
+                AppendLog(cnt > 0 ? $"총 {cnt}개의 작업을 성공적으로 완료했습니다." : "성공한 작업이 없습니다.", cnt > 0 ? LogLevel.Ok : LogLevel.Error);
             }
             catch (OperationCanceledException)
             {
                 AppendLog("작업이 취소되었습니다.", LogLevel.Error);
+
                 foreach (var item in FileItems.Where(i => i.Status is "대기중" or "변환중"))
                     item.Status = "취소";
             }
             catch (Exception ex)
             {
                 AppendLog($"오류: {ex.Message}", LogLevel.Error);
+
                 foreach (var item in FileItems.Where(i => i.Status == "변환중"))
                     item.Status = "실패";
             }

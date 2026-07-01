@@ -4,20 +4,18 @@ namespace RomForge.ViewModels.Switch;
 
 public class SwitchMainViewModel : MultiToolTabViewModel
 {
-    public RepackMainViewModel RepackVM { get; }
+    public RepackMainViewModel RepackVM { get; } = new();
 
     public MergeMainViewModel MergeVM { get; }
 
     public ConverterMainViewModel ConverterVM { get; }
 
-    public KeygenMainViewModel KeygenVM { get; }
+    public KeygenMainViewModel KeygenVM { get; } = new();
 
     public SwitchMainViewModel(AppConfig config)
     {
-        RepackVM = new RepackMainViewModel();
         MergeVM = new MergeMainViewModel(config);
         ConverterVM = new ConverterMainViewModel(config);
-        KeygenVM = new KeygenMainViewModel();
 
         Tools.Add(RepackVM);
         Tools.Add(MergeVM);

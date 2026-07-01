@@ -380,7 +380,8 @@ public class InstallerMainViewModel : ToolTabViewModel
 
     public void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
-        if (Application.Current?.Dispatcher == null) return;
+        if (Application.Current?.Dispatcher == null) 
+            return;
 
         Application.Current.Dispatcher.Invoke(() =>
             LogEntries.Add(new LogEntry { Message = msg, Level = level })
@@ -389,7 +390,8 @@ public class InstallerMainViewModel : ToolTabViewModel
 
     private void ClearLog()
     {
-        if (Application.Current?.Dispatcher == null) return;
+        if (Application.Current?.Dispatcher == null) 
+            return;
 
         Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
     }

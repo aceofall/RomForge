@@ -4,7 +4,7 @@ using RomZip.Core.Enums;
 using RomZip.Core.Models;
 using System.IO;
 
-namespace RomForge.ViewModels.Patch;
+namespace RomForge.ViewModels.Patch.Services;
 
 public class PatchOrchestrator(Action<string, LogLevel> log, Action<int> setProgress, Action<string> setStatus, bool autoCompress, int dolphinCompressLevel)
 {

@@ -4,11 +4,9 @@ using NSW.WPF.Services;
 using PBP.Core.Models;
 using PBP.Core.Services;
 using RomForge.Core;
-using RomForge.Core.Services.PS;
 using RomForge.Helpers;
 using RomForge.Models;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using RomForge.ViewModels.PS.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -21,21 +19,17 @@ public class PackingMainViewModel : ToolTabViewModel
 {
     private const int MaxItems = 5;
 
-    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".cue", ".m3u", ".iso", ".chd"
-    };
-
     public record FmvFixOption(string Label, uint Value);
 
     public ObservableCollection<FmvFixOption> FmvFixPresets { get; } = [
         new("0x04 (다수 게임에서 검증됨)", 0x04),
-    new("0x07 (실험적)", 0x07)
+        new("0x07 (실험적)", 0x07)
     ];
 
-    private CancellationTokenSource _cts = new();
-    private CancellationTokenSource? _iconCts;
+    private readonly DiscImportService _importService = new();
+    private readonly CoverArtUpdater _coverArtUpdater = new();
 
+    private CancellationTokenSource _cts = new();
     private readonly AppConfig _config;
 
     private string? _lastIconGameId;
@@ -97,10 +91,10 @@ public class PackingMainViewModel : ToolTabViewModel
     public bool IsDownloading
     {
         get => _isDownloading;
-        set 
-        { 
-            _isDownloading = value; 
-            OnPropertyChanged(); 
+        set
+        {
+            _isDownloading = value;
+            OnPropertyChanged();
             OnPropertyChanged(nameof(CanRun));
             Application.Current.Dispatcher.InvokeAsync(CommandManager.InvalidateRequerySuggested);
         }
@@ -109,9 +103,9 @@ public class PackingMainViewModel : ToolTabViewModel
     public bool IsValidating
     {
         get => _isValidating;
-        set 
+        set
         {
-            _isValidating = value; 
+            _isValidating = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanAdd));
         }
@@ -187,11 +181,9 @@ public class PackingMainViewModel : ToolTabViewModel
 
     public bool CanRun => !IsLocked && FileItems.Count > 0 && !IsDownloading;
 
-
     public ICommand RunCommand { get; }
 
     public ICommand SettingsCommand { get; }
-    
 
     public event EventHandler RunNavigateSettings;
 
@@ -237,151 +229,53 @@ public class PackingMainViewModel : ToolTabViewModel
         if (inputPaths.Count == 0)
             return;
 
-        var rawFiles = ExpandPaths(inputPaths).ToList();
-        var explodedPaths = new List<string>();
-
-        foreach (var file in rawFiles)
-        {
-            if (Path.GetExtension(file).Equals(".m3u", StringComparison.OrdinalIgnoreCase))
-                explodedPaths.AddRange(ResolveM3uAllDiscs(file));
-            else
-                explodedPaths.Add(file);
-        }
-
-        var existing = FileItems.Select(f => f.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var newCandidates = new List<string>();
-
-        foreach (var p in explodedPaths)
-        {
-            if (!SupportedExtensions.Contains(Path.GetExtension(p)))
-                continue;
-
-            if (existing.Add(p))
-                newCandidates.Add(p);
-        }
-
-        if (newCandidates.Count == 0)
-            return;
-
+        var existingPaths = FileItems.Select(f => f.FilePath);
         var room = MaxItems - FileItems.Count;
-        var toValidate = newCandidates.Take(Math.Max(room, 0)).ToList();
-        int userRejectedCount = newCandidates.Count - toValidate.Count;
-
-        if (toValidate.Count == 0)
-        {
-            if (userRejectedCount > 0)
-                AppendLog($"최대 {MaxItems}개까지만 등록할 수 있습니다. {userRejectedCount}개 파일이 제외되었습니다.", LogLevel.Error);
-
-            return;
-        }
 
         IsValidating = true;
 
-        List<(string Path, string GameId, long Size, byte[]? PresetConfig)> validated;
-        int failedCount;
+        ImportResult result;
 
         try
         {
-            var results = await Task.WhenAll(toValidate.Select(ValidateCandidateAsync));
-
-            validated = [.. results.Where(r => r != null).Select(r => r!.Value)];
-            failedCount = results.Length - validated.Count;
+            result = await _importService.ImportAsync(inputPaths, existingPaths, room);
         }
         finally
         {
             IsValidating = false;
         }
 
-        foreach (var v in validated)
+        foreach (var failure in result.Failures)
+            AppendLog($"[{failure.FileName}] GameID 인식 실패: {failure.Reason}", LogLevel.Error);
+
+        foreach (var disc in result.Imported)
         {
-            var item = new DiscFileItem(v.Path)
+            var item = new DiscFileItem(disc.Path)
             {
-                GameId = v.GameId,
-                FileSizeBytes = v.Size,
-                PresetConfigBytes = v.PresetConfig
+                GameId = disc.GameId,
+                FileSizeBytes = disc.Size,
+                PresetConfigBytes = disc.PresetConfig
             };
 
             FileItems.Add(item);
         }
 
-        if (userRejectedCount > 0)
-            AppendLog($"최대 {MaxItems}개까지만 등록할 수 있습니다. {userRejectedCount}개 파일이 제외되었습니다.", LogLevel.Error);
+        if (result.OverLimitSkipped > 0)
+            AppendLog($"최대 {MaxItems}개까지만 등록할 수 있습니다. {result.OverLimitSkipped}개 파일이 제외되었습니다.", LogLevel.Error);
 
-        if (failedCount > 0)
-            AppendLog($"{failedCount}개 파일에서 GameID 인식에 실패해 제외되었습니다.", LogLevel.Error);
+        if (result.Failures.Count > 0)
+            AppendLog($"{result.Failures.Count}개 파일에서 GameID 인식에 실패해 제외되었습니다.", LogLevel.Error);
 
-        if (validated.Count > 0)
+        if (result.Imported.Count > 0)
         {
-            OnPropertyChanged(nameof(HintVisibility));            
-            ResortAndRenumber();
+            OnPropertyChanged(nameof(HintVisibility));
+            DiscListSorter.SortAndRenumber(FileItems);
+            _ = UpdateImageAsync();
             OnPropertyChanged(nameof(HasPresetConfig));
             OnPropertyChanged(nameof(CanEditPopsConfig));
         }
 
         CommandManager.InvalidateRequerySuggested();
-    }
-
-    private async Task<(string Path, string GameId, long Size, byte[]? PresetConfig)?> ValidateCandidateAsync(string path)
-    {
-        try
-        {
-            return await Task.Run(() =>
-            {
-                var ext = Path.GetExtension(path).ToLowerInvariant();
-                var size = DiscSizeResolver.GetTotalSize(path);
-
-                string gameId;
-
-                if (ext == ".chd")
-                {
-                    gameId = GameIdReader.ReadFromDisk(DiskSource.FromChd(path));
-                }
-                else if (ext == ".cue")
-                {
-                    var binPath = CueFileResolver.GetBinPath(path);
-                    using var stream = new FileStream(binPath, FileMode.Open, FileAccess.Read);
-
-                    gameId = GameIdReader.ReadFromStream(stream, stream.Length);
-                }
-                else
-                {
-                    using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-
-                    gameId = GameIdReader.ReadFromStream(fs, fs.Length);
-                }
-
-                var presetConfig = PsarPackager.GetPopsConfig(gameId);
-
-                return (path, gameId, size, presetConfig);
-            });
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"[{Path.GetFileName(path)}] GameID 인식 실패: {ex.Message}", LogLevel.Error);
-
-            return null;
-        }
-    }
-
-    private static List<string> ResolveM3uAllDiscs(string m3uPath)
-    {
-        var dir = Path.GetDirectoryName(m3uPath)!;
-        var paths = new List<string>();
-
-        if (!File.Exists(m3uPath)) 
-            return paths;
-
-        var lines = File.ReadAllLines(m3uPath)
-            .Select(l => l.Trim())
-            .Where(l => l.Length > 0 && !l.StartsWith('#'));
-
-        foreach (var line in lines)
-        {
-            var fullPath = Path.IsPathRooted(line) ? line : Path.Combine(dir, line);
-            paths.Add(fullPath);
-        }
-
-        return paths;
     }
 
     public void RemoveItems(IEnumerable<DiscFileItem> items)
@@ -390,7 +284,8 @@ public class PackingMainViewModel : ToolTabViewModel
             FileItems.Remove(item);
 
         OnPropertyChanged(nameof(HintVisibility));
-        ResortAndRenumber();
+        DiscListSorter.SortAndRenumber(FileItems);
+        _ = UpdateImageAsync();
         OnPropertyChanged(nameof(HasPresetConfig));
         OnPropertyChanged(nameof(CanEditPopsConfig));
     }
@@ -408,112 +303,73 @@ public class PackingMainViewModel : ToolTabViewModel
         OnPropertyChanged(nameof(CanEditPopsConfig));
     }
 
-    public void SetIcon0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Icon0Bytes = bytes; Icon0Image = img; }, 80, 80);
-    public void SetPic0FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Pic0Bytes = bytes; Pic0Image = img; }, 270, 150);
-    public void SetPic1FromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { Pic1Bytes = bytes; Pic1Image = img; }, 480, 272);
-    public void SetBootLogoFromBytes(byte[] rawBytes) => SetImage(rawBytes, (bytes, img) => { BootLogoBytes = bytes; BootLogoImage = img; }, 480, 272);
-
-    private static void SetImage(byte[] rawBytes, Action<byte[], BitmapImage> apply, int targetWidth, int targetHeight)
+    public void SetIcon0FromBytes(byte[] rawBytes)
     {
-        using var image = Image.Load<SixLabors.ImageSharp.PixelFormats.Bgra32>(rawBytes);
-        image.Mutate(x => x.Resize(targetWidth, targetHeight));
-
-        using var ms = new MemoryStream();
-        image.SaveAsPng(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder
-        {
-            CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression
-        });
-        byte[] finalBytes = ms.ToArray();
-
-        ms.Position = 0;
-        var bitmapImage = new BitmapImage();
-        bitmapImage.BeginInit();
-        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-        bitmapImage.StreamSource = ms;
-        bitmapImage.EndInit();
-        bitmapImage.Freeze();
-
-        apply(finalBytes, bitmapImage);
+        var (bytes, img) = AssetImageEditor.Resize(rawBytes, 80, 80);
+        Icon0Bytes = bytes;
+        Icon0Image = img;
     }
 
-    private void ResortAndRenumber()
+    public void SetPic0FromBytes(byte[] rawBytes)
     {
-        var sorted = FileItems
-            .OrderBy(i => i.GameId is "인식중..." or "인식실패" ? 1 : 0)
-            .ThenBy(i => i.GameId, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var (bytes, img) = AssetImageEditor.Resize(rawBytes, 270, 150);
+        Pic0Bytes = bytes;
+        Pic0Image = img;
+    }
 
-        for (var i = 0; i < sorted.Count; i++)
-        {
-            sorted[i].No = i + 1;
-            var oldIndex = FileItems.IndexOf(sorted[i]);
+    public void SetPic1FromBytes(byte[] rawBytes)
+    {
+        var (bytes, img) = AssetImageEditor.Resize(rawBytes, 480, 272);
+        Pic1Bytes = bytes;
+        Pic1Image = img;
+    }
 
-            if (oldIndex != i)
-                FileItems.Move(oldIndex, i);
-        }
+    public void SetBootLogoFromBytes(byte[] rawBytes)
+    {
+        var (bytes, img) = AssetImageEditor.Resize(rawBytes, 480, 272);
+        BootLogoBytes = bytes;
+        BootLogoImage = img;
+    }
 
-        _ = UpdateImageAsync();
+    public void ResetBootLogo()
+    {
+        BootLogoBytes = null;
+        BootLogoImage = null;
     }
 
     private async Task UpdateImageAsync()
     {
+        var primary = FileItems.FirstOrDefault(i => i.No == 1);
+
+        if (primary == null || primary.GameId == _lastIconGameId || primary.GameId is "인식중..." or "인식실패")
+            return;
+
+        _lastIconGameId = primary.GameId;
+        IsDownloading = true;
+
         try
         {
-            var primary = FileItems.FirstOrDefault(i => i.No == 1);
+            var result = await _coverArtUpdater.FetchAsync(primary.GameId);
 
-            if (primary == null || primary.GameId == _lastIconGameId || primary.GameId is "인식중..." or "인식실패")
+            if (result == null)
                 return;
 
-            IsDownloading = true;
+            if (result.ETitle != null)
+                GameTitle = result.ETitle;
 
-            var meta = GameMetadataLookup.Find(primary.GameId);
-
-            if (meta != null && !string.IsNullOrWhiteSpace(meta.ETitle))
-                GameTitle = meta.ETitle;
-
-            _lastIconGameId = primary.GameId;
-
-            var old = Interlocked.Exchange(ref _iconCts, new CancellationTokenSource());
-
-            if (old != null)
-            {
-                old.Cancel();
-                old.Dispose();
-            }
-
-            var ct = _iconCts.Token;
-            var icon0Png = await CoverArtFetcher.TryDownloadIconPngAsync(primary.GameId, ct);
-
-            ct.ThrowIfCancellationRequested();
-
-            Icon0Bytes = icon0Png ?? EmbeddedAssetProvider.GetDefaultIcon0();
+            Icon0Bytes = result.Icon0Png;
             Icon0Image = Icon0Bytes.ToBitmapImage();
 
-            var pic0Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic0, ct) : null;
-
-            ct.ThrowIfCancellationRequested();
-
-            Pic0Bytes = pic0Png ?? EmbeddedAssetProvider.GetDefaultPic0();
+            Pic0Bytes = result.Pic0Png;
             Pic0Image = Pic0Bytes.ToBitmapImage();
 
-            var pic1Png = meta != null ? await GameMetadataLookup.TryDownloadImagePngAsync(meta.Pic1, ct) : null;
-
-            ct.ThrowIfCancellationRequested();
-
-            Pic1Bytes = pic1Png ?? EmbeddedAssetProvider.GetDefaultPic1();
+            Pic1Bytes = result.Pic1Png;
             Pic1Image = Pic1Bytes.ToBitmapImage();
         }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch (Exception)
+        finally
         {
             IsDownloading = false;
-            throw;
         }
-
-        IsDownloading = false;
     }
 
     private async Task RunAsync()
@@ -536,7 +392,7 @@ public class PackingMainViewModel : ToolTabViewModel
         using (BeginWork())
         {
             var orderedItems = FileItems.OrderBy(i => i.No).ToList();
-            var gameTitle = string.IsNullOrWhiteSpace(GameTitle) ? GuessTitle(orderedItems[0]) : GameTitle;
+            var gameTitle = string.IsNullOrWhiteSpace(GameTitle) ? DiscListSorter.GuessTitle(orderedItems[0].FilePath) : GameTitle;
             var mainGameId = orderedItems[0].GameId;
 
             var assets = new PbpAssets
@@ -548,73 +404,38 @@ public class PackingMainViewModel : ToolTabViewModel
                 DataPsp = EmbeddedAssetProvider.GetDefaultData()
             };
 
-            string baseDirectory = Path.GetDirectoryName(orderedItems[0].FilePath)!;
+            var plan = PackingJobRunner.PlanOutput(orderedItems[0].FilePath, gameTitle, mainGameId, _config);
 
-            string targetOutputPath;
-            string? gameDirectory = null;
+            byte[]? popsConfig = orderedItems[0].PresetConfigBytes;
 
-            if (_config.PS1.UseGameIdMode)
+            if (popsConfig == null && (UseFmvFix || UseCdTimingFix))
             {
-                gameDirectory = Path.Combine(baseDirectory, mainGameId);
-                targetOutputPath = Path.Combine(gameDirectory, "eboot.pbp");
+                var fmvValue = UseFmvFix ? SelectedFmvFix.Value : 0;
+                popsConfig = ExternalConfigBuilder.Build(UseFmvFix, fmvValue, UseCdTimingFix);
             }
-            else
-            {
-                var safeTitle = string.Concat(gameTitle.Split(Path.GetInvalidFileNameChars()));
-                targetOutputPath = Path.Combine(baseDirectory, safeTitle + ".pbp");
-            }
-
-            targetOutputPath = Utils.GetUniqueFilePath(targetOutputPath);
-
-            var resolvedDiscs = new List<ResolvedDisc>();
 
             try
             {
-                if (gameDirectory != null && !Directory.Exists(gameDirectory))
-                    Directory.CreateDirectory(gameDirectory);
-
                 AppendLog($"작업 시작: {gameTitle} [{mainGameId}] ({orderedItems.Count}개 디스크)", LogLevel.Highlight);
 
-                var discInfos = new List<DiscWriteInfo>();
-
-                foreach (var item in orderedItems)
-                {
-                    var resolved = RawDiscProcessor.Resolve(item.FilePath);
-                    resolvedDiscs.Add(resolved);
-                    discInfos.Add(new DiscWriteInfo(resolved.IsoStream, resolved.IsoLength, item.GameId, orderedItems.Count > 1 ? $"{gameTitle} - Disc {item.No}" : gameTitle, resolved.TocData));
-                }
-
-                byte[]? popsConfig = orderedItems[0].PresetConfigBytes;
-
-                if (popsConfig == null && (UseFmvFix || UseCdTimingFix))
-                {
-                    var fmvValue = UseFmvFix ? SelectedFmvFix.Value : 0;
-                    popsConfig = ExternalConfigBuilder.Build(UseFmvFix, fmvValue, UseCdTimingFix);
-                }
-
-                await PbpPackager.WritePbpAsync(discInfos, mainGameId, gameTitle, targetOutputPath, _config.PS1.CompressLevel, assets, popsConfig, BuildProgressReporter(), _cts.Token);
+                await PackingJobRunner.RunAsync(orderedItems, gameTitle, mainGameId, plan, _config.PS1.CompressLevel, assets, popsConfig, BuildProgressReporter(), _cts.Token);
 
                 ProgressPct = 100;
-                AppendLog($"작업 완료: {targetOutputPath}", LogLevel.Ok);
+                AppendLog($"작업 완료: {plan.TargetOutputPath}", LogLevel.Ok);
 
-                Path.GetDirectoryName(targetOutputPath).OpenFolder();
+                Path.GetDirectoryName(plan.TargetOutputPath).OpenFolder();
             }
             catch (OperationCanceledException)
             {
                 AppendLog("작업이 취소되었습니다.", LogLevel.Error);
                 CleanupTask();
-                TryDeleteFileAndFolder(targetOutputPath, gameDirectory);
+                TryDeleteFileAndFolder(plan.TargetOutputPath, plan.GameDirectory);
             }
             catch (Exception ex)
             {
                 AppendLog($"오류: [{gameTitle}] {ex.Message}", LogLevel.Error);
                 CleanupTask();
-                TryDeleteFileAndFolder(targetOutputPath, gameDirectory);
-            }
-            finally
-            {
-                foreach (var d in resolvedDiscs) 
-                    d.Dispose();
+                TryDeleteFileAndFolder(plan.TargetOutputPath, plan.GameDirectory);
             }
         }
     }
@@ -642,11 +463,7 @@ public class PackingMainViewModel : ToolTabViewModel
     {
         try
         {
-            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
-                File.Delete(filePath);
-
-            if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath) && !Directory.EnumerateFileSystemEntries(folderPath).Any())
-                Directory.Delete(folderPath);
+            PackingJobRunner.CleanupFailedOutput(filePath, folderPath);
         }
         catch (Exception ex)
         {
@@ -654,46 +471,13 @@ public class PackingMainViewModel : ToolTabViewModel
         }
     }
 
-    private static string GuessTitle(DiscFileItem item)
-        => System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(item.FilePath), @"\s*\(Disc\s*\d+\)", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
-
-    private static IEnumerable<string> ExpandPaths(IEnumerable<string> paths)
-    {
-        var opts = new EnumerationOptions
-        {
-            IgnoreInaccessible = true,
-            RecurseSubdirectories = true,
-            AttributesToSkip = FileAttributes.System | FileAttributes.Hidden
-        };
-
-        foreach (var path in paths)
-        {
-            if (Directory.Exists(path))
-                foreach (var f in Directory.EnumerateFiles(path, "*.*", opts)) 
-                    yield return f;
-            else if (File.Exists(path))
-                yield return path;
-        }
-    }
-
     private void AppendLog(string msg, LogLevel level = LogLevel.Info)
     {
-        if (Application.Current?.Dispatcher == null) 
+        if (Application.Current?.Dispatcher == null)
             return;
 
         Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
     }
 
-    public static string GetFileDialogFilter()
-    {
-        var wildcards = string.Join(";", SupportedExtensions.Select(ext => $"*{ext}"));
-
-        return $"지원 파일|{wildcards}|모든 파일|*.*";
-    }
-
-    public void ResetBootLogo()
-    {
-        BootLogoBytes = null;
-        BootLogoImage = null;        
-    }
+    public static string GetFileDialogFilter() => DiscImportService.GetFileDialogFilter();
 }

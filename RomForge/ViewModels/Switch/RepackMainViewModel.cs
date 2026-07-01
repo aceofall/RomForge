@@ -157,6 +157,7 @@ namespace RomForge.ViewModels.Switch
         private async Task ExecuteBuildAsync(BuildMode mode, BuildRequest req)
         {
             _cts = new CancellationTokenSource();
+
             var token = _cts.Token;
             var progress = new Progress<(int pct, string label)>(p =>
             {

@@ -2,7 +2,7 @@
 using Common;
 using System.IO;
 
-namespace RomForge.ViewModels.Patch;
+namespace RomForge.ViewModels.Patch.Services;
 
 public class BinTrackCopier(Action<string, LogLevel> log)
 {

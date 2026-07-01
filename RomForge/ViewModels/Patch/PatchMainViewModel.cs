@@ -10,7 +10,7 @@ public class PatchMainViewModel : MultiToolTabViewModel
 
     public NormalPatchMainViewModel NormalVM { get; }
 
-    public ArcadePatchMainViewModel ArcadeVM { get; }
+    public ArcadePatchMainViewModel ArcadeVM { get; } = new();
 
     public ICommand RunCommand { get; }
 
@@ -26,7 +26,6 @@ public class PatchMainViewModel : MultiToolTabViewModel
         _navigateToHashAction = navigateToHashAction;
 
         NormalVM = new NormalPatchMainViewModel(_config);
-        ArcadeVM = new ArcadePatchMainViewModel();
 
         RunCommand = new RelayCommand(async _ => await RunAsync());
         CancelCommand = new RelayCommand(_ => Cancel());

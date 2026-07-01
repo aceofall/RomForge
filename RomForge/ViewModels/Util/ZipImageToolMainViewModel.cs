@@ -498,7 +498,6 @@ public class ZipImageToolMainViewModel : ToolTabViewModel
                 try 
                 { 
                     File.Delete(file); 
-                    Debug.WriteLine($"Deleted partial zip file: {file}");
                 }
                 catch (IOException ex) 
                 { 
@@ -520,14 +519,6 @@ public class ZipImageToolMainViewModel : ToolTabViewModel
         Application.Current.Dispatcher.Invoke(() =>
             LogEntries.Add(new LogEntry { Message = msg, Level = level })
         );
-    }
-
-    private void ClearLog()
-    {
-        if (Application.Current?.Dispatcher == null) 
-            return;
-
-        Application.Current.Dispatcher.Invoke(() => LogEntries.Clear());
     }
 
     #endregion

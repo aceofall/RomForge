@@ -26,9 +26,7 @@ public class DiscFileItem(string filePath) : ProcessableItemBase
         }
     }
 
-    public string FileSize => FileSizeBytes <= 0 ? "..." : FileSizeBytes >= 1024L * 1024 * 1024
-        ? $"{FileSizeBytes / (1024.0 * 1024 * 1024):F2} GB"
-        : $"{FileSizeBytes / (1024.0 * 1024):F1} MB";
+    public string FileSize => FileSizeBytes <= 0 ? "..." : FileSizeBytes >= 1024L * 1024 * 1024 ? $"{FileSizeBytes / (1024.0 * 1024 * 1024):F2} GB" : $"{FileSizeBytes / (1024.0 * 1024):F1} MB";
 
     public byte[]? PresetConfigBytes { get; set; }
     public bool HasPresetConfig => PresetConfigBytes != null;

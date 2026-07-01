@@ -6,13 +6,13 @@ public class UtilMainViewModel : MultiToolTabViewModel
 {
     private bool _isAdmin;
 
-    public ZipImageToolMainViewModel ZipImageToolVM { get; }
+    public ZipImageToolMainViewModel ZipImageToolVM { get; } = new();
 
-    public CertsMainViewModel CertsVM { get; }
+    public CertsMainViewModel CertsVM { get; } = new();
 
-    public CueMainViewModel CueVM { get; }
+    public CueMainViewModel CueVM { get; } = new();
 
-    public HashMainViewModel HashVM { get; }
+    public HashMainViewModel HashVM { get; } = new();
 
     public bool IsAdmin
     {
@@ -33,11 +33,6 @@ public class UtilMainViewModel : MultiToolTabViewModel
     public UtilMainViewModel()
     {
         IsAdmin = CheckAdmin();
-
-        ZipImageToolVM = new ZipImageToolMainViewModel();
-        CertsVM = new CertsMainViewModel();
-        CueVM = new CueMainViewModel();
-        HashVM = new HashMainViewModel();
 
         Tools.Add(ZipImageToolVM);
         Tools.Add(CertsVM);

@@ -337,7 +337,8 @@ public class MergeMainViewModel : ToolTabViewModel
         if (string.IsNullOrEmpty(outputDir)) 
         { 
             errorMsg = Res.Main_Err_NoOutput; 
-            return false; }
+            return false;
+        }
 
         inputPaths = [.. gameFiles.Select(f => f.FilePath)];
 

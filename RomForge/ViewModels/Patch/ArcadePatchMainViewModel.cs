@@ -250,14 +250,17 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         SourcePath = null;
         PatchPath = null;
+
         MatchItems.Clear();
         AllPatchEntries.Clear();
         UnmatchedPatches.Clear();
         AvailablePatchPackages.Clear();
         LogEntries.Clear();
+
         SelectedPatchPackage = null;
         TotalProgress = 0;
         ProgressSummary = string.Empty;
+
         OnPropertyChanged(nameof(HintVisibility));
         OnPropertyChanged(nameof(HasPatchPackages));
     }
