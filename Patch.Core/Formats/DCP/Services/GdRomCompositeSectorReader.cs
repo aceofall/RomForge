@@ -15,6 +15,7 @@ public class GdRomCompositeSectorReader : IDisposable
             {
                 var stream = new FileStream(gdi.GetTrackFullPath(t), FileMode.Open, FileAccess.Read, FileShare.Read);
                 int headerOffset = t.SectorSize == 2352 ? DetectHeaderOffset(stream, t.FileOffset) : 0;
+
                 return (Track: t, Stream: stream, HeaderOffset: headerOffset);
             })];
 
@@ -33,16 +34,19 @@ public class GdRomCompositeSectorReader : IDisposable
 
         uint relativeLba = absoluteLba - (uint)entry.Track.StartLba;
         long byteOffset = entry.Track.FileOffset + (long)relativeLba * entry.Track.SectorSize + entry.HeaderOffset;
-
         var buffer = new byte[2048];
+
         entry.Stream.Seek(byteOffset, SeekOrigin.Begin);
 
         int readTotal = 0;
+
         while (readTotal < 2048)
         {
             int read = entry.Stream.Read(buffer, readTotal, 2048 - readTotal);
+
             if (read == 0)
                 throw new EndOfStreamException($"절대 LBA {absoluteLba} 섹터를 읽는 중 파일이 끝났습니다.");
+
             readTotal += read;
         }
 
@@ -54,11 +58,13 @@ public class GdRomCompositeSectorReader : IDisposable
     private static int DetectHeaderOffset(FileStream stream, long fileOffset)
     {
         var rawFirstSector = new byte[2352];
+
         stream.Seek(fileOffset, SeekOrigin.Begin);
         stream.ReadExactly(rawFirstSector);
         stream.Seek(0, SeekOrigin.Begin);
 
         bool hasSync = rawFirstSector[0] == 0x00 && rawFirstSector[11] == 0x00;
+
         for (int i = 1; i <= 10; i++)
             hasSync &= rawFirstSector[i] == 0xFF;
 
@@ -79,5 +85,7 @@ public class GdRomCompositeSectorReader : IDisposable
     {
         foreach (var (_, stream, _) in _dataTracks)
             stream.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 }

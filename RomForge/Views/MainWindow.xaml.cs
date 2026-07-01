@@ -23,15 +23,14 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            GdRomExtractor.ExtractAll(
-                //GdiFile.Parse(@"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4 (Japan)\Puyo Puyo 4 (Japan).gdi"),
-                GdiFile.Parse(@"\\CDH5\download\게임\한글패치\GDI\Rez v1.003 (2001)(Sega)(PAL)(M6)[!].gdi"),
-                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Extracted"),
-                null);
+            await DcpGdRomApplier.ApplyAsync(
+                gdiPath: @"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4\Puyo Puyo 4 (Japan).gdi",
+                dcpPath: @"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4\Puyo Puyo 4 (Dreamcast) KR v1.0.0.dcp",
+                outputDir: @"D:\Output");
         }
         catch (Exception ex)
         {

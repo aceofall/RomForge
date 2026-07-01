@@ -20,11 +20,10 @@ public static class Iso9660DirectoryReader
         var root = new Iso9660Entry
         {
             Name = string.Empty,
-            Lba = rootLba,
-            Size = rootSize,
             IsDirectory = true,
             FullPath = string.Empty
         };
+        root.Extents.Add((rootLba, rootSize));
 
         ReadDirectory(sectorReader, root);
 
@@ -34,6 +33,7 @@ public static class Iso9660DirectoryReader
     private static void ReadDirectory(Func<uint, byte[]> sectorReader, Iso9660Entry dir)
     {
         int sectorsToRead = (int)Math.Ceiling(dir.Size / 2048.0);
+        Iso9660Entry? pendingEntry = null;
 
         for (int s = 0; s < sectorsToRead; s++)
         {
@@ -44,38 +44,47 @@ public static class Iso9660DirectoryReader
             {
                 var recordLen = sector[pos];
 
-                if (recordLen == 0)
-                {
+                if (recordLen == 0) 
                     break;
-                }
 
                 var flags = sector[pos + 25];
                 var isDir = (flags & 0x02) != 0;
+                var isMultiExtentContinued = (flags & 0x80) != 0;
                 var fileLba = BitConverter.ToUInt32(sector, pos + 2);
                 var fileSize = BitConverter.ToUInt32(sector, pos + 10);
                 var nameLen = sector[pos + 32];
                 var rawName = Encoding.ASCII.GetString(sector, pos + 33, nameLen);
-
                 bool isSelfOrParent = nameLen == 1 && (rawName[0] == '\0' || rawName[0] == '\u0001');
 
                 if (!isSelfOrParent)
                 {
                     var name = isDir ? rawName : rawName.Split(';')[0];
-                    var childPath = string.IsNullOrEmpty(dir.FullPath) ? name : $"{dir.FullPath}/{name}";
 
-                    var entry = new Iso9660Entry
+                    if (pendingEntry != null && pendingEntry.Name == name)
+                        pendingEntry.Extents.Add((fileLba, fileSize));
+                    else
                     {
-                        Name = name,
-                        Lba = fileLba,
-                        Size = fileSize,
-                        IsDirectory = isDir,
-                        FullPath = childPath
-                    };
+                        var childPath = string.IsNullOrEmpty(dir.FullPath) ? name : $"{dir.FullPath}/{name}";
+                        var entry = new Iso9660Entry { Name = name, IsDirectory = isDir, FullPath = childPath };
 
-                    if (isDir)
-                        ReadDirectory(sectorReader, entry);
+                        entry.Extents.Add((fileLba, fileSize));
 
-                    dir.Children.Add(entry);
+                        if (isDir)
+                            ReadDirectory(sectorReader, entry);
+
+                        if (!isMultiExtentContinued)
+                            dir.Children.Add(entry);
+
+                        pendingEntry = isMultiExtentContinued ? entry : null;
+                    }
+
+                    if (pendingEntry != null && !isMultiExtentContinued)
+                    {
+                        if (!dir.Children.Contains(pendingEntry))
+                            dir.Children.Add(pendingEntry);
+
+                        pendingEntry = null;
+                    }
                 }
 
                 pos += recordLen;
@@ -89,15 +98,21 @@ public static class Iso9660DirectoryReader
             throw new InvalidOperationException($"디렉토리는 ReadFile로 읽을 수 없습니다: {file.FullPath}");
 
         var buffer = new byte[file.Size];
-        int sectorsToRead = (int)Math.Ceiling(file.Size / 2048.0);
+        int writtenOffset = 0;
 
-        for (int s = 0; s < sectorsToRead; s++)
+        foreach (var (lba, size) in file.Extents)
         {
-            var sector = sectorReader(file.Lba + (uint)s);
-            int offset = s * 2048;
-            int copyLen = (int)Math.Min(2048, file.Size - offset);
+            int sectorsToRead = (int)Math.Ceiling(size / 2048.0);
 
-            Buffer.BlockCopy(sector, 0, buffer, offset, copyLen);
+            for (int s = 0; s < sectorsToRead; s++)
+            {
+                var sector = sectorReader(lba + (uint)s);
+                int copyLen = (int)Math.Min(2048, size - s * 2048);
+
+                Buffer.BlockCopy(sector, 0, buffer, writtenOffset, copyLen);
+
+                writtenOffset += copyLen;
+            }
         }
 
         return buffer;

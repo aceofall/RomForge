@@ -6,11 +6,12 @@ namespace Patch.Core.Formats.DCP.Services;
 public class GdiFile
 {
     public List<GdiTrack> Tracks { get; } = [];
+
     public string BasePath { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// High-Density 영역의 마지막 데이터 트랙 (실제 게임 파일시스템이 들어있는 트랙).
-    /// </summary>
+    public string GdiPath { get; private set; } = string.Empty;
+
+
     public GdiTrack DataTrack => Tracks.Where(t => t.Type == TrackType.Data).OrderByDescending(t => t.Number).First();
 
     public static GdiFile Parse(string gdiPath)
@@ -18,7 +19,11 @@ public class GdiFile
         if (!File.Exists(gdiPath))
             throw new FileNotFoundException($".gdi 파일을 찾을 수 없습니다: {gdiPath}");
 
-        var result = new GdiFile { BasePath = Path.GetDirectoryName(Path.GetFullPath(gdiPath)) ?? string.Empty };
+        var result = new GdiFile 
+        { 
+            BasePath = Path.GetDirectoryName(Path.GetFullPath(gdiPath)) ?? string.Empty,
+            GdiPath = Path.GetFullPath(gdiPath)
+        };
         var lines = File.ReadAllLines(gdiPath)
             .Select(l => l.Trim())
             .Where(l => l.Length > 0)
@@ -33,6 +38,7 @@ public class GdiFile
         for (int i = 1; i <= trackCount && i < lines.Length; i++)
         {
             var tokens = SplitLine(lines[i]);
+
             if (tokens.Count < 5)
                 throw new InvalidDataException($".gdi 트랙 라인 형식이 올바르지 않습니다: {lines[i]}");
 
@@ -56,25 +62,35 @@ public class GdiFile
 
     private static List<string> SplitLine(string line)
     {
-        // 파일명이 공백 포함 시 따옴표로 감싸질 수 있어 단순 Split은 위험함
         var tokens = new List<string>();
         int i = 0;
+
         while (i < line.Length)
         {
-            while (i < line.Length && char.IsWhiteSpace(line[i])) i++;
-            if (i >= line.Length) break;
+            while (i < line.Length && char.IsWhiteSpace(line[i])) 
+                i++;
+
+            if (i >= line.Length) 
+                break;
 
             if (line[i] == '"')
             {
                 int end = line.IndexOf('"', i + 1);
-                if (end < 0) end = line.Length - 1;
+
+                if (end < 0) 
+                    end = line.Length - 1;
+
                 tokens.Add(line.Substring(i, end - i + 1));
+
                 i = end + 1;
             }
             else
             {
                 int start = i;
-                while (i < line.Length && !char.IsWhiteSpace(line[i])) i++;
+
+                while (i < line.Length && !char.IsWhiteSpace(line[i]))
+                    i++;
+
                 tokens.Add(line[start..i]);
             }
         }
