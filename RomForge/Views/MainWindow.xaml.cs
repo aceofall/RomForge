@@ -19,8 +19,6 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         InitializeComponent();
         Closing += MainWindow_Closing;
-
-        Loaded += MainWindow_Loaded;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -29,6 +27,7 @@ public partial class MainWindow : Window
         {
             await DcpGdRomApplier.ApplyAsync(
                 gdiPath: @"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4\Puyo Puyo 4 (Japan).gdi",
+                //gdiPath: @"\\CDH5\download\게임\한글패치\GDI\Rez\Rez v1.003 (2001)(Sega)(PAL)(M6)[!].gdi",
                 dcpPath: @"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4\Puyo Puyo 4 (Dreamcast) KR v1.0.0.dcp",
                 outputDir: @"D:\Output");
         }

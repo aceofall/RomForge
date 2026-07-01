@@ -17,9 +17,7 @@ public static class Iso9660GameIdExtractor
         var rootDirLba = BitConverter.ToUInt32(pvd, 156 + 2);
         var id = FindSystemCnf(sectorReader, rootDirLba);
 
-        return id != null
-            ? (id, ExtractResult.Success)
-            : (null, ExtractResult.NotPs1Disc);
+        return id != null ? (id, ExtractResult.Success) : (null, ExtractResult.NotPs1Disc);
     }
 
     private static string? FindSystemCnf(Func<uint, byte[]> sectorReader, uint dirLba)
@@ -40,6 +38,7 @@ public static class Iso9660GameIdExtractor
             if (name == "SYSTEM.CNF")
             {
                 var fileLba = BitConverter.ToUInt32(sector, pos + 2);
+
                 return ReadSystemCnf(sectorReader, fileLba);
             }
 
@@ -53,10 +52,7 @@ public static class Iso9660GameIdExtractor
     {
         var content = Encoding.ASCII.GetString(sectorReader(lba));
 
-        var id = Regex.Match(
-            content,
-            @"([A-Z]{4})_(\d{3})\.(\d+)",
-            RegexOptions.IgnoreCase);
+        var id = Regex.Match(content, @"([A-Z]{4})_(\d{3})\.(\d+)", RegexOptions.IgnoreCase);
 
         if (!id.Success)
             return null;

@@ -1,10 +1,9 @@
 using Common.WPF.ViewModels;
-using RomForge.Core.Models.Compression;
 using RomForge.Core.Services.Compression;
 using System.IO;
 using System.Windows.Media;
 
-namespace RomForge.Core.Models;
+namespace RomForge.Core.Models.Compression;
 
 public class CompressFileItem(string filePath) : FileItemBase(filePath)
 {
@@ -74,8 +73,11 @@ public class CompressFileItem(string filePath) : FileItemBase(filePath)
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .Select(l =>
                     {
-                        var parts = l.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        return parts.Length >= 5 ? parts[4] : string.Empty;
+                        var parts = l.Trim().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+
+                        return parts.Length >= 5
+                            ? parts[4].Trim('"')
+                            : string.Empty;
                     })
                     .Where(f => !string.IsNullOrEmpty(f))),
 
