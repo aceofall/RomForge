@@ -1,4 +1,5 @@
 ﻿using NSW.WPF.UI;
+using Patch.Core.Formats.DCP.Services;
 using RomForge.Core.UI.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
@@ -18,6 +19,24 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         InitializeComponent();
         Closing += MainWindow_Closing;
+
+        Loaded += MainWindow_Loaded;
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            GdRomExtractor.ExtractAll(
+                //GdiFile.Parse(@"\\CDH5\download\게임\한글패치\GDI\Puyo Puyo 4 (Japan)\Puyo Puyo 4 (Japan).gdi"),
+                GdiFile.Parse(@"\\CDH5\download\게임\한글패치\GDI\Rez v1.003 (2001)(Sega)(PAL)(M6)[!].gdi"),
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Extracted"),
+                null);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"{ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}", "GDI 추출 실패", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
