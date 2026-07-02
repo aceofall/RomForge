@@ -3,6 +3,7 @@ using _3DS.Core.Interfaces;
 using _3DS.Core.Models;
 using _3DS.Core.Services;
 using Common;
+using NSW.Utils;
 using System.IO;
 
 namespace RomForge.Core.Services._3DS;
@@ -85,7 +86,8 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
     {
         log("리팩 시작...", LogLevel.Highlight);
 
-        string fileName = string.IsNullOrEmpty(gameName) ? "output" : gameName;
+        string safeFileName = NspNameBuilder.SafeFileName(gameName);
+        string fileName = string.IsNullOrEmpty(safeFileName) ? "output" : safeFileName;        
         string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, fileName + "_Repack.cci"));
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         var contentsList = new List<Contents>();

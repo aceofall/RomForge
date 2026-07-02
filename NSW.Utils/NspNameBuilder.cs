@@ -152,7 +152,7 @@ public static class NspNameBuilder
         return version;
     }
 
-    private static string SafeFileName(string name)
+    public static string SafeFileName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return string.Empty;
