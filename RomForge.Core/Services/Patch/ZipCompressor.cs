@@ -4,7 +4,7 @@ using System.IO.Compression;
 
 namespace RomForge.Core.Services.Patch;
 
-public class ZipCompressor(Action<string, LogLevel> log, Action<int> setProgress)
+public class ZipCompressor(Action<string, LogLevel> log, IProgress<ProgressInfo> progress)
 {
     public async Task CompressFromBytesAsync(byte[] patched, string sourcePath, string outputDir, CancellationToken ct)
     {
@@ -34,7 +34,7 @@ public class ZipCompressor(Action<string, LogLevel> log, Action<int> setProgress
                 bytesWrittenTotal += bytesToWrite;
 
                 if (totalBytes > 0)
-                    setProgress((int)((double)bytesWrittenTotal / totalBytes * 100));
+                    progress.Report(new ProgressInfo { Label = "압축 중...", Percent = (int)((double)bytesWrittenTotal / totalBytes * 100) });
             }
         }, ct);
 
@@ -68,7 +68,7 @@ public class ZipCompressor(Action<string, LogLevel> log, Action<int> setProgress
                 bytesReadTotal += bytesRead;
 
                 if (totalBytes > 0)
-                    setProgress((int)((double)bytesReadTotal / totalBytes * 100));
+                    progress.Report(new ProgressInfo { Label = "압축 중...", Percent = (int)((double)bytesReadTotal / totalBytes * 100) });
             }
         }, ct);
 

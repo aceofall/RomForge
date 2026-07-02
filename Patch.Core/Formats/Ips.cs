@@ -1,41 +1,42 @@
-﻿namespace Patch.Core.Formats;
+﻿using Common;
+using System.IO;
+
+namespace Patch.Core.Formats;
 
 public static class Ips
 {
     private static readonly byte[] PatchHeader = [(byte)'P', (byte)'A', (byte)'T', (byte)'C', (byte)'H'];
     private static readonly byte[] PatchFooter = [(byte)'E', (byte)'O', (byte)'F'];
 
-    public static async Task CreatePatchAsync(string sourcePath, string newPath, string patchPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static async Task CreatePatchAsync(string sourcePath, string newPath, string patchPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         ValidateInputFiles(sourcePath, newPath);
 
         byte[] original = await File.ReadAllBytesAsync(sourcePath, cancellationToken);
         byte[] modified = await File.ReadAllBytesAsync(newPath, cancellationToken);
-        byte[] patch = await Task.Run(() => Encode(original, modified, onProgress, cancellationToken), cancellationToken);
+        byte[] patch = await Task.Run(() => Encode(original, modified, progress, cancellationToken), cancellationToken);
 
         await File.WriteAllBytesAsync(patchPath, patch, cancellationToken);
     }
 
-    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         ValidateInputFiles(sourcePath, patchPath);
 
         byte[] rom = await File.ReadAllBytesAsync(sourcePath, cancellationToken);
         byte[] ips = await File.ReadAllBytesAsync(patchPath, cancellationToken);
-        byte[] result = await Task.Run(() => Decode(rom, ips, onProgress, cancellationToken), cancellationToken);
+        byte[] result = await Task.Run(() => Decode(rom, ips, progress, cancellationToken), cancellationToken);
 
         await File.WriteAllBytesAsync(outputPath, result, cancellationToken);
     }
 
-    public static async Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
-    {
-        return await Task.Run(() => Decode(sourceData, patchData, onProgress, cancellationToken), cancellationToken);
-    }
+    public static Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
+        => Task.Run(() => Decode(sourceData, patchData, progress, cancellationToken), cancellationToken);
 
-    private unsafe static byte[] Encode(byte[] original, byte[] modified, Action<double>? onProgress, CancellationToken cancellationToken)
+    private unsafe static byte[] Encode(byte[] original, byte[] modified, IProgress<ProgressInfo>? progress,         CancellationToken cancellationToken)
     {
         using var ms = new MemoryStream();
-        ms.Write(PatchHeader, 0, 5);
+        ms.Write(PatchHeader, 0, PatchHeader.Length);
 
         int maxLen = Math.Max(original.Length, modified.Length);
 
@@ -99,34 +100,31 @@ public static class Ips
                         ms.WriteByte((byte)((size >> 8) & 0xFF));
                         ms.WriteByte((byte)(size & 0xFF));
 
-                        if (start < modified.Length)
-                        {
-                            int available = Math.Min(size, modified.Length - start);
-                            ms.Write(modified, start, available);
+                        int available = Math.Min(size, modified.Length - start);
+                        ms.Write(modified, start, Math.Max(0, available));
 
-                            for (int i = available; i < size; i++) 
-                                ms.WriteByte(0);
-                        }
-                        else
-                        {
-                            for (int i = 0; i < size; i++) 
-                                ms.WriteByte(0);
-                        }
+                        for (int i = available; i < size; i++)
+                            ms.WriteByte(0);
                     }
                 }
                 else pos++;
 
-                if (onProgress != null && pos % Math.Max(1, maxLen / 100) == 0)
-                    onProgress((double)pos / maxLen);
+                if (progress != null && pos % Math.Max(1, maxLen / 100) == 0)
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Percent = pos / maxLen
+                    });
+                }
             }
         }
 
-        ms.Write(PatchFooter, 0, 3);
+        ms.Write(PatchFooter, 0, PatchFooter.Length);
 
         return ms.ToArray();
     }
 
-    private unsafe static byte[] Decode(byte[] rom, byte[] ips, Action<double>? onProgress, CancellationToken cancellationToken)
+    private unsafe static byte[] Decode(byte[] rom, byte[] ips, IProgress<ProgressInfo>? progress, CancellationToken cancellationToken)
     {
         if (ips.Length < 8)
             throw new InvalidDataException("IPS 파일이 너무 짧습니다.");
@@ -137,6 +135,7 @@ public static class Ips
                 throw new InvalidDataException("유효하지 않은 IPS 헤더입니다.");
 
             byte[] result = new byte[rom.Length];
+
             Buffer.BlockCopy(rom, 0, result, 0, rom.Length);
 
             int actualFinalSize = rom.Length;
@@ -150,21 +149,21 @@ public static class Ips
                     break;
 
                 int offset = (pIps[pos] << 16) | (pIps[pos + 1] << 8) | pIps[pos + 2];
+
                 pos += 3;
 
                 if (pos + 2 > ips.Length)
                     break;
 
-                int size = (pIps[pos] << 8) | (pIps[pos + 1]);
+                int size = (pIps[pos] << 8) | pIps[pos + 1];
+
                 pos += 2;
 
                 if (size == 0)
                 {
-                    if (pos + 3 > ips.Length)
-                        break;
-
                     int rleCount = (pIps[pos] << 8) | pIps[pos + 1];
                     byte rleValue = pIps[pos + 2];
+
                     pos += 3;
 
                     EnsureCapacity(ref result, offset + rleCount);
@@ -173,13 +172,11 @@ public static class Ips
                         actualFinalSize = offset + rleCount;
 
                     fixed (byte* pRes = result)
-                        for (int i = 0; i < rleCount; i++) pRes[offset + i] = rleValue;
+                        for (int i = 0; i < rleCount; i++)
+                            pRes[offset + i] = rleValue;
                 }
                 else
                 {
-                    if (pos + size > ips.Length)
-                        break;
-
                     EnsureCapacity(ref result, offset + size);
 
                     if (offset + size > actualFinalSize)
@@ -191,7 +188,10 @@ public static class Ips
                     pos += size;
                 }
 
-                onProgress?.Invoke((double)pos / ips.Length);
+                progress?.Report(new ProgressInfo
+                {
+                    Percent = pos / ips.Length
+                });
             }
 
             if (result.Length != actualFinalSize)

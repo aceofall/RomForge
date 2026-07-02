@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Common;
 
 namespace Patch.Core.Formats;
 
@@ -38,23 +39,39 @@ public static class Xdelta3
 
     private static string GetLastError() => Marshal.PtrToStringAnsi(xd3_get_last_error()) ?? "unknown error";
 
-    public static void ApplyPatch(string sourcePath, string patchPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static void ApplyPatch(string sourcePath, string patchPath, string outputPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         ValidateInputFiles(sourcePath, patchPath);
 
         using (cancellationToken.Register(() => xd3_cancel()))
         {
-            if (onProgress is null)
+            if (progress is null)
             {
-                ThrowIfFailed(xd3_apply_patch_w(sourcePath, patchPath, outputPath, IntPtr.Zero), "패치 적용");
+                ThrowIfFailed(xd3_apply_patch_w(sourcePath, patchPath, outputPath, IntPtr.Zero));
                 return;
             }
 
-            ProgressCallback cb = progress => onProgress(progress);
+            long total = new FileInfo(sourcePath).Length;
+
+            var reporter = new ProgressReporter(
+                "패치중...",
+                string.Empty,
+                total,
+                progress);
+
+            var report = reporter.CreateAction();
+
+            ProgressCallback cb = p =>
+            {
+                long current = (long)(p * total);
+                report(current, total);
+            };
+
             GCHandle handle = GCHandle.Alloc(cb);
+
             try
             {
-                ThrowIfFailed(xd3_apply_patch_w(sourcePath, patchPath, outputPath, cb), "패치 적용");
+                ThrowIfFailed(xd3_apply_patch_w(sourcePath, patchPath, outputPath, cb));
             }
             finally
             {
@@ -64,7 +81,7 @@ public static class Xdelta3
         }
     }
 
-    public static byte[] ApplyPatch(byte[] sourceData, byte[] patchData, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static byte[] ApplyPatch(byte[] sourceData, byte[] patchData, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         int ret;
         IntPtr outPtr;
@@ -72,12 +89,15 @@ public static class Xdelta3
 
         using (cancellationToken.Register(() => xd3_cancel()))
         {
-            if (onProgress is null)
+            if (progress is null)
+            {
                 ret = xd3_apply_patch_mem(sourceData, (nuint)sourceData.Length, patchData, (nuint)patchData.Length, out outPtr, out outSize, IntPtr.Zero);
+            }
             else
             {
-                ProgressCallback cb = progress => onProgress(Math.Min(progress, 1.0));
+                ProgressCallback cb = p => progress.Report(new ProgressInfo((int)Math.Min(p * 100.0, 100.0), "", "", "", ""));
                 GCHandle handle = GCHandle.Alloc(cb);
+
                 try
                 {
                     ret = xd3_apply_patch_mem(sourceData, (nuint)sourceData.Length, patchData, (nuint)patchData.Length, out outPtr, out outSize, cb);
@@ -90,7 +110,7 @@ public static class Xdelta3
             }
         }
 
-        ThrowIfFailed(ret, "패치 적용");
+        ThrowIfFailed(ret);
 
         try
         {
@@ -104,19 +124,22 @@ public static class Xdelta3
         }
     }
 
-    public static void CreatePatch(string sourcePath, string newPath, string patchPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static void CreatePatch(string sourcePath, string newPath, string patchPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         ValidateInputFiles(sourcePath, newPath);
         int result;
 
         using (cancellationToken.Register(() => xd3_cancel()))
         {
-            if (onProgress is null)
+            if (progress is null)
+            {
                 result = xd3_create_patch_w(sourcePath, newPath, patchPath, IntPtr.Zero);
+            }
             else
             {
-                ProgressCallback cb = progress => onProgress(Math.Min(progress, 1.0));
+                ProgressCallback cb = p => progress.Report(new ProgressInfo((int)Math.Min(p * 100.0, 100.0), "", "", "", ""));
                 GCHandle handle = GCHandle.Alloc(cb);
+
                 try
                 {
                     result = xd3_create_patch_w(sourcePath, newPath, patchPath, cb);
@@ -128,7 +151,8 @@ public static class Xdelta3
                 }
             }
         }
-        ThrowIfFailed(result, "패치 생성");
+
+        ThrowIfFailed(result);
     }
 
     private static void ValidateInputFiles(params string[] paths)
@@ -138,7 +162,7 @@ public static class Xdelta3
                 throw new FileNotFoundException($"파일을 찾을 수 없습니다: {path}");
     }
 
-    private static void ThrowIfFailed(int result, string operation)
+    private static void ThrowIfFailed(int result)
     {
         if (result == 0)
             return;
@@ -164,6 +188,6 @@ public static class Xdelta3
             _ => $"{GetLastError()} (Error Code: {result})"
         };
 
-        throw new InvalidOperationException($"{errorMessage}");
+        throw new InvalidOperationException(errorMessage);
     }
 }

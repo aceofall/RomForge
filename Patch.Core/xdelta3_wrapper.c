@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <process.h>
 
 #define XD3_ENCODER         1
 #define SECONDARY_LZMA      1
@@ -37,6 +38,17 @@ typedef void (*progress_cb)(double);
 
 static char last_error_msg[512] = { 0 };
 static volatile int g_cancel_flag = 0;
+
+typedef struct {
+    xd3_stream* stream;
+    const uint8_t* patch_data;
+    size_t patch_size;
+    uint8_t** out_buf;
+    size_t* out_cap;
+    size_t* out_len;
+    int ret;
+    int done;
+} thread_ctx;
 
 DLL_EXPORT const char* xd3_get_last_error(void) {
     return last_error_msg;
@@ -323,7 +335,46 @@ fail:
     return (ret == 0 || ret == XD3_INPUT) ? 0 : ret;
 }
 
-DLL_EXPORT int xd3_apply_patch_mem(const uint8_t * source_data, size_t source_size, const uint8_t * patch_data, size_t patch_size, uint8_t * *output_data, size_t * output_size, progress_cb cb)
+unsigned __stdcall decode_thread(void* arg) {
+    thread_ctx* t = (thread_ctx*)arg;
+    xd3_avail_input(t->stream, t->patch_data, (usize_t)t->patch_size);
+    xd3_set_flags(t->stream, XD3_FLUSH | t->stream->flags);
+
+process:
+    if (g_cancel_flag) { t->ret = -99; t->done = 1; return 0; }
+    t->ret = xd3_decode_input(t->stream);
+    switch (t->ret) {
+    case XD3_INPUT:
+        break;
+    case XD3_OUTPUT: {
+        size_t need = *(t->out_len) + t->stream->avail_out;
+        if (need > *(t->out_cap)) {
+            *(t->out_cap) = need * 2;
+            uint8_t* tmp = (uint8_t*)realloc(*(t->out_buf), *(t->out_cap));
+            if (!tmp) { t->ret = XD3_INTERNAL; t->done = 1; return 0; }
+            *(t->out_buf) = tmp;
+        }
+        memcpy(*(t->out_buf) + *(t->out_len), t->stream->next_out, t->stream->avail_out);
+        *(t->out_len) += t->stream->avail_out;
+        xd3_consume_output(t->stream);
+        goto process;
+    }
+    case XD3_GETSRCBLK:
+        t->ret = my_getblk(t->stream, t->stream->src, t->stream->src->getblkno);
+        if (t->ret != 0) { t->done = 1; return 0; }
+        goto process;
+    case XD3_GOTHEADER:
+    case XD3_WINSTART:
+    case XD3_WINFINISH:
+        goto process;
+    default:
+        break;
+    }
+    t->done = 1;
+    return 0;
+}
+
+DLL_EXPORT int xd3_apply_patch_mem(const uint8_t* source_data, size_t source_size, const uint8_t* patch_data, size_t patch_size, uint8_t** output_data, size_t* output_size, progress_cb cb)
 {
     last_error_msg[0] = 0;
     g_cancel_flag = 0;
@@ -356,69 +407,31 @@ DLL_EXPORT int xd3_apply_patch_mem(const uint8_t * source_data, size_t source_si
     uint8_t* out_buf = (uint8_t*)malloc(out_cap);
     if (!out_buf) { xd3_free_stream(&stream); return XD3_INTERNAL; }
 
-    const uint8_t* p = patch_data;
-    size_t left = patch_size;
-    size_t consumed = 0;
-    int eof = 0;
-
-    while (!eof) {
-        size_t n = left > INPUT_BUFSIZE ? INPUT_BUFSIZE : left;
-        if (n == 0) {
-            eof = 1;
-            xd3_set_flags(&stream, XD3_FLUSH | stream.flags);
-            xd3_avail_input(&stream, p, 0);
-        }
-        else {
-            xd3_avail_input(&stream, p, (usize_t)n);
-            p += n;
-            left -= n;
-            consumed += n;
-        }
-
-    process:
-        ret = xd3_decode_input(&stream);
-        switch (ret) {
-        case XD3_INPUT:
-            break;
-
-        case XD3_OUTPUT: {
-            size_t need = out_len + stream.avail_out;
-            if (need > out_cap) {
-                out_cap = need * 2;
-                uint8_t* tmp = (uint8_t*)realloc(out_buf, out_cap);
-                if (!tmp) { free(out_buf); ret = XD3_INTERNAL; goto done; }
-                out_buf = tmp;
-            }
-            memcpy(out_buf + out_len, stream.next_out, stream.avail_out);
-            out_len += stream.avail_out;
-            xd3_consume_output(&stream);
-            goto process;
-        }
-
-        case XD3_GETSRCBLK:
-            ret = my_getblk(&stream, stream.src, stream.src->getblkno);
-            if (ret != 0) goto done;
-            goto process;
-
-        case XD3_GOTHEADER:
-        case XD3_WINSTART:
-            goto process;
-
-        case XD3_WINFINISH:
-            if (g_cancel_flag) { ret = -99; goto done; }
-            update_progress(out_len, (long long)source_size, cb);
-            goto process;
-
-        default:
-            goto done;
-        }
+    thread_ctx t_ctx = { &stream, patch_data, patch_size, &out_buf, &out_cap, &out_len, 0, 0 };
+    HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, decode_thread, &t_ctx, 0, NULL);
+    if (!hThread) {
+        free(out_buf);
+        xd3_free_stream(&stream);
+        return XD3_INTERNAL;
     }
 
-done:
+    while (!t_ctx.done) {
+        if (source_size > 0) {
+            update_progress((long long)out_len, (long long)source_size, cb);
+        }
+        Sleep(30);
+    }
+
+    WaitForSingleObject(hThread, INFINITE);
+    CloseHandle(hThread);
+
+    ret = t_ctx.ret;
+
     xd3_free_stream(&stream);
     if (ret == 0 || ret == XD3_INPUT) {
         *output_data = out_buf;
         *output_size = out_len;
+        if (cb) cb(1.0);
         return 0;
     }
     free(out_buf);

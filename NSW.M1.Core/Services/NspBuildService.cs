@@ -8,6 +8,7 @@ using NSW.HacPack.Enums;
 using NSW.HacPack.Services;
 using NSW.M1.Core.Models;
 using NSW.Utils;
+using Patch.Core.Formats;
 using System.Diagnostics;
 using Path = System.IO.Path;
 
@@ -246,16 +247,19 @@ public static class NspBuildService
 
                             try
                             {
-                                Patch.Core.Formats.Xdelta3.ApplyPatch(
+                                var wrapper = new Progress<ProgressInfo>(p =>
+                                {
+                                    int currentStep = 80 + (int)(p.Percent * 0.1);
+
+                                    if (currentStep > 80)
+                                        progress?.Report((currentStep, string.Empty));
+                                });
+
+                                Xdelta3.ApplyPatch(
                                     targetPath,
                                     Path.GetFullPath(xdeltaPath),
                                     tempOutPath,
-                                    percent =>
-                                    {
-                                        int currentStep = 80 + (int)(percent * 10);
-                                        if (currentStep > 80)
-                                            progress?.Report((currentStep, string.Empty));
-                                    }
+                                    wrapper
                                 );
 
                                 if (File.Exists(tempOutPath))

@@ -19,6 +19,12 @@ public class ProgressReporter(string gameTitle, string gameId, long totalEstimat
         };
     }
 
+    public void ReportPercent(double percent)
+    {
+        long current = (long)(percent * totalEstimated);
+        Report(current, totalEstimated, current >= totalEstimated);
+    }
+
     public void AddProgress(long bytesRead)
     {
         lock (_lock)

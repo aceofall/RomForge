@@ -8,7 +8,7 @@ namespace RomForge.Core.Services.Patch;
 
 public static class PatchService
 {
-    public static async Task ApplyPatchedZipAsync(string sourceZipPath, string outputZipPath, IReadOnlyDictionary<string, PatchEntry> patchesByEntryName, IProgress<EntryPatchProgress>? progress = null, CancellationToken ct = default)
+    public static async Task ApplyPatchedZipAsync(string sourceZipPath, string outputZipPath, IReadOnlyDictionary<string, PatchEntry> patchesByEntryName, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var outputDir = Path.GetDirectoryName(outputZipPath);
 
@@ -46,7 +46,7 @@ public static class PatchService
         }
     }
 
-    private static async Task WritePatchedEntryAsync(ZipArchiveEntry sourceEntry, PatchEntry patchEntry, ZipArchive outputZip, Dictionary<string, ZipArchive> openPatchZips, IProgress<EntryPatchProgress>? progress, CancellationToken ct = default)
+    private static async Task WritePatchedEntryAsync(ZipArchiveEntry sourceEntry, PatchEntry patchEntry, ZipArchive outputZip, Dictionary<string, ZipArchive> openPatchZips, IProgress<ProgressInfo>? progress, CancellationToken ct = default)
     {
         byte[] sourceBytes;
 
@@ -62,15 +62,14 @@ public static class PatchService
         ct.ThrowIfCancellationRequested();
 
         var resultBytes = await
-            UniversalPatcher.ApplyPatchAsync(sourceBytes, patchBytes, p =>
-                progress?.Report(new EntryPatchProgress { EntryName = sourceEntry.FullName, Percent = (int)(p * 100) }), ct);
+            UniversalPatcher.ApplyPatchAsync(sourceBytes, patchBytes, progress, ct);
 
         var newEntry = outputZip.CreateEntry(sourceEntry.FullName, CompressionLevel.Optimal);
 
         using (var destStream = newEntry.Open())
             await destStream.WriteAsync(resultBytes, ct);
 
-        progress?.Report(new EntryPatchProgress { EntryName = sourceEntry.FullName, Percent = 100 });
+        progress?.Report(new ProgressInfo { Label = sourceEntry.FullName, Percent = 100 });
     }
 
     private static async Task CopyEntryAsync(ZipArchiveEntry sourceEntry, ZipArchive outputZip, CancellationToken ct)

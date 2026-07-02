@@ -440,14 +440,14 @@ public class PackingMainViewModel : ToolTabViewModel
     }
 
     private Progress<ProgressInfo> BuildProgressReporter() =>
-    new(info =>
-    {
-        ProgressPct = info.Percent;
-        ProgressLabel = info.Label;
-        ProgressPercent = $"{info.Percent}%";
-        ProgressTime = info.TimeInfo;
-        ProgressSpeed = info.Speed;
-    });
+        new(info =>
+        {
+            ProgressPct = info.Percent;
+            ProgressLabel = info.Label;
+            ProgressPercent = $"{info.Percent}%";
+            ProgressTime = info.TimeInfo;
+            ProgressSpeed = info.Speed;
+        });
 
     private void CleanupTask()
     {

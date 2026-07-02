@@ -1,4 +1,6 @@
-﻿using Patch.Core.Enums;
+﻿using System.IO.MemoryMappedFiles;
+using Common;
+using Patch.Core.Enums;
 using Patch.Core.Formats;
 
 namespace Patch.Core;
@@ -7,12 +9,24 @@ public static class UniversalPatcher
 {
     public const long MemoryThreshold = 2L * 1024 * 1024 * 1024;
 
-    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(sourcePath)) throw new FileNotFoundException($"원본 파일을 찾을 수 없습니다: {sourcePath}");
-        if (!File.Exists(patchPath)) throw new FileNotFoundException($"패치 파일을 찾을 수 없습니다: {patchPath}");
+        if (!File.Exists(sourcePath)) 
+            throw new FileNotFoundException($"원본 파일을 찾을 수 없습니다: {sourcePath}");
+
+        if (!File.Exists(patchPath)) 
+            throw new FileNotFoundException($"패치 파일을 찾을 수 없습니다: {patchPath}");
 
         cancellationToken.ThrowIfCancellationRequested();
+
+        PatchFormat format = await DetectFormatAsync(patchPath, cancellationToken);
+
+        if (format == PatchFormat.Xdelta)
+        {
+            await Task.Run(() => Xdelta3.ApplyPatch(sourcePath, patchPath, outputPath, progress, cancellationToken), cancellationToken);
+
+            return;
+        }
 
         var sourceLength = new FileInfo(sourcePath).Length;
         var patchLength = new FileInfo(patchPath).Length;
@@ -20,30 +34,32 @@ public static class UniversalPatcher
         if (sourceLength < MemoryThreshold && patchLength < MemoryThreshold)
         {
             byte[] sourceData = await File.ReadAllBytesAsync(sourcePath, cancellationToken);
-            byte[] patchData = await File.ReadAllBytesAsync(patchPath, cancellationToken);
-            await File.WriteAllBytesAsync(outputPath, await ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken), cancellationToken);
+            byte[] patchData = await File.ReadAllBytesAsync(patchPath, cancellationToken);            
+            byte[] resultData = await ApplyPatchAsync(sourceData, patchData, progress, cancellationToken);
+
+            await File.WriteAllBytesAsync(outputPath, resultData, cancellationToken);
         }
         else
         {
-            PatchFormat format = await DetectFormatAsync(patchPath, cancellationToken);
-
             switch (format)
             {
-                case PatchFormat.Xdelta: await Task.Run(() => Xdelta3.ApplyPatch(sourcePath, patchPath, outputPath, onProgress, cancellationToken), cancellationToken); break;
-                case PatchFormat.Ips: await Ips.ApplyPatchAsync(sourcePath, patchPath, outputPath, onProgress, cancellationToken); break;
-                case PatchFormat.Bps: await Bps.ApplyPatchAsync(sourcePath, patchPath, outputPath, onProgress, cancellationToken); break;
-                case PatchFormat.Ups: await Ups.ApplyPatchAsync(sourcePath, patchPath, outputPath, onProgress, cancellationToken); break;
-                case PatchFormat.Ppf: await Ppf.ApplyPatchAsync(sourcePath, patchPath, outputPath, onProgress, cancellationToken); break;
-                case PatchFormat.Aps: await Aps.ApplyPatchAsync(sourcePath, patchPath, outputPath, onProgress, cancellationToken); break;
+                case PatchFormat.Ips: await Ips.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, cancellationToken); break;
+                case PatchFormat.Bps: await Bps.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, cancellationToken); break;
+                case PatchFormat.Ups: await Ups.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, cancellationToken); break;
+                //case PatchFormat.Ppf: await Ppf.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, cancellationToken); break;
+                case PatchFormat.Aps: await Aps.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, cancellationToken); break;
                 default: throw new NotSupportedException("지원되지 않거나 유효하지 않은 패치 포맷입니다.");
             }
         }
     }
 
-    public static async Task<byte[]> ApplyPatchAsync(string sourcePath, string patchPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static async Task<byte[]> ApplyPatchAsync(string sourcePath, string patchPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(sourcePath)) throw new FileNotFoundException($"원본 파일을 찾을 수 없습니다: {sourcePath}");
-        if (!File.Exists(patchPath)) throw new FileNotFoundException($"패치 파일을 찾을 수 없습니다: {patchPath}");
+        if (!File.Exists(sourcePath)) 
+            throw new FileNotFoundException($"원본 파일을 찾을 수 없습니다: {sourcePath}");
+
+        if (!File.Exists(patchPath)) 
+            throw new FileNotFoundException($"패치 파일을 찾을 수 없습니다: {patchPath}");
 
         var sourceLength = new FileInfo(sourcePath).Length;
         var patchLength = new FileInfo(patchPath).Length;
@@ -56,21 +72,21 @@ public static class UniversalPatcher
         byte[] sourceData = await File.ReadAllBytesAsync(sourcePath, cancellationToken);
         byte[] patchData = await File.ReadAllBytesAsync(patchPath, cancellationToken);
 
-        return await ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken);
+        return await ApplyPatchAsync(sourceData, patchData, progress, cancellationToken);
     }
 
-    public static async Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
+    public static async Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         PatchFormat format = DetectFormat(patchData);
 
         return format switch
         {
-            PatchFormat.Xdelta => await Task.Run(() => Xdelta3.ApplyPatch(sourceData, patchData, onProgress, cancellationToken), cancellationToken),
-            PatchFormat.Ips => await Ips.ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken),
-            PatchFormat.Bps => await Bps.ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken),
-            PatchFormat.Ups => await Ups.ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken),
-            PatchFormat.Ppf => await Ppf.ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken),
-            PatchFormat.Aps => await Aps.ApplyPatchAsync(sourceData, patchData, onProgress, cancellationToken),
+            PatchFormat.Xdelta => await Task.Run(() => Xdelta3.ApplyPatch(sourceData, patchData, progress, cancellationToken), cancellationToken),
+            PatchFormat.Ips => await Ips.ApplyPatchAsync(sourceData, patchData, progress, cancellationToken),
+            PatchFormat.Bps => await Bps.ApplyPatchAsync(sourceData, patchData, progress, cancellationToken),
+            PatchFormat.Ups => await Ups.ApplyPatchAsync(sourceData, patchData, progress, cancellationToken),
+            //PatchFormat.Ppf => await Ppf.ApplyPatchAsync(sourceData, patchData, progress, cancellationToken),
+            PatchFormat.Aps => await Aps.ApplyPatchAsync(sourceData, patchData, progress, cancellationToken),
             _ => throw new NotSupportedException("지원되지 않거나 유효하지 않은 패치 포맷입니다.")
         };
     }
@@ -83,6 +99,7 @@ public static class UniversalPatcher
         byte[] header = new byte[8];
 
         using var fs = new FileStream(patchPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+
         int read = await fs.ReadAsync(header, ct);
 
         return DetectFormat(header.AsSpan(0, read));

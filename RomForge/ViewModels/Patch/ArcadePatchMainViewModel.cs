@@ -149,9 +149,9 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
             item.Progress = 0;
         }
 
-        var progressReporter = new Progress<EntryPatchProgress>(p =>
+        var progressReporter = new Progress<ProgressInfo>(p =>
         {
-            if (itemsByEntryName.TryGetValue(p.EntryName, out var item))
+            if (itemsByEntryName.TryGetValue(p.Label, out var item))
             {
                 item.Progress = p.Percent;
                 UpdateSummary();

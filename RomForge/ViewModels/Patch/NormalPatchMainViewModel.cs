@@ -6,6 +6,7 @@ using RomForge.Core;
 using RomForge.Core.Models;
 using RomForge.Core.Services.Compression;
 using RomForge.Core.Services.Patch;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -15,10 +16,16 @@ namespace RomForge.ViewModels.Patch;
 public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 {
     private CancellationTokenSource? _runCts;
+    private string? _sourcePath;
+    private string? _patchPath;
+    private int _progressPct;
+    private string _progressLabel = string.Empty;
+    private string _progressPercent = "0%";
+    private string _progressTime = string.Empty;
+    private string _progressSpeed = string.Empty;
 
     public System.Collections.ObjectModel.ObservableCollection<LogEntry> LogEntries { get; } = [];
-
-    private string? _sourcePath;
+    
     public string? SourcePath
     {
         get => _sourcePath;
@@ -30,8 +37,7 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             CommandManager.InvalidateRequerySuggested();
         }
     }
-
-    private string? _patchPath;
+    
     public string? PatchPath
     {
         get => _patchPath;
@@ -54,30 +60,37 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     }
 
     public string SourceLabel => Path.GetFileName(SourcePath) ?? "원본 파일을 드래그하거나 클릭하세요";
+
     public string PatchLabel => Path.GetFileName(PatchPath) ?? "패치 파일을 드래그하거나 클릭하세요";
 
-    private int _progress;
-    public int Progress
+    public int ProgressPct
     {
-        get => _progress;
-        set 
-        { 
-            _progress = value; 
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(ProgressText));
-        }
+        get => _progressPct;
+        set { _progressPct = value; OnPropertyChanged(); }
     }
 
-    public string ProgressText
+    public string ProgressLabel
     {
-        get => $"{_progress}%";
+        get => _progressLabel;
+        set { _progressLabel = value; OnPropertyChanged(); }
     }
 
-    private string _progressStatus = "대기 중";
-    public string ProgressStatus
+    public string ProgressPercent
     {
-        get => _progressStatus;
-        set { _progressStatus = value; OnPropertyChanged(); }
+        get => _progressPercent;
+        set { _progressPercent = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressTime
+    {
+        get => _progressTime;
+        set { _progressTime = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressSpeed
+    {
+        get => _progressSpeed;
+        set { _progressSpeed = value; OnPropertyChanged(); }
     }
 
     public NormalPatchMainViewModel()
@@ -108,21 +121,14 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         _runCts = new CancellationTokenSource();
         var ct = _runCts.Token;
 
-        Progress = 0;
-        ProgressStatus = "패치 중...";
-
         string outputDir = Path.Combine(Path.GetDirectoryName(SourcePath)!, "output");
         string outputPath = Path.Combine(outputDir, Path.GetFileName(SourcePath));
         outputPath = Utils.GetUniqueFilePath(outputPath);
 
         Log($"패치 시작: {Path.GetFileName(SourcePath)}", LogLevel.Highlight);
 
-        var orchestrator = new PatchOrchestrator(
-            Log,
-            p => Progress = p,
-            s => ProgressStatus = s,
-            AutoCompress,
-            AppConfig.Instance.Dolphin.CompressLevel);
+        var orchestrator = new PatchOrchestrator(Log, BuildProgressReporter(), AutoCompress, AppConfig.Instance.Dolphin.CompressLevel);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -134,27 +140,44 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             bool useBytes = sourceLength < UniversalPatcher.MemoryThreshold && patchLength < UniversalPatcher.MemoryThreshold;
 
             await orchestrator.PatchAsync(SourcePath, PatchPath, detected, outputDir, outputPath, useBytes, ct);
+            
+            stopwatch.Stop();
 
-            ProgressStatus = "완료";
+            Log($"패치 완료: {Path.GetFileName(outputPath)} ({stopwatch.Elapsed:mm\\:ss})", LogLevel.Ok);
 
             outputDir.OpenFolder();
         }
         catch (OperationCanceledException)
-        {
-            Progress = 0;
-            ProgressStatus = "취소됨";
+        {            
             Log($"패치 취소: {SourcePath}", LogLevel.Error);
-
+            CleanupTask();
             orchestrator.Cleanup(outputPath);
         }
         catch (Exception ex)
         {
-            Progress = 0;
-            ProgressStatus = "실패";
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
-
+            CleanupTask();
             orchestrator.Cleanup(outputPath);
         }
+    }
+
+    private Progress<ProgressInfo> BuildProgressReporter() =>
+        new(info =>
+        {
+            ProgressPct = info.Percent;
+            ProgressLabel = info.Label;
+            ProgressPercent = $"{info.Percent}%";
+            ProgressTime = info.TimeInfo;
+            ProgressSpeed = info.Speed;
+        });
+
+    private void CleanupTask()
+    {
+        ProgressPct = 0;
+        ProgressLabel = string.Empty;
+        ProgressPercent = "0%";
+        ProgressTime = string.Empty;
+        ProgressSpeed = string.Empty;
     }
 
     public void Cancel() => _runCts?.Cancel();
@@ -165,9 +188,9 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         SourcePath = null;
         PatchPath = null;
-        Progress = 0;
-        ProgressStatus = "대기 중";
         AutoCompress = false;
+
+        CleanupTask();
 
         LogEntries.Clear();
     }

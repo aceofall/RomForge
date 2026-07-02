@@ -5,13 +5,13 @@ using System.IO;
 
 namespace RomForge.Core.Services.Patch;
 
-public class PatchOrchestrator(Action<string, LogLevel> log, Action<int> setProgress, Action<string> setStatus, bool autoCompress, int dolphinCompressLevel)
+public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressInfo> progress, bool autoCompress, int dolphinCompressLevel)
 {
     private string? _outputCuePath;
     private List<string> _copiedTrackPaths = [];
     private readonly BinTrackCopier _binTrackCopier = new (log);
-    private readonly ZipCompressor _zipCompressor = new (log, setProgress);
-    private readonly CompressKnownConverter _compressKnownConverter = new (log, setProgress, setStatus, dolphinCompressLevel);
+    private readonly ZipCompressor _zipCompressor = new (log, progress);
+    private readonly CompressKnownConverter _compressKnownConverter = new (log, progress, dolphinCompressLevel);
 
     public async Task PatchAsync(string sourcePath, string patchPath, DetectResult detected, string outputDir, string outputPath, bool useBytes, CancellationToken ct)
     {
@@ -22,20 +22,19 @@ public class PatchOrchestrator(Action<string, LogLevel> log, Action<int> setProg
 
         if (autoCompress && isZipTarget && useBytes)
         {
-            var patched = await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, p => setProgress((int)(p * 100)), ct);
+            var patched = await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, progress, ct);
 
-            setProgress(100);
+            progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
             log("패치 완료", LogLevel.Ok);
-            setStatus("압축 중...");
-            setProgress(0);
+            progress.Report(new ProgressInfo { Label = "압축 중...", Percent = 0 });
 
             await _zipCompressor.CompressFromBytesAsync(patched, sourcePath, outputDir, ct);
 
             return;
         }
 
-        await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, p => setProgress((int)(p * 100)), ct);
-        setProgress(100);
+        await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
+        progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
         log($"패치 완료: {outputPath}", LogLevel.Ok);
 
         if (detected.Format == RomFormat.Bin)
@@ -46,8 +45,7 @@ public class PatchOrchestrator(Action<string, LogLevel> log, Action<int> setProg
 
         if (isZipTarget)
         {
-            setStatus("압축 중...");
-            setProgress(0);
+            progress.Report(new ProgressInfo { Label = "압축 중...", Percent = 0 });
             await _zipCompressor.CompressFromFileAsync(sourcePath, outputPath, outputDir, ct);
         }
         else

@@ -1,37 +1,40 @@
-﻿namespace Patch.Core.Formats;
+﻿using System.Text;
+using Common;
+
+namespace Patch.Core.Formats;
 
 public static class Aps
 {
     private static readonly byte[] HeaderBytes = [(byte)'A', (byte)'P', (byte)'S', (byte)'1'];
 
-    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellation = default)
+    public static async Task ApplyPatchAsync(string sourcePath, string patchPath, string outputPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellation = default)
     {
         ValidateInputFiles(sourcePath, patchPath);
 
         byte[] source = await File.ReadAllBytesAsync(sourcePath, cancellation);
         byte[] patch = await File.ReadAllBytesAsync(patchPath, cancellation);
-        byte[] result = await Task.Run(() => Decode(source, patch, onProgress, cancellation), cancellation);
+        byte[] result = await Task.Run(() => Decode(source, patch, progress, cancellation), cancellation);
 
         await File.WriteAllBytesAsync(outputPath, result, cancellation);
     }
 
-    public static async Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, Action<double>? onProgress = null, CancellationToken cancellation = default)
+    public static async Task<byte[]> ApplyPatchAsync(byte[] sourceData, byte[] patchData, IProgress<ProgressInfo>? progress = null, CancellationToken cancellation = default)
     {
-        return await Task.Run(() => Decode(sourceData, patchData, onProgress, cancellation), cancellation);
+        return await Task.Run(() => Decode(sourceData, patchData, progress, cancellation), cancellation);
     }
 
-    public static async Task CreatePatchAsync(string sourcePath, string newPath, string patchPath, Action<double>? onProgress = null, CancellationToken cancellation = default)
+    public static async Task CreatePatchAsync(string sourcePath, string newPath, string patchPath, IProgress<ProgressInfo>? progress = null, CancellationToken cancellation = default)
     {
         ValidateInputFiles(sourcePath, newPath);
 
         byte[] source = await File.ReadAllBytesAsync(sourcePath, cancellation);
         byte[] target = await File.ReadAllBytesAsync(newPath, cancellation);
-        byte[] result = await Task.Run(() => Encode(source, target, onProgress, cancellation), cancellation);
+        byte[] result = await Task.Run(() => Encode(source, target, progress, cancellation), cancellation);
 
         await File.WriteAllBytesAsync(patchPath, result, cancellation);
     }
 
-    private unsafe static byte[] Decode(byte[] source, byte[] patch, Action<double>? onProgress, CancellationToken cancellation)
+    private unsafe static byte[] Decode(byte[] source, byte[] patch, IProgress<ProgressInfo>? progress, CancellationToken cancellation)
     {
         if (patch.Length < 8) throw new InvalidDataException("APS 패치 파일이 너무 짧습니다.");
 
@@ -52,7 +55,6 @@ public static class Aps
                     cancellation.ThrowIfCancellationRequested();
 
                     uint offset = *(uint*)(pPat + pos);
-
                     pos += 4;
 
                     byte length = pPat[pos++];
@@ -65,15 +67,16 @@ public static class Aps
 
                     pos += length;
 
-                    if (onProgress != null && pos % Math.Max(1, patch.Length / 100) == 0)
-                        onProgress((double)pos / patch.Length);
+                    if (progress != null && pos % Math.Max(1, patch.Length / 100) == 0)
+                        progress.Report(new ProgressInfo((int)((double)pos / patch.Length * 100), "", "", "", ""));
                 }
             }
+
             return output;
         }
     }
 
-    private unsafe static byte[] Encode(byte[] source, byte[] target, Action<double>? onProgress, CancellationToken cancellation)
+    private unsafe static byte[] Encode(byte[] source, byte[] target, IProgress<ProgressInfo>? progress, CancellationToken cancellation)
     {
         using var ms = new MemoryStream();
 
@@ -101,7 +104,7 @@ public static class Aps
                         byte sb = i < source.Length ? pSrc[i] : (byte)0;
                         byte tb = i < target.Length ? pTar[i] : (byte)0;
 
-                        if (sb == tb) 
+                        if (sb == tb)
                             break;
 
                         i++;
@@ -115,10 +118,11 @@ public static class Aps
                 }
                 else i++;
 
-                if (onProgress != null && i % 1000 == 0)
-                    onProgress((double)i / maxLen);
+                if (progress != null && i % 1000 == 0)
+                    progress.Report(new ProgressInfo((int)((double)i / maxLen * 100), "", "", "", ""));
             }
         }
+
         return ms.ToArray();
     }
 

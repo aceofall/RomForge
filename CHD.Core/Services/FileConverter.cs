@@ -428,8 +428,7 @@ public class FileConverter : IDisposable
         }
     }
 
-    private void Log(string message, LogLevel level = LogLevel.Info)
-        => LogMessage?.Invoke(this, (message, level));
+    private void Log(string message, LogLevel level = LogLevel.Info) => LogMessage?.Invoke(this, (message, level));
 
     public static ChdmanInfo GetChdInfo(string chdPath) => ChdmanService.GetChdInfo(chdPath);
 
