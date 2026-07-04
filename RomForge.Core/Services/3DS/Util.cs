@@ -71,7 +71,8 @@ public static class Util
             ShortDescription = smdhInfo?.ShortDescription ?? string.Empty,
             Publisher = smdhInfo?.Publisher ?? string.Empty,
             Crypto = ncchHeader != null && !ncchHeader.NoCrypto,
-            IconPixels = smdhInfo?.IconPixels
+            IconPixels = smdhInfo?.IconPixels,
+            AvailableLanguages = smdhInfo?.AvailableLanguages ?? []
         };
     }
 

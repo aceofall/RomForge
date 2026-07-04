@@ -16,6 +16,7 @@ public class TitleViewModel : ViewModelBase
     private string _region = string.Empty;
     private LocaleRegion _localeRegionCode = LocaleRegion.None;
     private Locale3dsLanguage _forcedLanguage = Locale3dsLanguage.None;
+    private IReadOnlyList<Locale3dsLanguage> _availableLanguages = [];
     private bool _crypto = false;
     private double _progress;
 
@@ -78,6 +79,20 @@ public class TitleViewModel : ViewModelBase
         get => _forcedLanguage;
         set { _forcedLanguage = value; OnPropertyChanged(); }
     }
+
+    public IReadOnlyList<Locale3dsLanguage> AvailableLanguages
+    {
+        get => _availableLanguages;
+        set
+        {
+            _availableLanguages = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(LanguageCandidates));
+        }
+    }
+
+    public IReadOnlyList<Locale3dsLanguage> LanguageCandidates =>
+        [Locale3dsLanguage.None, .. AvailableLanguages];
 
     public bool Crypto
     {

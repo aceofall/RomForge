@@ -1,4 +1,5 @@
-﻿using _3DS.Core.Models;
+﻿using _3DS.Core.Enums;
+using _3DS.Core.Models;
 using System.Text;
 
 namespace _3DS.Core.FileSystem;
@@ -8,7 +9,14 @@ public class SmdhParser
     private const uint SmdhMagic = 0x48444D53;
     private const int TitleStructSize = 0x200;
     private const int IconLargeOffset = 0x24C0;
-    
+
+    private static readonly Locale3dsLanguage[] SlotLanguages =
+    [
+        Locale3dsLanguage.JP, Locale3dsLanguage.EN, Locale3dsLanguage.FR, Locale3dsLanguage.DE,
+        Locale3dsLanguage.IT, Locale3dsLanguage.ES, Locale3dsLanguage.ZH, Locale3dsLanguage.KO,
+        Locale3dsLanguage.NL, Locale3dsLanguage.PT, Locale3dsLanguage.RU, Locale3dsLanguage.TW,
+    ];
+
     public static SmdhInfo? TryParse(byte[] data)
     {
         if (data.Length < 0x36C0) 
@@ -33,6 +41,14 @@ public class SmdhParser
 
         byte[]? iconPixels = TryDecodeIconToBytes(data, IconLargeOffset, 48, 48);
 
+        var availableLanguages = new List<Locale3dsLanguage>();
+
+        for (int i = 0; i < SlotLanguages.Length; i++)
+        {
+            if (titles[i].ShortDesc.Length > 0)
+                availableLanguages.Add(SlotLanguages[i]);
+        }
+
         return new SmdhInfo
         {
             ShortDescription = title.ShortDesc,
@@ -41,6 +57,7 @@ public class SmdhParser
             IconPixels = iconPixels,
             IconWidth = 48,
             IconHeight = 48,
+            AvailableLanguages = availableLanguages,
         };
     }
 

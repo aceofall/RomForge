@@ -26,7 +26,8 @@ public static class RomInfoParser
                 ProductCode = result.ProductCode!,
                 ShortDescription = result.ShortDescription!,
                 Publisher = result.Publisher!,
-                Crypto = result.Crypto
+                Crypto = result.Crypto,
+                AvailableLanguages = result.AvailableLanguages
             };
 
             if (result.IconPixels is not null)
@@ -81,7 +82,8 @@ public static class RomInfoParser
                 ProductCode = ncchHeader.ProductCodeString,
                 ShortDescription = smdhInfo?.ShortDescription ?? string.Empty,
                 Publisher = smdhInfo?.Publisher ?? string.Empty,
-                Crypto = !ncchHeader.NoCrypto
+                Crypto = !ncchHeader.NoCrypto,
+                AvailableLanguages = smdhInfo?.AvailableLanguages ?? []
             };
 
             if (smdhInfo?.IconPixels is not null)

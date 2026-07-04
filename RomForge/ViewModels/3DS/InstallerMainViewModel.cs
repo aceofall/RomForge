@@ -340,8 +340,8 @@ public class InstallerMainViewModel : ToolTabViewModel
                         AppendLog("제품 코드에서 지역을 판별할 수 없어 로케일 고정을 건너뜁니다.", LogLevel.Error);
                     else
                     {
-                        await LocaleTxtWriter.WriteAsync(_scanner!.SdRoot, selected.TitleId, selected.LocaleRegionCode, selected.ForcedLanguage, ct);
-                        AppendLog($"로케일 고정 완료: {selected.LocaleRegionCode} {selected.ForcedLanguage} (locale.txt)", LogLevel.Ok);
+                        await LocaleTxtWriter.WriteAsync(_scanner!.SdRoot, selected.TitleId, selected.ForcedLanguage, ct);
+                        AppendLog($"로케일 고정 완료: {LocaleTxtWriter.LanguageToRegion[selected.ForcedLanguage]} {selected.ForcedLanguage} (locale.txt)", LogLevel.Ok);
                     }
                 }
             }

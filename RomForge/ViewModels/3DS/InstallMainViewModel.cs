@@ -44,6 +44,7 @@ public class InstallMainViewModel : ToolTabViewModel
                 ProductCode = result.ProductCode,
                 ShortDescription = result.ShortDescription,
                 Publisher = result.Publisher,
+                AvailableLanguages = result.AvailableLanguages,
                 Crypto = result.Crypto
             };
 
