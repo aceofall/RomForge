@@ -1,5 +1,4 @@
 ﻿using NSW.WPF.UI;
-using Patch.Core.Formats.DCP.Services;
 using RomForge.Core;
 using RomForge.Core.UI.Helpers;
 using RomForge.ViewModels;
@@ -20,6 +19,35 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         InitializeComponent();
         Closing += MainWindow_Closing;
+
+        RestoreWindowState();
+    }
+
+    private void RestoreWindowState()
+    {
+        var cfg = AppConfig.Instance.Window;
+
+        Left = cfg.Left;
+        Top = cfg.Top;
+        Width = cfg.Width;
+        Height = cfg.Height;
+
+        if (cfg.IsMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
+    private void SaveWindowState()
+    {
+        var cfg = AppConfig.Instance.Window;
+
+        cfg.IsMaximized = WindowState == WindowState.Maximized;
+
+        var bounds = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+
+        cfg.Left = bounds.Left;
+        cfg.Top = bounds.Top;
+        cfg.Width = bounds.Width;
+        cfg.Height = bounds.Height;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -40,6 +68,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        SaveWindowState();
         MainViewModel.SaveConfig();
 
         bool busy = ViewModel.IsAnyChildLocked();

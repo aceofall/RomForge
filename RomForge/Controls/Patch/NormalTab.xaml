@@ -8,7 +8,6 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="16"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
@@ -166,7 +165,7 @@
             </StackPanel>
         </ToggleButton>
 
-        <Border Grid.Row="6" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+        <Border Grid.Row="5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
             <Grid x:Name="progressArea" Height="28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

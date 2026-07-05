@@ -16,6 +16,24 @@ public class CommonConfig : ViewModelBase
     }
 }
 
+public class WindowConfig : ViewModelBase
+{
+    private double _left = 100;
+    public double Left { get => _left; set => SetProperty(ref _left, value); }
+
+    private double _top = 100;
+    public double Top { get => _top; set => SetProperty(ref _top, value); }
+
+    private double _width = 900;
+    public double Width { get => _width; set => SetProperty(ref _width, value); }
+
+    private double _height = 715;
+    public double Height { get => _height; set => SetProperty(ref _height, value); }
+
+    private bool _isMaximized = false;
+    public bool IsMaximized { get => _isMaximized; set => SetProperty(ref _isMaximized, value); }
+}
+
 public class PatchConfig : ViewModelBase
 {
     private bool _autoCompress;
@@ -81,8 +99,11 @@ public class AppConfig : ViewModelBase
     private static readonly Lazy<AppConfig> _instance = new(() => new AppConfig().LoadInternal());
     public static AppConfig Instance => _instance.Value;
 
-    [JsonConstructor]
-    private AppConfig() { }
+    private CommonConfig _common = new();
+    public CommonConfig Common { get => _common; set => SetProperty(ref _common, value); }
+
+    private WindowConfig _window = new();
+    public WindowConfig Window { get => _window; set => SetProperty(ref _window, value); }
 
     private PatchConfig _patch = new();
     public PatchConfig Patch { get => _patch; set => SetProperty(ref _patch, value); }
@@ -102,8 +123,8 @@ public class AppConfig : ViewModelBase
     private PS1Config _ps1 = new();
     public PS1Config PS1 { get => _ps1; set => SetProperty(ref _ps1, value); }
 
-    private CommonConfig _common = new();
-    public CommonConfig Common { get => _common; set => SetProperty(ref _common, value); }
+    [JsonConstructor]
+    private AppConfig() { }
 
     private AppConfig LoadInternal()
     {
@@ -122,6 +143,7 @@ public class AppConfig : ViewModelBase
             if (loaded != null)
             {
                 Common = loaded.Common ?? new();
+                Window = loaded.Window ?? new();
                 Patch = loaded.Patch ?? new();
                 Chdman = loaded.Chdman ?? new();
                 Switch = loaded.Switch ?? new();
@@ -144,6 +166,7 @@ public class AppConfig : ViewModelBase
         void AutoSave(object? s, PropertyChangedEventArgs e) => Save();
 
         Common.PropertyChanged += AutoSave;
+        Window.PropertyChanged += AutoSave;
         Chdman.PropertyChanged += AutoSave;
         Switch.PropertyChanged += AutoSave;
         Azahar.PropertyChanged += AutoSave;

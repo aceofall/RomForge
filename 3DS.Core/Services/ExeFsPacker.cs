@@ -135,17 +135,14 @@ public static class ExeFsPacker
                 byte[] patchedData = await Ips.ApplyPatchAsync(sourceData, ipsData, null, ct);
 
                 if (isCompressedCode)
-                    exHeader![ExHeaderCompressFlagOffset] &= unchecked((byte)~ExHeaderCompressFlagBit);
+                {
+                    byte[] recompressed = BackwardLz77.Compress(patchedData);
 
-                //if (isCompressedCode)
-                //{
-                //    byte[] recompressed = BackwardLz77.Compress(patchedData);
-
-                //    if (recompressed.Length < patchedData.Length)
-                //        patchedData = recompressed;
-                //    else
-                //        exHeader![ExHeaderCompressFlagOffset] &= unchecked((byte)~ExHeaderCompressFlagBit);
-                //}
+                    if (recompressed.Length < patchedData.Length)
+                        patchedData = recompressed;
+                    else
+                        exHeader![ExHeaderCompressFlagOffset] &= unchecked((byte)~ExHeaderCompressFlagBit);
+                }
 
                 patchedFiles.Add(new ExeFsFile
                 {
