@@ -19,6 +19,7 @@ public static class NspBuildService
     public static string Run(BuildRequest req, BuildMode mode, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct = default)
     {
         var keySet = KeySetProvider.Instance.KeySet;
+
         return RunProcess(req, mode, keySet, progress, log, ct);
     }
 
@@ -32,6 +33,7 @@ public static class NspBuildService
         {
             if (Directory.Exists(dirs.BuildNca))
                 Directory.Delete(dirs.BuildNca, true);
+
             Directory.CreateDirectory(dirs.BuildNca);
         }
 
@@ -97,6 +99,7 @@ public static class NspBuildService
     private static UnpackResult StepUnpack(BuildRequest req, KeySet libHacKeySet, WorkDirs dirs, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
+
         log("━━ 1단계(1/9): 언패킹 ━━", LogLevel.Info);
         progress.Report((0, "언패킹 중..."));
 
@@ -104,12 +107,14 @@ public static class NspBuildService
         var result = unpacker.Unpack(req, dirs.Unpacked, progress, ct);
 
         log($"  언패킹 완료 ({sw.Elapsed.TotalSeconds:F2}s)", LogLevel.Ok);
+
         return result;
     }
 
     private static List<NcaGenerationOptions> StepBuildSettings(BuildRequest req, UnpackResult result, KeySet keySet, WorkDirs dirs, Action<string, LogLevel> log)
     {
         var sw = Stopwatch.StartNew();
+
         log("━━ 2단계(2/9): 설정 초기화 ━━", LogLevel.Info);
 
         byte keyGeneration = result.BaseKeyGeneration == 0 ? (byte)1 : result.BaseKeyGeneration;
@@ -152,15 +157,19 @@ public static class NspBuildService
         }
 
         var first = settingsList[0];
+
         log($"  TitleId: {first.TitleId:x16}  KeyGen: {first.KeyGeneration}  SDK: {first.SdkVersionString}", LogLevel.Ok);
         log($"  설정 완료 ({sw.Elapsed.TotalSeconds:F2}s)", LogLevel.Ok);
+
         return settingsList;
     }
 
     private static void StepNpdm(NcaGenerationOptions settings, Action<string, LogLevel> log, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         var sw = Stopwatch.StartNew();
+
         log($"━━ 3단계(3/9): NPDM 처리 (IdOffset={settings.IdOffset}) ━━", LogLevel.Info);
 
         NpdmProcessor.PatchNpdmMetadata(settings);
@@ -170,7 +179,9 @@ public static class NspBuildService
     private static void StepProgramNca(BuildRequest req, NcaGenerationOptions settings, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         var sw = Stopwatch.StartNew();
+
         log("━━ 4단계(4/9): Program NCA 생성 ━━", LogLevel.Info);
         progress.Report((0, "Program NCA 생성 중..."));
 
@@ -179,6 +190,7 @@ public static class NspBuildService
 
         settings.NcaType = LibHac.FsSystem.NcaHeader.ContentType.Program;
         settings.ProgramNcaPath = NcaGenerator.GenerateProgramNca(settings, progress, ct) ?? string.Empty;
+
         log($"  Program NCA: {Path.GetFileName(settings.ProgramNcaPath)} ({sw.Elapsed.TotalSeconds}s)", LogLevel.Ok);
     }
 
@@ -186,7 +198,6 @@ public static class NspBuildService
     {
         string exefsDir = unpackResult.ExefsDirs.GetValueOrDefault((byte)0, string.Empty);
         string romfsDir = unpackResult.RomfsDirs.GetValueOrDefault((byte)0, string.Empty);
-
         string patchExefs = Path.Combine(patchDir, "exefs");
         string patchRomfs = Path.Combine(patchDir, "romfs");
 
@@ -222,12 +233,10 @@ public static class NspBuildService
                     string relativePath = Path.GetRelativePath(patchDir, xdeltaPath);
                     string relativeTargetKey = Path.Combine(Path.GetDirectoryName(relativePath) ?? string.Empty, targetFileName);
                     var targetFiles = new List<string>();
-
                     string absoluteExactPath = Path.Combine(unpackedRoot, relativeTargetKey);
+
                     if (File.Exists(absoluteExactPath))
-                    {
                         targetFiles.Add(absoluteExactPath);
-                    }
                     else
                     {
                         if (!string.IsNullOrEmpty(exefsDir))
@@ -241,6 +250,7 @@ public static class NspBuildService
                         foreach (var targetPath in targetFiles.Distinct())
                         {
                             string displayPath = Path.GetRelativePath(unpackedRoot, targetPath);
+
                             log($"  xdelta 패치 적용: {Path.GetFileName(xdeltaPath)} ➡️ {displayPath}", LogLevel.Info);
 
                             string tempOutPath = targetPath + ".patched";
@@ -255,12 +265,7 @@ public static class NspBuildService
                                         progress?.Report((currentStep, string.Empty));
                                 });
 
-                                Xdelta3.ApplyPatch(
-                                    targetPath,
-                                    Path.GetFullPath(xdeltaPath),
-                                    tempOutPath,
-                                    wrapper
-                                );
+                                Xdelta3.ApplyPatch(targetPath, Path.GetFullPath(xdeltaPath), tempOutPath, wrapper);
 
                                 if (File.Exists(tempOutPath))
                                 {
@@ -284,19 +289,100 @@ public static class NspBuildService
         }
     }
 
+    private static void ApplyDlcPatch(string dlcPatchRoot, string titleIdStr, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        string dlcPatchDir = Path.Combine(dlcPatchRoot, titleIdStr);
+
+        if (!Directory.Exists(dlcPatchDir))
+            return;
+
+        string patchRomfs = Path.Combine(dlcPatchDir, "romfs");
+
+        if (Directory.Exists(patchRomfs))
+        {
+            progress.Report((-1, $"DLC 패치 RomFS 병합 중... ({titleIdStr})"));
+            log($"  DLC 패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
+            MergeDirectory(patchRomfs, romfsDir);
+        }
+
+        var xdeltaFiles = Directory.EnumerateFiles(dlcPatchDir, "*.xdelta", SearchOption.AllDirectories)
+                                   .OrderBy(f => f)
+                                   .ToList();
+
+        if (xdeltaFiles.Count == 0) 
+            return;
+
+        progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
+        log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
+
+        foreach (var xdeltaPath in xdeltaFiles)
+        {
+            string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
+            var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
+
+            if (targetFiles.Count == 0)
+            {
+                log($"  ⚠️ DLC xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
+                continue;
+            }
+
+            foreach (var targetPath in targetFiles)
+            {
+                string displayPath = Path.GetRelativePath(romfsDir, targetPath);
+
+                log($"  DLC xdelta 패치 적용: {Path.GetFileName(xdeltaPath)} ➡️ {displayPath}", LogLevel.Info);
+
+                string tempOutPath = targetPath + ".patched";
+
+                try
+                {
+                    var wrapper = new Progress<ProgressInfo>(p =>
+                    {
+                        int currentStep = 80 + (int)(p.Percent * 0.1);
+
+                        if (currentStep > 80)
+                            progress?.Report((currentStep, string.Empty));
+                    });
+
+                    Xdelta3.ApplyPatch(targetPath, Path.GetFullPath(xdeltaPath), tempOutPath, wrapper);
+
+                    if (File.Exists(tempOutPath))
+                    {
+                        File.Delete(targetPath);
+                        File.Move(tempOutPath, targetPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log($"  ❌ DLC xdelta 패치 실패 ({Path.GetFileName(xdeltaPath)}): {ex.Message}", LogLevel.Error);
+
+                    if (File.Exists(tempOutPath)) 
+                        File.Delete(tempOutPath);
+                }
+            }
+        }
+    }
+
     private static void StepManualNcas(List<NcaGenerationOptions> settingsList, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         log("━━ 5단계(5/9): Manual NCA 생성 ━━", LogLevel.Info);
 
         foreach (var (idOffset, htmlDir) in unpackResult.HtmlDocDirs)
         {
-            if (!Directory.Exists(htmlDir) || Directory.GetFileSystemEntries(htmlDir).Length == 0) continue;
+            if (!Directory.Exists(htmlDir) || Directory.GetFileSystemEntries(htmlDir).Length == 0) 
+                continue;
+
             var settings = settingsList.FirstOrDefault(s => s.IdOffset == idOffset) ?? settingsList[0];
             string type = idOffset == 0 ? "htmldoc" : $"htmldoc{idOffset}";
+
             log($"  [{type}] 매뉴얼 빌드 시작...", LogLevel.Info);
+
             var manualSettings = settings.WithRomfs(htmlDir, LibHac.FsSystem.NcaHeader.ContentType.Manual);
             var currentNca = NcaGenerator.GenerateRomfsNca(manualSettings, "Manual", progress, ct);
-            if (currentNca == null) continue;
+
+            if (currentNca == null)
+                continue;
+
             settings.ManualNcaPaths.Add(currentNca);
             settings.HtmlDocNcaPath = currentNca;
             log($"  [{type}] NCA 등록: {Path.GetFileName(currentNca)}", LogLevel.Ok);
@@ -304,13 +390,20 @@ public static class NspBuildService
 
         foreach (var (idOffset, legalDir) in unpackResult.LegalDirs)
         {
-            if (!Directory.Exists(legalDir) || Directory.GetFileSystemEntries(legalDir).Length == 0) continue;
+            if (!Directory.Exists(legalDir) || Directory.GetFileSystemEntries(legalDir).Length == 0) 
+                continue;
+
             var settings = settingsList.FirstOrDefault(s => s.IdOffset == idOffset) ?? settingsList[0];
             string type = idOffset == 0 ? "legal" : $"legal{idOffset}";
+
             log($"  [{type}] 매뉴얼 빌드 시작...", LogLevel.Info);
+
             var manualSettings = settings.WithRomfs(legalDir, LibHac.FsSystem.NcaHeader.ContentType.Manual);
             var currentNca = NcaGenerator.GenerateRomfsNca(manualSettings, "Manual", progress, ct);
-            if (currentNca == null) continue;
+
+            if (currentNca == null) 
+                continue;
+
             settings.ManualNcaPaths.Add(currentNca);
             settings.LegalNcaPath = currentNca;
             log($"  [{type}] NCA 등록: {Path.GetFileName(currentNca)}", LogLevel.Ok);
@@ -320,7 +413,9 @@ public static class NspBuildService
     private static void StepControlNca(NcaGenerationOptions settings, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         var sw = Stopwatch.StartNew();
+
         log($"━━ 6단계(6/9): Control NCA 생성 (IdOffset={settings.IdOffset}) ━━", LogLevel.Info);
         progress.Report((0, "Control NCA 생성 중..."));
 
@@ -328,7 +423,9 @@ public static class NspBuildService
             return;
 
         var controlSettings = settings.WithRomfs(controlDir, LibHac.FsSystem.NcaHeader.ContentType.Control);
+
         NacpProcessor.ProcessControlMetadata(controlSettings);
+
         settings.ControlNcaPath = NcaGenerator.GenerateRomfsNca(controlSettings, "Control", progress, ct) ?? string.Empty;
 
         log($"  Control NCA: {Path.GetFileName(settings.ControlNcaPath)} ({sw.Elapsed.TotalSeconds:F2}s)", LogLevel.Ok);
@@ -337,8 +434,12 @@ public static class NspBuildService
     private static void StepBuildDlcNsps(BuildRequest req, WorkDirs dirs, NcaGenerationOptions baseSettings, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         string dlcBaseDir = Path.Combine(dirs.Unpacked, "DLCs");
-        if (!Directory.Exists(dlcBaseDir)) return;
+
+        if (!Directory.Exists(dlcBaseDir)) 
+            return;
+
         var sw = Stopwatch.StartNew();
+
         log("━━ 7단계(7/9): DLC 빌드 시작 ━━", LogLevel.Info);
 
         int dlcCount = 0;
@@ -348,10 +449,15 @@ public static class NspBuildService
             ct.ThrowIfCancellationRequested();
 
             string titleIdStr = Path.GetFileName(dlcDir);
+
             if (!ulong.TryParse(titleIdStr, System.Globalization.NumberStyles.HexNumber, null, out ulong titleId))
                 continue;
 
             string romfsPath = Path.Combine(dlcDir, "romfs");
+
+            if (req.HasDlcPatch)
+                ApplyDlcPatch(req.DlcPatchDir, titleIdStr, romfsPath, progress, log);
+
             bool hasRomfs = Directory.Exists(romfsPath) && Directory.EnumerateFileSystemEntries(romfsPath).Any();
 
             log($"  DLC 빌드 시도: {titleIdStr}", LogLevel.Info);
@@ -401,7 +507,9 @@ public static class NspBuildService
     private static void StepMetaNca(List<NcaGenerationOptions> settingsList, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         var sw = Stopwatch.StartNew();
+
         log("━━ 8단계(8/9): Meta NCA 생성 ━━", LogLevel.Info);
         progress.Report((-1, "Meta NCA 생성 중..."));
 
@@ -440,17 +548,19 @@ public static class NspBuildService
     private static string StepPackage(BuildRequest req, NcaGenerationOptions settings, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         var sw = Stopwatch.StartNew();
+
         log("━━ 9단계(9/9): NSP 패키징 ━━", LogLevel.Info);
         progress.Report((0, "NSP 패키징 중..."));
 
         Directory.CreateDirectory(req.OutputDir);
 
         string suffix = req.HasPatch ? "Patched_Repack.nsp" : "Repack.nsp";
-
         string displayVersion = string.IsNullOrWhiteSpace(unpackResult.DisplayVersion) ? "1.0.0" : unpackResult.DisplayVersion;
         string fileName = NspNameBuilder.FileNameBuild(suffix, unpackResult.KrTitle, unpackResult.EnTitle, unpackResult.TitleIdStr.ToUpper(), displayVersion, unpackResult.GameVersion, unpackResult.DlcCount);
         string finalNsp = Path.Combine(req.OutputDir, fileName);
+
         finalNsp = Common.Utils.GetUniqueFilePath(finalNsp);
 
         var fileStreams = new List<(string, Stream)>();
@@ -461,6 +571,7 @@ public static class NspBuildService
                 fileStreams.Add((Path.GetFileName(f), File.OpenRead(f)));
 
             using var outStream = File.Open(finalNsp, FileMode.Create, FileAccess.Write);
+
             Pfs0Builder.BuildFromMemoryStreams(fileStreams, outStream, progress, ct);
         }
         finally
@@ -472,6 +583,7 @@ public static class NspBuildService
 
             if (Directory.Exists(dirs.BuildNca))
                 Directory.Delete(dirs.BuildNca, true);
+
             if (Directory.Exists(dirs.Temp))
                 Directory.Delete(dirs.Temp, true);
         }
@@ -485,9 +597,7 @@ public static class NspBuildService
     {
         string nacpPath = Path.Combine(unpackedDir, "control", "control.nacp");
         string controlFile = Directory.GetFiles(unpackedDir, "control*.nca").FirstOrDefault() ?? string.Empty;
-
         var (krTitle, enTitle, displayVersion, titleId) = LibHacHelper.ReadNacpInfo(nacpPath);
-
         byte keyGeneration = 1;
         uint sdkVersion = 0;
         uint gameVersion = 0;
@@ -531,24 +641,35 @@ public static class NspBuildService
         for (byte i = 0; i < 16; i++)
         {
             string suffix = i == 0 ? string.Empty : i.ToString();
-
             string exefs = Path.Combine(unpackedDir, $"exefs{suffix}");
-            if (Directory.Exists(exefs)) exefsDirs[i] = exefs;
+
+            if (Directory.Exists(exefs)) 
+                exefsDirs[i] = exefs;
 
             string romfs = Path.Combine(unpackedDir, $"romfs{suffix}");
-            if (Directory.Exists(romfs)) romfsDirs[i] = romfs;
+
+            if (Directory.Exists(romfs)) 
+                romfsDirs[i] = romfs;
 
             string logo = Path.Combine(unpackedDir, $"logo{suffix}");
-            if (Directory.Exists(logo)) logoDirs[i] = logo;
+
+            if (Directory.Exists(logo)) 
+                logoDirs[i] = logo;
 
             string control = Path.Combine(unpackedDir, $"control{suffix}");
-            if (Directory.Exists(control)) controlDirs[i] = control;
+
+            if (Directory.Exists(control)) 
+                controlDirs[i] = control;
 
             string htmldoc = Path.Combine(unpackedDir, $"htmldoc{suffix}");
-            if (Directory.Exists(htmldoc)) htmlDocDirs[i] = htmldoc;
+
+            if (Directory.Exists(htmldoc)) 
+                htmlDocDirs[i] = htmldoc;
 
             string legal = Path.Combine(unpackedDir, $"legal{suffix}");
-            if (Directory.Exists(legal)) legalDirs[i] = legal;
+
+            if (Directory.Exists(legal)) 
+                legalDirs[i] = legal;
 
             if (i > 0 && !exefsDirs.ContainsKey(i) && !romfsDirs.ContainsKey(i)) 
                 break;
@@ -576,10 +697,12 @@ public static class NspBuildService
     private static void MergeDirectory(string srcDir, string dstDir)
     {
         Directory.CreateDirectory(dstDir);
+
         foreach (var file in Directory.EnumerateFiles(srcDir, "*", SearchOption.AllDirectories))
         {
             string rel = Path.GetRelativePath(srcDir, file);
             string dest = Path.Combine(dstDir, rel);
+
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(file, dest, overwrite: true);
         }
