@@ -87,19 +87,22 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         log("리팩 시작...", LogLevel.Highlight);
 
         string safeFileName = NspNameBuilder.SafeFileName(gameName);
-        string fileName = string.IsNullOrEmpty(safeFileName) ? "output" : safeFileName;        
+        string fileName = string.IsNullOrEmpty(safeFileName) ? "output" : safeFileName;
         string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, fileName + "_Repack.cci"));
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         var contentsList = new List<Contents>();
-        int idx = 0;
 
-        while (true)
+        var partitionIndices = Directory.GetDirectories(unpackedPath, "partition*")
+            .Select(Path.GetFileName)
+            .Select(name => int.TryParse(name!.AsSpan("partition".Length), out int i) ? i : (int?)null)
+            .Where(i => i.HasValue)
+            .Select(i => i!.Value)
+            .OrderBy(i => i)
+            .ToList();
+
+        foreach (int idx in partitionIndices)
         {
             string partDir = Path.Combine(unpackedPath, $"partition{idx}");
-
-            if (!Directory.Exists(partDir))
-                break;
-
             string headerPath = Path.Combine(partDir, "header.bin");
 
             if (!File.Exists(headerPath))
@@ -132,13 +135,13 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             string logoPath = Path.Combine(partDir, "logo.bin");
             string plainPath = Path.Combine(partDir, "plain.bin");
 
-            if (File.Exists(exHeaderPath)) 
+            if (File.Exists(exHeaderPath))
                 exHeader = await File.ReadAllBytesAsync(exHeaderPath, ct);
 
-            if (File.Exists(logoPath)) 
+            if (File.Exists(logoPath))
                 logo = await File.ReadAllBytesAsync(logoPath, ct);
 
-            if (File.Exists(plainPath)) 
+            if (File.Exists(plainPath))
                 plainRegion = await File.ReadAllBytesAsync(plainPath, ct);
 
             string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
@@ -168,7 +171,6 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             };
 
             repackedNcchs[idx] = (unpackResult, exefsBlock, Stream.Null, romfsResult, romfsSource);
-            idx++;
         }
 
         if (repackedNcchs.Count == 0)
