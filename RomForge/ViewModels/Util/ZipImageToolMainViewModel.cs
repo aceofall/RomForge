@@ -206,7 +206,7 @@ public class ZipImageToolMainViewModel : ToolTabViewModel
             UsbDrives.Add(info);
 
         if (UsbDrives.Count > 0)
-            SelectedDrive = UsbDrives[0];
+            SelectedDrive = UsbDrives[^1];
     }
 
     private long GetMaxOutputSegmentSize64() => SelectedSegmentIndex switch

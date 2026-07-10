@@ -71,15 +71,15 @@ public partial class InstallMainTab : UserControl
 
         SdDriveComboBox.IsEnabled = true;
 
-        if (SdDriveComboBox.Items[0] is DriveInfos firstDrive)
+        if (SdDriveComboBox.Items[^1] is DriveInfos lastDrive)
         {
-            ViewModel.SdPath = firstDrive.DriveLetter!;
+            ViewModel.SdPath = lastDrive.DriveLetter!;
             await ViewModel.CheckAndSetMovablePathAsync(ViewModel.SdPath!);
             MovablePathBox.Text = ViewModel.MovablePath;
         }
 
         _suppressSelectionChanged = false;
-        SdDriveComboBox.SelectedIndex = 0;
+        SdDriveComboBox.SelectedIndex = SdDriveComboBox.Items.Count - 1;
     }
 
     private async void SdDriveComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

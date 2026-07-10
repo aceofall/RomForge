@@ -11,6 +11,7 @@ obj/
 # 보안 키 파일
 prod.keys
 aes_keys.txt
+keys.txt
 seeddb.bin
 certs.bin
 boot9.bin

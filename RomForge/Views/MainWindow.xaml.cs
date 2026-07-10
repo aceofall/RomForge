@@ -60,11 +60,7 @@ public partial class MainWindow : Window
         _ = Win32API.DwmSetWindowAttribute(hWnd, 20, ref value, sizeof(int));
     }
 
-    private void GridSplitter_DragCompleted(object sender, DragCompletedEventArgs e)
-    {
-        var vm = (MainViewModel)DataContext;
-        MainViewModel.LogBoxHeight = LogRow.Height.Value;
-    }
+    private void GridSplitter_DragCompleted(object sender, DragCompletedEventArgs e) => MainViewModel.LogBoxHeight = LogRow.Height.Value;
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {

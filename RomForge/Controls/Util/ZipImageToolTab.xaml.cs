@@ -56,6 +56,6 @@ public partial class ZipImageToolTab : UserControl
             ViewModel.UsbDrives.Add(info);
 
         if (ViewModel.UsbDrives.Count > 0)
-            ViewModel.SelectedDrive = ViewModel.UsbDrives[0];
+            ViewModel.SelectedDrive = ViewModel.UsbDrives[^1];
     }
 }
