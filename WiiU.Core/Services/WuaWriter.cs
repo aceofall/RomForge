@@ -266,16 +266,13 @@ public sealed class WuaWriter : IDisposable
             var bytes = Encoding.UTF8.GetBytes(name.Length > 0x7FFF ? name[..0x7FFF] : name);
             if (bytes.Length >= 0x80)
             {
-                Span<byte> header = stackalloc byte[2];
-                header[0] = (byte)((bytes.Length & 0x7F) | 0x80);
-                header[1] = (byte)(bytes.Length >> 7);
+                Span<byte> header = [(byte)((bytes.Length & 0x7F) | 0x80), (byte)(bytes.Length >> 7)];
                 OutputData(header);
                 currentOffset += 2;
             }
             else
             {
-                Span<byte> header = stackalloc byte[1];
-                header[0] = (byte)(bytes.Length & 0x7F);
+                Span<byte> header = [(byte)(bytes.Length & 0x7F)];
                 OutputData(header);
                 currentOffset += 1;
             }

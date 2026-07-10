@@ -46,6 +46,13 @@ public static class Bps
             long targetSize = ReadVli(pPat, ref pos, patch.Length);
             long metadataSize = ReadVli(pPat, ref pos, patch.Length);
 
+            if (source.LongLength != sourceSize)
+                throw new InvalidDataException(
+                    $"원본 파일 크기와 패치 파일 크기가 일치하지 않습니다. (패치가 기대하는 크기: {sourceSize:N0} bytes, 실제 파일 크기: {source.LongLength:N0} bytes)");
+
+            if (metadataSize < 0 || pos + metadataSize > patch.Length - 12)
+                throw new InvalidDataException("BPS 메타데이터 크기가 유효하지 않습니다.");
+
             pos += (int)metadataSize;
 
             byte[] target = new byte[targetSize];
@@ -65,42 +72,70 @@ public static class Bps
                     int command = (int)(data & 3);
                     int length = (int)((data >> 2) + 1);
 
+                    if (length < 0 || outOffset + (long)length > targetSize)
+                        throw new InvalidDataException("패치 명령의 길이가 대상 파일 범위를 벗어납니다. 패치 파일이 손상되었거나 원본 파일이 일치하지 않습니다.");
+
                     switch (command)
                     {
                         case 0:
+                            if (outOffset + (long)length > sourceSize)
+                                throw new InvalidDataException("SourceRead 명령이 원본 파일 범위를 벗어납니다. 원본 파일을 확인하세요.");
+
                             Buffer.MemoryCopy(pSrc + outOffset, pTar + outOffset, targetSize - outOffset, length);
+
                             outOffset += length;
+
                             break;
 
                         case 1:
+                            if (pos + (long)length > patchEnd)
+                                throw new InvalidDataException("TargetRead 명령이 패치 파일 범위를 벗어납니다. 패치 파일이 손상되었을 수 있습니다.");
+
                             Buffer.MemoryCopy(pPat + pos, pTar + outOffset, targetSize - outOffset, length);
+
                             pos += length;
                             outOffset += length;
+
                             break;
 
                         case 2:
                             long od2 = ReadVli(pPat, ref pos, patchEnd);
+
                             srcRelOffset += (od2 & 1) == 1 ? -(int)(od2 >> 1) : (int)(od2 >> 1);
+
+                            if (srcRelOffset < 0 || srcRelOffset + (long)length > sourceSize)
+                                throw new InvalidDataException("SourceCopy 명령이 원본 파일 범위를 벗어납니다. 원본 파일을 확인하세요.");
+
                             Buffer.MemoryCopy(pSrc + srcRelOffset, pTar + outOffset, targetSize - outOffset, length);
+
                             outOffset += length;
                             srcRelOffset += length;
+
                             break;
 
                         case 3:
                             long od3 = ReadVli(pPat, ref pos, patchEnd);
+
                             tarRelOffset += (od3 & 1) == 1 ? -(int)(od3 >> 1) : (int)(od3 >> 1);
+
+                            if (tarRelOffset < 0 || tarRelOffset >= outOffset)
+                                throw new InvalidDataException("TargetCopy 명령의 참조 위치가 유효하지 않습니다. 패치 파일이 손상되었을 수 있습니다.");
 
                             for (int i = 0; i < length; i++)
                                 pTar[outOffset + i] = pTar[tarRelOffset + i];
 
                             outOffset += length;
                             tarRelOffset += length;
+
                             break;
                     }
 
                     if (progress != null && pos % Math.Max(1, patchEnd / 100) == 0)
                         progress.Report(new ProgressInfo { Percent = pos / patchEnd });
                 }
+
+                if (outOffset != targetSize)
+                    throw new InvalidDataException("패치 적용 결과 크기가 예상 대상 파일 크기와 일치하지 않습니다. 패치가 손상되었을 수 있습니다.");
             }
 
             return target;
@@ -128,11 +163,11 @@ public static class Bps
                 {
                     int len = 0;
 
-                    while (outOffset + len < source.Length && outOffset + len < target.Length &&
-                           pSrc[outOffset + len] == pTar[outOffset + len])
+                    while (outOffset + len < source.Length && outOffset + len < target.Length && pSrc[outOffset + len] == pTar[outOffset + len])
                         len++;
 
                     WriteVli(ms, (long)((len - 1) << 2) | 0);
+
                     outOffset += len;
                 }
                 else
@@ -143,8 +178,7 @@ public static class Bps
                     {
                         ct.ThrowIfCancellationRequested();
 
-                        if (outOffset + runLen < source.Length &&
-                            pSrc[outOffset + runLen] == pTar[outOffset + runLen])
+                        if (outOffset + runLen < source.Length && pSrc[outOffset + runLen] == pTar[outOffset + runLen])
                             break;
 
                         runLen++;
@@ -154,6 +188,7 @@ public static class Bps
 
                     WriteVli(ms, (long)((runLen - 1) << 2) | 1);
                     ms.Write(target, outOffset, runLen);
+
                     outOffset += runLen;
                 }
 
@@ -164,8 +199,8 @@ public static class Bps
 
         byte[] raw = ms.ToArray();
         uint crc = CalculateCrc32(raw);
-
         byte[] finalPatch = new byte[raw.Length + 4];
+
         Buffer.BlockCopy(raw, 0, finalPatch, 0, raw.Length);
         BitConverter.GetBytes(crc).CopyTo(finalPatch, finalPatch.Length - 4);
 
@@ -179,9 +214,11 @@ public static class Bps
         while (pos < maxLen)
         {
             byte b = patch[pos++];
+
             value += (b & 0x7F) * shift;
 
-            if ((b & 0x80) != 0) break;
+            if ((b & 0x80) != 0)
+                break;
 
             shift <<= 7;
             value += shift;
@@ -195,6 +232,7 @@ public static class Bps
         while (true)
         {
             byte b = (byte)(value & 0x7F);
+
             value >>= 7;
 
             if (value == 0)
@@ -218,6 +256,7 @@ public static class Bps
             for (int i = 0; i < length; i++)
             {
                 crc ^= p[i];
+
                 for (int j = 0; j < 8; j++)
                     crc = (crc >> 1) ^ ((crc & 1) * 0xEDB88320);
             }
