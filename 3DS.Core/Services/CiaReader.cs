@@ -11,7 +11,7 @@ public class CiaReader(KeyStore keyStore)
 {
     private const int CiaAlign = 64;
 
-    public async Task<CiaSource> OpenAsync(string ciaPath, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public async Task<CiaSource> OpenAsync(string ciaPath, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         var fileStream = File.Open(ciaPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
@@ -26,7 +26,7 @@ public class CiaReader(KeyStore keyStore)
         }
     }
 
-    public async Task<CiaSource> ParseAsync(Stream stream, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public async Task<CiaSource> ParseAsync(Stream stream, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         byte[] headerBuf = new byte[0x2020];
 

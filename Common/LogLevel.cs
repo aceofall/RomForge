@@ -4,6 +4,6 @@ public enum LogLevel
 { 
     Info,
     Highlight,
-    Ok, 
+    Ok,
     Error
 }

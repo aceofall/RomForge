@@ -133,6 +133,8 @@ public class CompressMainViewModel : ToolTabViewModel
                         item.Progress = p.Percent;
                     });
 
+                    void logWrapper(string msg, LogLevel level) => AppendLog(msg, level);
+
                     int switchCompressLevel = AppConfig.Instance.Switch.CompressLevel;
                     if (switchCompressLevel < 3)
                         switchCompressLevel = 3;
@@ -152,13 +154,13 @@ public class CompressMainViewModel : ToolTabViewModel
                             await XciCompressService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
                             break;
                         case RomFormat.Cci:
-                            await Z3dsArchiveService.CompressAsync(item.FilePath, AppConfig.Instance.Azahar.CompressLevel, progressHandler, AppendLog, _cts.Token);
+                            await Z3dsArchiveService.CompressAsync(item.FilePath, AppConfig.Instance.Azahar.CompressLevel, progressHandler, logWrapper, _cts.Token);
                             break;
                         case RomFormat.Cia:
-                            await Z3dsArchiveService.CompressFromCiaAsync(item.FilePath, AppConfig.Instance.Azahar.CompressLevel, progressHandler, AppendLog, _cts.Token);
+                            await Z3dsArchiveService.CompressFromCiaAsync(item.FilePath, AppConfig.Instance.Azahar.CompressLevel, progressHandler, logWrapper, _cts.Token);
                             break;
                         case RomFormat.ZCci:
-                            await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
+                            await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, logWrapper, _cts.Token);
                             break;
                         case RomFormat.Iso:
                         case RomFormat.Cue:

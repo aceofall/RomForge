@@ -6,9 +6,9 @@ using Common;
 
 namespace _3DS.Core.Services;
 
-public class SdNcsdSource(IReadOnlyList<Contents> contents, KeyStore keyStore, SdCrypto sdCrypto, Action<string, LogLevel, string>? log = null) : INcsdSource
+public class SdNcsdSource(IReadOnlyList<Contents> contents, KeyStore keyStore, SdCrypto sdCrypto, Action<string, LogLevel>? log = null) : INcsdSource
 {
-    public Action<string, LogLevel, string>? Log { get; init; } = log;
+    public Action<string, LogLevel>? Log { get; init; } = log;
 
     public IReadOnlyList<Contents> Contents { get; } = contents;
 

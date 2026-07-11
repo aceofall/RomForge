@@ -13,7 +13,7 @@ public interface INcsdSource : IAsyncDisposable
 
     ValueTask<NcchHeader> GetNcchHeaderAsync(int contentIndex, CancellationToken ct = default);
 
-    Action<string, LogLevel, string>? Log { get; init; }
+    Action<string, LogLevel>? Log { get; init; }
 
     bool IsContentPresent(int contentIndex) => true;
 }

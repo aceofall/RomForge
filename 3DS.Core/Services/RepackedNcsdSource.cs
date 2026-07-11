@@ -14,7 +14,7 @@ public class RepackedNcsdSource : INcsdSource
         Contents = contents;
     }
 
-    public static async Task<RepackedNcsdSource> CreateAsync(Dictionary<int, (NcchUnpackResult unpack, byte[] exefsBlock, Stream ncchSource, RomFsUnpackResult? romFs, IRomFsFileSource? patchSource)> ncchs, IReadOnlyList<Contents> contents, CancellationToken ct = default)
+    public static async Task<RepackedNcsdSource> CreateAsync(Dictionary<int, (NcchUnpackResult unpack, byte[] exefsBlock, Stream ncchSource, RomFsUnpackResult? romFs, IRomFsFileSource? patchSource)> ncchs, IReadOnlyList<Contents> contents, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         var resolved = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?, long)>();
         var updatedContents = new List<Contents>();
@@ -24,7 +24,7 @@ public class RepackedNcsdSource : INcsdSource
             if (ncchs.TryGetValue(chunk.ContentIndex, out var entry))
             {
                 var (unpack, exefsBlock, ncchSource, romFs, patchSource) = entry;
-                long size = await NcchBuilder.CalculateSizeAsync(unpack, exefsBlock, romFs, patchSource, ncchSource, ct);
+                long size = await NcchBuilder.CalculateSizeAsync(unpack, exefsBlock, romFs, patchSource, ncchSource, log, ct);
 
                 resolved[chunk.ContentIndex] = (unpack, exefsBlock, ncchSource, romFs, patchSource, size);
                 updatedContents.Add(new Contents
@@ -46,7 +46,7 @@ public class RepackedNcsdSource : INcsdSource
 
     public IReadOnlyList<Contents> Contents { get; }
 
-    public Action<string, LogLevel, string>? Log { get; init; }
+    public Action<string, LogLevel>? Log { get; init; }
 
     public async ValueTask<(Stream ncchStream, long ncchSize)> OpenContentDecrypted(int contentIndex)
     {
@@ -60,12 +60,12 @@ public class RepackedNcsdSource : INcsdSource
         return (output, ncchSize);
     }
 
-    public async Task WriteContentAsync(int contentIndex, Stream output, long totalBytes, Action<long, long>? progress, CancellationToken ct)
+    public async Task WriteContentAsync(int contentIndex, Stream output, long totalBytes, Action<long, long>? progress = null, CancellationToken ct = default)
     {
         var (unpack, exefsBlock, ncchSource, romFs, patchSource, ncchSize) = _ncchs[contentIndex];
         long? basePos = output.CanSeek ? output.Position : null;
 
-        await NcchBuilder.BuildAsync(unpack, exefsBlock, ncchSource, romFs, output, patchSource, progress, ct);
+        await NcchBuilder.BuildAsync(unpack, exefsBlock, ncchSource, romFs, output, patchSource, progress, Log, ct);
 
         if (basePos.HasValue)
             output.Position = basePos.Value + ncchSize;

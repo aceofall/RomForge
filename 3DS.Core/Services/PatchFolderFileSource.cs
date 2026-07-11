@@ -1,4 +1,5 @@
 ﻿using _3DS.Core.Interfaces;
+using Common;
 using Patch.Core;
 
 namespace _3DS.Core.Services;
@@ -11,7 +12,7 @@ public class PatchFolderFileSource(string patchFolder) : IRomFsFileSource
 
     private readonly Dictionary<string, byte[]> _resultCache = new(StringComparer.OrdinalIgnoreCase);
 
-    public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, CancellationToken ct = default)
+    public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string relative = fullPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
         string localPath = Path.Combine(patchFolder, relative);
@@ -35,11 +36,7 @@ public class PatchFolderFileSource(string patchFolder) : IRomFsFileSource
             if (getOriginal == null)
                 throw new InvalidOperationException($"패치 파일을 적용하려면 원본 데이터가 필요하지만 제공되지 않았습니다: {patchKey}");
 
-            var originalStream = await getOriginal(ct);
-
-            if (originalStream == null)
-                throw new FileNotFoundException($"원본 파일을 찾을 수 없어 패치를 적용할 수 없습니다: {relative}");
-
+            var originalStream = await getOriginal(ct) ?? throw new FileNotFoundException($"원본 파일을 찾을 수 없어 패치를 적용할 수 없습니다: {relative}");
             byte[] originalData;
 
             await using (originalStream)
@@ -52,6 +49,8 @@ public class PatchFolderFileSource(string patchFolder) : IRomFsFileSource
 
             byte[] patchData = await File.ReadAllBytesAsync(patchFilePath, ct);
             byte[] patchedData = await UniversalPatcher.ApplyPatchAsync(originalData, patchData, null, ct);
+
+            log($"패치완료: {patchKey}", LogLevel.Info);
 
             _resultCache[fullPath] = patchedData;
 

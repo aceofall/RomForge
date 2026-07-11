@@ -147,7 +147,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
             string exefsDir = Path.Combine(partDir, "exefs");
             var exefsFiles = Directory.Exists(exefsDir) ? ExeFsUnpacker.LoadFromDirectory(exefsDir) : [];
-            byte[] exefsBlock = exefsFiles.Count > 0 ? await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsPatchDir, exHeader, getPatchPath(), ct) : [];
+            byte[] exefsBlock = exefsFiles.Count > 0 ? await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsPatchDir, exHeader, getPatchPath(), log, ct) : [];
             string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
             string romfsDir = Path.Combine(partDir, "romfs");
             RomFsUnpackResult? romfsResult = null;
@@ -176,7 +176,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         if (repackedNcchs.Count == 0)
             throw new InvalidOperationException("언팩된 파티션이 없습니다.");
 
-        var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, contentsList, ct);
+        var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, contentsList, log, ct);
 
         await using var outputStream = File.Open(outputCci, FileMode.Create, FileAccess.ReadWrite);
 
@@ -209,13 +209,13 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
             string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
-            byte[] exefsBlock = unpack.ExeFs != null ? await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsPatchDir, unpack.ExHeader, getPatchPath(), ct) : [];
+            byte[] exefsBlock = unpack.ExeFs != null ? await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsPatchDir, unpack.ExHeader, getPatchPath(), log, ct) : [];
             IRomFsFileSource? patchSource = romfsPatchDir != null ? new PatchFolderFileSource(romfsPatchDir) : null;
 
             repackedNcchs[idx] = (unpack, exefsBlock, ncchStream, unpack.RomFs, patchSource);
         }
 
-        var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, source.Contents, ct);
+        var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, source.Contents, log, ct);
 
         await using var outputStream = File.Open(outputCci, FileMode.Create, FileAccess.ReadWrite);
 
@@ -242,8 +242,8 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         return ext switch
         {
-            ".cia" => await new CiaReader(keyStore).OpenAsync(inputPath, (msg, level, _) => log(msg, level), ct),
-            ".cci" or ".3ds" => await CciSource.OpenAsync(inputPath, keyStore, (msg, level, _) => log(msg, level), ct),
+            ".cia" => await new CiaReader(keyStore).OpenAsync(inputPath, (msg, level) => log(msg, level), ct),
+            ".cci" or ".3ds" => await CciSource.OpenAsync(inputPath, keyStore, (msg, level) => log(msg, level), ct),
             _ => throw new NotSupportedException($"지원하지 않는 파일 형식: {ext}")
         };
     }

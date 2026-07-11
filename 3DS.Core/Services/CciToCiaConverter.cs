@@ -17,7 +17,7 @@ public class CciToCiaConverter(KeyStore keyStore)
     private const int TmdBaseSize = 0x140 + 0xC4 + (0x24 * 64);
     private const int TmdChunkSize = 0x30;
 
-    public async Task ConvertAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public async Task ConvertAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string? outputPath = null;
         bool isCompleted = false;
@@ -25,7 +25,7 @@ public class CciToCiaConverter(KeyStore keyStore)
         try
         {
             outputPath = Utils.GetUniqueFilePath(Path.ChangeExtension(inputPath, ".cia"));
-            log?.Invoke($"{Path.GetFileName(inputPath)} → CIA 변환 시작", LogLevel.Highlight, string.Empty);
+            log?.Invoke($"{Path.GetFileName(inputPath)} → CIA 변환 시작", LogLevel.Highlight);
 
             using var inputStream = File.Open(inputPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var outputStream = File.Open(outputPath, FileMode.Create, FileAccess.Write);
@@ -33,7 +33,7 @@ public class CciToCiaConverter(KeyStore keyStore)
             await ConvertAsync(inputStream, outputStream, progress, log, ct);
 
             isCompleted = true;
-            log?.Invoke($"변환 완료: {outputPath}", LogLevel.Ok, string.Empty);
+            log?.Invoke($"변환 완료: {outputPath}", LogLevel.Ok);
         }
         finally
         {
@@ -42,7 +42,7 @@ public class CciToCiaConverter(KeyStore keyStore)
         }
     }
 
-    private async Task ConvertAsync(Stream input, Stream output, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    private async Task ConvertAsync(Stream input, Stream output, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         uint saveSize = 0;
         byte[]? exheader = null;
@@ -71,7 +71,7 @@ public class CciToCiaConverter(KeyStore keyStore)
 
                 if (!ncch.NoCrypto)
                 {
-                    log?.Invoke("암호화된 롬 감지, 복호화 파이프라인 구동...", LogLevel.Info, string.Empty);
+                    log?.Invoke("암호화된 롬 감지, 복호화 파이프라인 구동...", LogLevel.Info);
                     exhdrStream = new NcchDecryptionStream(exhdrStream, 0, keyStore);
                 }
 

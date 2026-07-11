@@ -5,6 +5,7 @@
         xmlns:controls="clr-namespace:RomForge.Controls"
         xmlns:patch="clr-namespace:RomForge.Controls.Patch"
         xmlns:switch="clr-namespace:RomForge.Controls.Switch"
+        xmlns:wiiu="clr-namespace:RomForge.Controls.WiiU"
         xmlns:_3ds="clr-namespace:RomForge.Controls._3DS"
         xmlns:ps="clr-namespace:RomForge.Controls.PS"
         xmlns:util="clr-namespace:RomForge.Controls.Util"
@@ -56,6 +57,17 @@
                 </TabItem.Header>
                 <switch:MainTab DataContext="{Binding SwitchMainVM}"/>
             </TabItem>
+
+            <TabItem IsEnabled="{Binding IsIdle}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/WiiU.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="WiiU" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <wiiu:MainTab DataContext="{Binding WiiUMainVM}"/>
+            </TabItem>
+
 
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>

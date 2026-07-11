@@ -167,36 +167,34 @@ public class ConverterMainViewModel : ToolTabViewModel
 
                     try
                     {
-                        void logWrapper(string msg, LogLevel level, string id) => AppendLog(msg, level);
-
                         switch (item.SelectedTargetFormat)
                         {
                             case "CIA":
                                 {
                                     KeyStore key = new();
                                     CciToCiaConverter c = new(key);
-                                    await c.ConvertAsync(item.FilePath, progressHandler, logWrapper, _cts.Token);
+                                    await c.ConvertAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
                                 }
                                 break;
 
                             case "ZCCI":
                                 {
                                     if (inputExt == "cia")
-                                        await Z3dsArchiveService.CompressFromCiaAsync(item.FilePath, 18, progressHandler, logWrapper, _cts.Token);
+                                        await Z3dsArchiveService.CompressFromCiaAsync(item.FilePath, 18, progressHandler, AppendLog, _cts.Token);
                                     else
-                                        await Z3dsArchiveService.CompressAsync(item.FilePath, 18, progressHandler, logWrapper, _cts.Token);
+                                        await Z3dsArchiveService.CompressAsync(item.FilePath, 18, progressHandler, AppendLog, _cts.Token);
                                 }
                                 break;
 
                             case "CCI":
                                 {
                                     if (inputExt == "zcci")
-                                        await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, logWrapper, _cts.Token);
+                                        await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
                                     else if (inputExt == "cia")
                                     {
                                         KeyStore key = new();
                                         var ciaToCci = new CiaToCciConverter(key);
-                                        await ciaToCci.ConvertAsync(item.FilePath, progressHandler, logWrapper, _cts.Token);
+                                        await ciaToCci.ConvertAsync(item.FilePath, progressHandler, AppendLog, _cts.Token);
                                     }
                                 }
                                 break;

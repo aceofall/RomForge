@@ -27,7 +27,7 @@ public class Z3dsArchiveService
     private const byte MetaTypeBinary = 0x01;
     private const int MaxMetaDataLength = 0xFFFF;
 
-    public static async Task CompressAsync(string inputPath, int compressionLevel = 18, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public static async Task CompressAsync(string inputPath, int compressionLevel = 18, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string? outputPath = null;
         bool isCompleted = false;
@@ -44,7 +44,7 @@ public class Z3dsArchiveService
 
             if (!header.NoCrypto)
             {
-                log?.Invoke("암호화된 롬 감지, 복호화 파이프라인 구동...", LogLevel.Info, string.Empty);
+                log?.Invoke("암호화된 롬 감지, 복호화 파이프라인 구동...", LogLevel.Info);
 
                 var keyStore = new KeyStore();
 
@@ -65,14 +65,14 @@ public class Z3dsArchiveService
                 outputPath = Utils.GetUniqueFilePath(Path.ChangeExtension(inputPath, CompressExtension));
                 using var outputStream = File.Open(outputPath, FileMode.Create, FileAccess.Write);
 
-                log?.Invoke($"{Path.GetFileName(inputPath)} 압축 시작", LogLevel.Highlight, string.Empty);
+                log?.Invoke($"{Path.GetFileName(inputPath)} 압축 시작", LogLevel.Highlight);
 
                 await CompressInternalAsync(inputStream, outputStream, fileStream.Length, compressionLevel, progress, ct);
 
                 long originalSize = new FileInfo(inputPath).Length;
                 long compressedSize = new FileInfo(outputPath).Length;
-                log?.Invoke($"압축률: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight, string.Empty);
-                log?.Invoke($"압축 완료: {outputPath}", LogLevel.Ok, string.Empty);
+                log?.Invoke($"압축률: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight);
+                log?.Invoke($"압축 완료: {outputPath}", LogLevel.Ok);
             }
 
             isCompleted = true;
@@ -84,7 +84,7 @@ public class Z3dsArchiveService
         }
     }
 
-    public static async Task CompressFromCiaAsync(string inputPath, int compressionLevel = 18, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public static async Task CompressFromCiaAsync(string inputPath, int compressionLevel = 18, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string? outputPath = null;
         bool isCompleted = false;
@@ -125,7 +125,7 @@ public class Z3dsArchiveService
 
             long uncompressedSize = NcsdBuilder.CalculateOutputSize(ctx);
 
-            log?.Invoke($"{Path.GetFileName(inputPath)} 압축 시작", LogLevel.Highlight, string.Empty);
+            log?.Invoke($"{Path.GetFileName(inputPath)} 압축 시작", LogLevel.Highlight);
 
             await CompressInternalAsync(new PipeReaderStream(pipe.Reader), outputStream, uncompressedSize, compressionLevel, progress, ct);
 
@@ -134,8 +134,8 @@ public class Z3dsArchiveService
             long originalSize = new FileInfo(inputPath).Length;
             long compressedSize = new FileInfo(outputPath).Length;
 
-            log?.Invoke($"압축률: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight, string.Empty);
-            log?.Invoke($"압축 완료: {outputPath}", LogLevel.Ok, string.Empty);
+            log?.Invoke($"압축률: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight);
+            log?.Invoke($"압축 완료: {outputPath}", LogLevel.Ok);
 
             isCompleted = true;
         }
@@ -237,7 +237,7 @@ public class Z3dsArchiveService
         progress?.Report(new ProgressInfo { Percent = 100 });
     }
 
-    public static async Task DecompressAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public static async Task DecompressAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string? outputPath = null;
         bool isCompleted = false;
@@ -253,7 +253,7 @@ public class Z3dsArchiveService
             long totalSize = header.UncompressedSize;
             long processed = 0;
 
-            log?.Invoke($"{Path.GetFileName(inputPath)} 해제 시작", LogLevel.Highlight, string.Empty);
+            log?.Invoke($"{Path.GetFileName(inputPath)} 해제 시작", LogLevel.Highlight);
 
             long compressedDataOffset = header.HeaderSize + header.MetadataSize;
             long compressedDataLength = header.CompressedSize;
@@ -266,7 +266,7 @@ public class Z3dsArchiveService
                 }, ct);
 
             isCompleted = true;
-            log?.Invoke($"해제 완료: {outputPath}", LogLevel.Ok, string.Empty);
+            log?.Invoke($"해제 완료: {outputPath}", LogLevel.Ok);
         }
         finally
         {

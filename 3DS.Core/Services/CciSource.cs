@@ -25,9 +25,9 @@ public class CciSource : IInstallSource
 
     public required byte[] TmdRaw { get; init; }
 
-    public Action<string, LogLevel, string>? Log { get; init; }
+    public Action<string, LogLevel>? Log { get; init; }
 
-    public static async Task<CciSource> OpenAsync(string path, KeyStore keyStore, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public static async Task<CciSource> OpenAsync(string path, KeyStore keyStore, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         Stream stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 

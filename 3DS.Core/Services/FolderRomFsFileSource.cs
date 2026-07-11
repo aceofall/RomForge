@@ -1,10 +1,11 @@
 ﻿using _3DS.Core.Interfaces;
+using Common;
 
 namespace _3DS.Core.Services;
 
 public class FolderRomFsFileSource(string folder, IRomFsFileSource? patchSource = null) : IRomFsFileSource
 {
-    public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, CancellationToken ct = default)
+    public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string localPath = Path.Combine(folder, fullPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 
@@ -15,7 +16,7 @@ public class FolderRomFsFileSource(string folder, IRomFsFileSource? patchSource 
 
         if (patchSource != null)
         {
-            var patchStream = await patchSource.OpenFileAsync(fullPath, localGetOriginal, ct);
+            var patchStream = await patchSource.OpenFileAsync(fullPath, localGetOriginal, log, ct);
 
             if (patchStream != null)
                 return patchStream;

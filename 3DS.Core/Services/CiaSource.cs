@@ -30,7 +30,7 @@ public class CiaSource : IInstallSource
 
     public SmdhInfo? SmdhInfo { get; set; }
 
-    public Action<string, LogLevel, string>? Log { get; init; }
+    public Action<string, LogLevel>? Log { get; init; }
 
     public NcchHeader? MainNcchHeader { get; private set; }
 

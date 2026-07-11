@@ -35,6 +35,7 @@
     <None Remove="Assets\Images\Split.png" />
     <None Remove="Assets\Images\Unpack.png" />
     <None Remove="Assets\Images\UpperA.png" />
+    <None Remove="Assets\Images\WiiU.png" />
     <None Remove="Assets\Images\WorkSpace.png" />
   </ItemGroup>
   <ItemGroup>
@@ -62,6 +63,7 @@
     <Resource Include="Assets\Images\Split.png" />
     <Resource Include="Assets\Images\Unpack.png" />
     <Resource Include="Assets\Images\UpperA.png" />
+    <Resource Include="Assets\Images\WiiU.png" />
     <Resource Include="Assets\Images\WorkSpace.png" />
     <Resource Include="Assets\Images\WriteTab.png" />
     <Resource Include="Assets\Images\DLC.png" />
@@ -158,8 +160,5 @@
     <None Update="seeddb.bin">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Controls\WiiU\" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 ﻿using _3DS.Core.Models;
+using Common;
 using Patch.Core.Formats;
 using System.Security.Cryptography;
 using System.Text;
@@ -94,7 +95,7 @@ public static class ExeFsPacker
         return Pack(files);
     }
 
-    public static async Task<byte[]> PackWithPatchAsync(IReadOnlyList<ExeFsFile> originalFiles, string? exefsPatchDir, byte[]? exHeader, string? patchRootDir, CancellationToken ct = default)
+    public static async Task<byte[]> PackWithPatchAsync(IReadOnlyList<ExeFsFile> originalFiles, string? exefsPatchDir, byte[]? exHeader, string? patchRootDir, Action<string, LogLevel>? log = null,  CancellationToken ct = default)
     {
         bool hasExefsDir = exefsPatchDir != null && Directory.Exists(exefsPatchDir);
         bool hasRootFallback = !string.IsNullOrEmpty(patchRootDir);
@@ -151,6 +152,8 @@ public static class ExeFsPacker
                     ExpectedHash = [],
                     HashValid = false,
                 });
+
+                log?.Invoke($"패치 완료: {Path.GetFileName(ipsPath)}", LogLevel.Info);
             }
             else
             {

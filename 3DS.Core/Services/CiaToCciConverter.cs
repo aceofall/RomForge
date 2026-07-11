@@ -7,7 +7,7 @@ public class CiaToCciConverter(KeyStore keyStore)
 {
     private const string OutputExtension = ".cci";
 
-    public async Task ConvertAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel, string>? log = null, CancellationToken ct = default)
+    public async Task ConvertAsync(string inputPath, IProgress<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string? outputPath = null;
         bool isCompleted = false;
@@ -33,7 +33,7 @@ public class CiaToCciConverter(KeyStore keyStore)
             outputPath = Utils.GetUniqueFilePath(Path.ChangeExtension(inputPath, OutputExtension));
             using var outputStream = File.Open(outputPath, FileMode.Create, FileAccess.ReadWrite);
 
-            log?.Invoke($"{Path.GetFileName(inputPath)} → CCI 변환 시작", LogLevel.Highlight, string.Empty);
+            log?.Invoke($"{Path.GetFileName(inputPath)} → CCI 변환 시작", LogLevel.Highlight);
 
             long totalSize = NcsdBuilder.CalculateOutputSize(ctx);
 
@@ -48,7 +48,7 @@ public class CiaToCciConverter(KeyStore keyStore)
             await NcsdBuilder.BuildAsync(ctx, outputStream, reporter, ct);
 
             isCompleted = true;
-            log?.Invoke($"변환 완료: {outputPath}", LogLevel.Ok, string.Empty);
+            log?.Invoke($"변환 완료: {outputPath}", LogLevel.Ok);
         }
         finally
         {
