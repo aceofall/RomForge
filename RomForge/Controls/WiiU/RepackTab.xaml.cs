@@ -30,7 +30,7 @@ namespace RomForge.Controls.WiiU
                         string.Equals(extension, ".cci", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(extension, ".cia", StringComparison.OrdinalIgnoreCase))
                     {
-                        ViewModel.InputPath = filePath;
+                        //ViewModel.InputPath = filePath;
                     }
                     else
                     {
@@ -59,8 +59,8 @@ namespace RomForge.Controls.WiiU
             var items = (string[]?)e.Data.GetData(DataFormats.FileDrop);
             var folder = items?.FirstOrDefault(Directory.Exists);
 
-            if (folder != null)
-                ViewModel.PatchPath = folder;
+            //if (folder != null)
+            //    ViewModel.PatchPath = folder;
 
             e.Handled = true;
         }

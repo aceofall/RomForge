@@ -4,13 +4,13 @@ using NSW.Core.Enums;
 using NSW.WPF.Services;
 using NSW.WPF.UI;
 using RomForge.Core.Models;
+using RomForge.Core.Models.WiiU;
 using RomForge.Core.Services.WiiU;
 using RomForge.Core.UI.Command;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using WiiU.Core.Models;
 
 namespace RomForge.ViewModels.WiiU;
 
@@ -18,50 +18,29 @@ public class RepackMainViewModel : ToolTabViewModel
 {
     private CancellationTokenSource _cts = new();
     private BuildMode? _currentMode;
-    private readonly RepackService _service;
-
-    public ObservableCollection<LogEntry> LogEntries { get; } = [];
-
-    private string _inputPath = string.Empty;
+    private TitleInputEntry? _selectedEntry;
     private string _keysPath = string.Empty;
-    private string _patchPath = string.Empty;
     private string _outputPath = string.Empty;
     private int _progressPct;
     private string _progressLabel = "대기 중...";
     private string _progressPercent = string.Empty;
     private string _progressTime = "00:00 경과";
     private string _progressSpeed = string.Empty;
-    private WiiUTitleInfo? _titleInfo;
 
-    public string InputPath
+    public ObservableCollection<LogEntry> LogEntries { get; } = [];
+
+    public ObservableCollection<TitleInputEntry> Entries { get; } = [];
+
+    public TitleInputEntry? SelectedEntry
     {
-        get => _inputPath;
-        set
-        {
-            _inputPath = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(InputHintVisibility));
-            OnPropertyChanged(nameof(KeysPathRequired));
-            _ = RefreshTitleInfoAsync();
-        }
+        get => _selectedEntry;
+        set { _selectedEntry = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelection)); }
     }
 
     public string KeysPath
     {
         get => _keysPath;
-        set
-        {
-            _keysPath = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(KeysHintVisibility));
-            _ = RefreshTitleInfoAsync();
-        }
-    }
-
-    public string PatchPath
-    {
-        get => _patchPath;
-        set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchHintVisibility)); }
+        set { _keysPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(KeysHintVisibility)); }
     }
 
     public string OutputPath
@@ -100,25 +79,15 @@ public class RepackMainViewModel : ToolTabViewModel
         set { _progressSpeed = value; OnPropertyChanged(); }
     }
 
-    public WiiUTitleInfo? TitleInfo
-    {
-        get => _titleInfo;
-        set { _titleInfo = value; OnPropertyChanged(); OnPropertyChanged(nameof(TitleInfoVisibility)); }
-    }
-
-    public Visibility InputHintVisibility => string.IsNullOrEmpty(InputPath) ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility EntriesHintVisibility => Entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility KeysHintVisibility => string.IsNullOrEmpty(KeysPath) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility PatchHintVisibility => string.IsNullOrEmpty(PatchPath) ? Visibility.Visible : Visibility.Collapsed;
-
     public Visibility OutputHintVisibility => string.IsNullOrEmpty(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility TitleInfoVisibility => TitleInfo != null ? Visibility.Visible : Visibility.Collapsed;
+    public bool HasSelection => SelectedEntry != null;
 
-    public bool KeysPathRequired =>
-        !string.IsNullOrEmpty(InputPath) &&
-        !string.Equals(Path.GetExtension(InputPath), ".wua", StringComparison.OrdinalIgnoreCase);
+    public bool KeysPathRequired => Entries.Any(e => !e.IsFolder && !string.Equals(Path.GetExtension(e.Path), ".wua", StringComparison.OrdinalIgnoreCase));
 
     public bool IsUnpackRunning => IsLocked && _currentMode == BuildMode.UnpackOnly;
 
@@ -132,29 +101,83 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public bool StartEnabled => !IsLocked || _currentMode == BuildMode.FullProcess;
 
-    public ICommand BrowseInputCommand { get; }
+    public ICommand BrowseAddFileCommand { get; }
+
+    public ICommand BrowseAddFolderCommand { get; }
+
+    public ICommand RemoveSelectedCommand { get; }
 
     public ICommand BrowseKeysCommand { get; }
 
-    public ICommand BrowsePatchCommand { get; }
+    public ICommand BrowsePatchForSelectedCommand { get; }
 
     public ICommand BrowseOutputCommand { get; }
 
     public RepackMainViewModel()
     {
-        _service = new RepackService(Log, () => PatchPath);
-
         OutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
-        BrowseInputCommand = new RelayCommand(async _ => await BrowseInput());
+
+        BrowseAddFileCommand = new RelayCommand(async _ => await BrowseAddFile());
+        BrowseAddFolderCommand = new RelayCommand(async _ => await BrowseAddFolder());
+        RemoveSelectedCommand = new RelayCommand(_ => RemoveSelected(), _ => HasSelection);
         BrowseKeysCommand = new RelayCommand(async _ => await BrowseKeys());
-        BrowsePatchCommand = new RelayCommand(async _ => await BrowsePatch());
+        BrowsePatchForSelectedCommand = new RelayCommand(async _ => await BrowsePatchForSelected(), _ => HasSelection);
         BrowseOutputCommand = new RelayCommand(async _ => await BrowseOutput());
+
+        Entries.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(EntriesHintVisibility));
+            OnPropertyChanged(nameof(KeysPathRequired));
+        };
 
         PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(IsLocked))
                 NotifyButtonStates();
         };
+    }
+
+    public async Task AddFileAsync(string path)
+    {
+        try
+        {
+            bool isWua = string.Equals(Path.GetExtension(path), ".wua", StringComparison.OrdinalIgnoreCase);
+
+            if (!isWua && string.IsNullOrEmpty(KeysPath))
+            {
+                Log("keys.txt를 먼저 지정하세요 (wud/wux 입력에는 필요합니다).", LogLevel.Error);
+                return;
+            }
+
+            var rows = await RepackService.PeekFileAsync(path, KeysPath, CancellationToken.None);
+
+            foreach (var row in rows)
+                Entries.Add(row);
+
+            Log($"{Path.GetFileName(path)} — {rows.Count}개 타이틀 추가됨.", LogLevel.Info);
+        }
+        catch (Exception ex)
+        {
+            Log($"'{path}' 추가 실패: {ex.Message}", LogLevel.Error);
+        }
+    }
+
+    public void AddFolder(string folderPath)
+    {
+        try
+        {
+            Entries.Add(RepackService.PeekFolder(folderPath));
+        }
+        catch (Exception ex)
+        {
+            Log($"'{folderPath}' 추가 실패: {ex.Message}", LogLevel.Error);
+        }
+    }
+
+    private void RemoveSelected()
+    {
+        if (SelectedEntry is not null)
+            Entries.Remove(SelectedEntry);
     }
 
     public async Task StartAsync(BuildMode mode)
@@ -174,14 +197,12 @@ public class RepackMainViewModel : ToolTabViewModel
             {
                 _cts.Dispose();
                 _cts = new CancellationTokenSource();
-
                 await ExecuteAsync(mode, _cts.Token);
             }
             finally
             {
                 ProgressPct = 0;
                 _currentMode = null;
-
                 NotifyButtonStates();
             }
         }
@@ -191,14 +212,34 @@ public class RepackMainViewModel : ToolTabViewModel
 
     private async Task ExecuteAsync(BuildMode mode, CancellationToken ct)
     {
-        string unpackedPath = Path.Combine(OutputPath, "unpacked");
+        string unpackedRoot = Path.Combine(OutputPath, "unpacked");
 
-        if (mode == BuildMode.UnpackOnly && Directory.Exists(unpackedPath))
+        if (mode == BuildMode.UnpackOnly && Directory.Exists(unpackedRoot))
         {
             if (!MessageBoxHelper.ShowQuestion("기존 언팩 데이터를 삭제하고 새로 진행할까요?"))
                 return;
 
-            Directory.Delete(unpackedPath, true);
+            Directory.Delete(unpackedRoot, true);
+        }
+
+        if (mode == BuildMode.RebuildOnly)
+        {
+            var scanned = RepackService.ScanUnpacked(OutputPath);
+            if (scanned.Count == 0)
+            {
+                Log("언팩된 데이터가 없습니다.", LogLevel.Error);
+                return;
+            }
+
+            foreach (var row in scanned)
+            {
+                var existing = Entries.FirstOrDefault(e => e.TitleIdHex == row.TitleIdHex && e.TitleVersion == row.TitleVersion);
+                if (existing?.PatchPath is not null) row.PatchPath = existing.PatchPath;
+            }
+            Entries.Clear();
+
+            foreach (var row in scanned)
+                Entries.Add(row);
         }
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -208,17 +249,16 @@ public class RepackMainViewModel : ToolTabViewModel
         try
         {
             Directory.CreateDirectory(OutputPath);
+            var entriesSnapshot = Entries.ToList();
 
             switch (mode)
             {
                 case BuildMode.UnpackOnly:
-                    await _service.UnpackAsync(InputPath, unpackedPath, KeysPath, progress, ct);
+                    await RepackService.UnpackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    await _service.RepackAsync(unpackedPath, OutputPath, progress, ct);
-                    break;
                 case BuildMode.FullProcess:
-                    await _service.RepackDirectAsync(InputPath, KeysPath, OutputPath, progress, ct);
+                    await RepackService.RepackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
                     break;
             }
 
@@ -238,9 +278,9 @@ public class RepackMainViewModel : ToolTabViewModel
         }
         finally
         {
-            if (!isCompleted && mode == BuildMode.UnpackOnly && Directory.Exists(unpackedPath))
+            if (!isCompleted && mode == BuildMode.UnpackOnly && Directory.Exists(unpackedRoot))
             {
-                try { Directory.Delete(unpackedPath, true); } catch { }
+                try { Directory.Delete(unpackedRoot, true); } catch { }
             }
         }
     }
@@ -258,45 +298,13 @@ public class RepackMainViewModel : ToolTabViewModel
             });
         };
 
-    private async Task RefreshTitleInfoAsync()
-    {
-        TitleInfo = null;
-
-        if (string.IsNullOrEmpty(InputPath) || !File.Exists(InputPath)) 
-            return;
-
-        bool isWua = string.Equals(Path.GetExtension(InputPath), ".wua", StringComparison.OrdinalIgnoreCase);
-
-        if (!isWua && (string.IsNullOrEmpty(KeysPath) || !File.Exists(KeysPath)))
-            return;
-
-        await Task.Run(() =>
-        {
-            try
-            {
-                using var source = UnpackService.Open(InputPath, isWua ? null : KeysPath);
-                int count = 0;
-
-                foreach (var _ in source.EnumerateFiles()) 
-                    count++;
-
-                var info = new WiiUTitleInfo { TitleIdHex = source.TitleIdHex, TitleVersion = source.TitleVersion, FileCount = count };
-
-                Application.Current.Dispatcher.Invoke(() => TitleInfo = info);
-            }
-            catch
-            {
-            }
-        });
-    }
-
     private bool Validate(BuildMode mode, out string error)
     {
         error = string.Empty;
 
-        if (mode != BuildMode.RebuildOnly && string.IsNullOrEmpty(InputPath))
+        if (mode != BuildMode.RebuildOnly && Entries.Count == 0)
         {
-            error = "원본 파일을 선택하세요.";
+            error = "타이틀을 하나 이상 추가하세요.";
             return false;
         }
 
@@ -338,18 +346,28 @@ public class RepackMainViewModel : ToolTabViewModel
         });
     }
 
-    private void Log(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
+    private void Log(string msg, LogLevel level = LogLevel.Info) =>
+        Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
 
-    private async Task BrowseInput()
+    private async Task BrowseAddFile()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "원본 파일 선택",
-            Filter = "Wii U ROM 파일|*.wud;*.wux;*.wua"
+            Title = "베이스 / 업데이트 / DLC 파일 선택 (여러 개 선택 가능)",
+            Filter = "Wii U ROM 파일|*.wud;*.wux;*.wua",
+            Multiselect = true,
         };
 
         if (dlg.ShowDialog() == true)
-            InputPath = dlg.FileName;
+            foreach (var file in dlg.FileNames)
+                await AddFileAsync(file);
+    }
+
+    private async Task BrowseAddFolder()
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "이미 언팩된 폴더 선택" };
+        if (dlg.ShowDialog() == true)
+            AddFolder(dlg.FolderName);
     }
 
     private async Task BrowseKeys()
@@ -364,12 +382,14 @@ public class RepackMainViewModel : ToolTabViewModel
             KeysPath = dlg.FileName;
     }
 
-    private async Task BrowsePatch()
+    private async Task BrowsePatchForSelected()
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "한글패치 폴더 선택" };
+        if (SelectedEntry is null) 
+            return;
 
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{SelectedEntry.Summary}에 적용할 한글패치 폴더 선택" };
         if (dlg.ShowDialog() == true)
-            PatchPath = dlg.FolderName;
+            SelectedEntry.PatchPath = dlg.FolderName;
     }
 
     private async Task BrowseOutput()
