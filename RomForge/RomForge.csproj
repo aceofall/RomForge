@@ -90,6 +90,7 @@
     <ProjectReference Include="..\PickPack.Disk\PickPack.Disk.csproj" />
     <ProjectReference Include="..\PSP.Core\PSP.Core.csproj" />
     <ProjectReference Include="..\RomForge.Core\RomForge.Core.csproj" />
+    <ProjectReference Include="..\WiiU.Core\WiiU.Core.csproj" />
     <!-- RomZip.Core는 기존 프로젝트 경로로 교체 -->
     <!-- <ProjectReference Include="..\..\RomZip\RomZip.Core\RomZip.Core.csproj"/> -->
   </ItemGroup>
@@ -157,5 +158,8 @@
     <None Update="seeddb.bin">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Controls\WiiU\" />
   </ItemGroup>
 </Project>

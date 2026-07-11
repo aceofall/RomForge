@@ -3,7 +3,7 @@ using RomForge.Core;
 
 namespace RomForge.ViewModels.Settings;
 
-public class PS1SettingsMainViewModel() : ToolTabViewModel
+public class PSSettingsMainViewModel() : ToolTabViewModel
 {
     public double CompressLevel
     {

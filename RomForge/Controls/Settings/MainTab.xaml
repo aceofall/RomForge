@@ -31,7 +31,7 @@
                         <TextBlock Text="PSP" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <local:PS1SettingsTab DataContext="{Binding PS1}"/>
+                <local:PSSettingsTab DataContext="{Binding PS1}"/>
             </TabItem>
 
         </TabControl>

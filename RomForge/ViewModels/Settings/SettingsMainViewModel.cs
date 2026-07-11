@@ -6,7 +6,7 @@ public class SettingsMainViewModel : MultiToolTabViewModel
 
     public CompressSettingsMainViewModel Compress { get; } = new();
 
-    public PS1SettingsMainViewModel PS1 { get; } = new();
+    public PSSettingsMainViewModel PS1 { get; } = new();
 
     public SettingsMainViewModel()
     {
