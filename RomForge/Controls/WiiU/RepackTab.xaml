@@ -16,14 +16,14 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-                
+
         <Border Grid.Row="0" Margin="5,0,5,10" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="50"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <Grid Grid.Column="0">
                     <ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Background="Transparent" BorderThickness="0" Margin="5" KeyUp="LvFiles_KeyUp">
                         <ListView.View>
@@ -37,9 +37,35 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="타이틀 ID / 버전" Width="180" DisplayMemberBinding="{Binding Summary}"/>
-                                <GridViewColumn Header="경로" Width="220" DisplayMemberBinding="{Binding SourceDisplay}"/>
-                                <GridViewColumn Header="한글패치" Width="150" DisplayMemberBinding="{Binding PatchDisplay}"/>
+                                <GridViewColumn Header="타이틀" Width="260">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,5">
+                                                <Border Width="36" Height="36" CornerRadius="6" Margin="0,0,10,0" Background="#252526" ClipToBounds="True">
+                                                    <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="#E8E8F0" FontSize="12" FontWeight="SemiBold" ToolTip="{Binding DisplayName}"/>
+                                                    <TextBlock Text="{Binding TitleIdHex}" Foreground="#8888A8" FontSize="11" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="한글패치" Width="150" DisplayMemberBinding="{Binding PatchDisplay}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding PatchDisplay}" ToolTip="{Binding PatchDisplay}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="경로" Width="220" DisplayMemberBinding="{Binding SourceDisplay}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SourceDisplay}" ToolTip="{Binding SourceDisplay}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn> 
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -113,51 +139,25 @@
             </Grid>
         </Border>
 
-        <!-- keys.txt / 작업 폴더 -->
-        <Grid Grid.Row="1" Margin="5,5,5,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Margin="0,0,5,0">
-                <TextBlock Text="keys.txt (wud/wux 입력에 필요)" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,5"/>
-                <Grid Height="36">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
-                        <Grid>
-                            <TextBox Text="{Binding KeysPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
-                            <TextBlock Text="keys.txt를 선택하세요" Visibility="{Binding KeysHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
-                        </Grid>
-                    </Border>
-                    <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseKeysCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0">
-                        <Image Source="/Assets/Images/AddFile.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </Button>
-                </Grid>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                <TextBlock Text="작업 폴더" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,5"/>
-                <Grid Height="36">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
-                        <Grid>
-                            <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
-                            <TextBlock Text="작업 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False" Margin="10,0,0,0"/>
-                        </Grid>
-                    </Border>
-                    <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0">
-                        <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </Button>
-                </Grid>
-            </StackPanel>
-        </Grid>
+        <!-- 작업 폴더 -->
+        <StackPanel Grid.Row="1" Margin="5,5,5,10">
+            <TextBlock Text="작업 폴더" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,5"/>
+            <Grid Height="36">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
+                    <Grid>
+                        <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
+                        <TextBlock Text="작업 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False" Margin="10,0,0,0"/>
+                    </Grid>
+                </Border>
+                <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0">
+                    <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Button>
+            </Grid>
+        </StackPanel>
 
         <!-- 실행 버튼 -->
         <Grid Grid.Row="2" Margin="5,0,0,10">
@@ -188,7 +188,7 @@
 
             <core:IconButton Grid.Column="2"
                              Margin="5,0,5,0"
-                             DefaultText="언팩 + 리팩 (다이렉트)"
+                             DefaultText="언팩 + 리팩 (스트리밍 기반)"
                              DefaultIcon="/Assets/Images/Run.png"
                              CancelText="취소"
                              CancelIcon="/Assets/Images/Cancel.png"

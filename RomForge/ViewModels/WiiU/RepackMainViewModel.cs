@@ -19,13 +19,14 @@ public class RepackMainViewModel : ToolTabViewModel
     private CancellationTokenSource _cts = new();
     private BuildMode? _currentMode;
     private TitleInputEntry? _selectedEntry;
-    private string _keysPath = string.Empty;
     private string _outputPath = string.Empty;
     private int _progressPct;
     private string _progressLabel = "대기 중...";
     private string _progressPercent = string.Empty;
     private string _progressTime = "00:00 경과";
     private string _progressSpeed = string.Empty;
+
+    private static string KeysPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "keys.txt");
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
@@ -35,12 +36,6 @@ public class RepackMainViewModel : ToolTabViewModel
     {
         get => _selectedEntry;
         set { _selectedEntry = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelection)); }
-    }
-
-    public string KeysPath
-    {
-        get => _keysPath;
-        set { _keysPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(KeysHintVisibility)); }
     }
 
     public string OutputPath
@@ -81,8 +76,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public Visibility EntriesHintVisibility => Entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility KeysHintVisibility => string.IsNullOrEmpty(KeysPath) ? Visibility.Visible : Visibility.Collapsed;
-
     public Visibility OutputHintVisibility => string.IsNullOrEmpty(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
 
     public bool HasSelection => SelectedEntry != null;
@@ -109,8 +102,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public ICommand RemoveAllCommand { get; }
 
-    public ICommand BrowseKeysCommand { get; }
-
     public ICommand BrowsePatchForSelectedCommand { get; }
 
     public ICommand BrowseOutputCommand { get; }
@@ -123,7 +114,6 @@ public class RepackMainViewModel : ToolTabViewModel
         BrowseAddFolderCommand = new RelayCommand(async _ => await BrowseAddFolder());
         RemoveSelectedCommand = new RelayCommand(_ => RemoveSelected(), _ => HasSelection);
         RemoveAllCommand = new RelayCommand(_ => RemoveAll(), _ => Entries.Count > 0);
-        BrowseKeysCommand = new RelayCommand(async _ => await BrowseKeys());
         BrowsePatchForSelectedCommand = new RelayCommand(async _ => await BrowsePatchForSelected(), _ => HasSelection);
         BrowseOutputCommand = new RelayCommand(async _ => await BrowseOutput());
 
@@ -146,15 +136,16 @@ public class RepackMainViewModel : ToolTabViewModel
         {
             bool isWua = string.Equals(Path.GetExtension(path), ".wua", StringComparison.OrdinalIgnoreCase);
 
-            //if (!isWua && string.IsNullOrEmpty(KeysPath))
-            //{
-            //    Log("keys.txt를 먼저 지정하세요 (wud/wux 입력에는 필요합니다).", LogLevel.Error);
-            //    return;
-            //}
+            if (!isWua && !File.Exists(KeysPath))
+            {
+                Log("keys.txt가 exe 폴더에 없습니다. keys.txt를 exe와 같은 폴더에 넣어주세요 (wud/wux 입력에는 필요합니다).", LogLevel.Error);
+                return;
+            }
 
-            string keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "keys.txt");
+            var rows = await RepackService.PeekFileAsync(path, KeysPath, CancellationToken.None);
 
-            var rows = await RepackService.PeekFileAsync(path, keyPath, CancellationToken.None);
+            // WiiU 입력은 한 번에 하나의 소스만 허용 — 기존 항목은 새 소스로 교체
+            Entries.Clear();
 
             foreach (var row in rows)
                 Entries.Add(row);
@@ -171,7 +162,11 @@ public class RepackMainViewModel : ToolTabViewModel
     {
         try
         {
-            Entries.Add(RepackService.PeekFolder(folderPath));
+            var row = RepackService.PeekFolder(folderPath);
+
+            // WiiU 입력은 한 번에 하나의 소스만 허용 — 기존 항목은 새 소스로 교체
+            Entries.Clear();
+            Entries.Add(row);
         }
         catch (Exception ex)
         {
@@ -258,16 +253,14 @@ public class RepackMainViewModel : ToolTabViewModel
             Directory.CreateDirectory(OutputPath);
             var entriesSnapshot = Entries.ToList();
 
-            string keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "keys.txt");
-
             switch (mode)
             {
                 case BuildMode.UnpackOnly:
-                    await RepackService.UnpackAsync(entriesSnapshot, keyPath, OutputPath, progress, Log, ct);
+                    await RepackService.UnpackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
                     break;
                 case BuildMode.RebuildOnly:
                 case BuildMode.FullProcess:
-                    await RepackService.RepackAsync(entriesSnapshot, keyPath, OutputPath, progress, Log, ct);
+                    await RepackService.RepackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
                     break;
             }
 
@@ -317,11 +310,11 @@ public class RepackMainViewModel : ToolTabViewModel
             return false;
         }
 
-        //if (mode != BuildMode.RebuildOnly && KeysPathRequired && string.IsNullOrEmpty(KeysPath))
-        //{
-        //    error = "keys.txt를 선택하세요 (wud/wux 입력에는 필요합니다).";
-        //    return false;
-        //}
+        if (mode != BuildMode.RebuildOnly && KeysPathRequired && !File.Exists(KeysPath))
+        {
+            error = "keys.txt가 exe 폴더에 없습니다. keys.txt를 exe와 같은 폴더에 넣어주세요 (wud/wux 입력에는 필요합니다).";
+            return false;
+        }
 
         if (string.IsNullOrEmpty(OutputPath))
         {
@@ -362,14 +355,13 @@ public class RepackMainViewModel : ToolTabViewModel
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "베이스 / 업데이트 / DLC 파일 선택 (여러 개 선택 가능)",
+            Title = "베이스 / 업데이트 / DLC 파일 선택",
             Filter = "Wii U ROM 파일|*.wud;*.wux;*.wua",
-            Multiselect = true,
+            Multiselect = false,
         };
 
         if (dlg.ShowDialog() == true)
-            foreach (var file in dlg.FileNames)
-                await AddFileAsync(file);
+            await AddFileAsync(dlg.FileName);
     }
 
     private async Task BrowseAddFolder()
@@ -379,24 +371,12 @@ public class RepackMainViewModel : ToolTabViewModel
             AddFolder(dlg.FolderName);
     }
 
-    private async Task BrowseKeys()
-    {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "keys.txt 선택",
-            Filter = "keys.txt|*.txt|모든 파일|*.*"
-        };
-
-        if (dlg.ShowDialog() == true)
-            KeysPath = dlg.FileName;
-    }
-
     private async Task BrowsePatchForSelected()
     {
-        if (SelectedEntry is null) 
+        if (SelectedEntry is null)
             return;
 
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{SelectedEntry.Summary}에 적용할 한글패치 폴더 선택" };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{SelectedEntry.TitleName}에 적용할 한글패치 폴더 선택" };
 
         if (dlg.ShowDialog() == true)
             SelectedEntry.PatchPath = dlg.FolderName;

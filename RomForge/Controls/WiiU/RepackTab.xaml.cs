@@ -31,32 +31,36 @@ namespace RomForge.Controls.WiiU
             }
 
             string[]? items = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-            if (items is null)
+
+            if (items is null || items.Length == 0)
             {
                 e.Handled = true;
                 return;
             }
 
+            string? lastFolder = null;
+            string? lastFile = null;
+
             foreach (var item in items)
             {
                 if (Directory.Exists(item))
                 {
-                    ViewModel.AddFolder(item);
+                    lastFolder = item;
                     continue;
                 }
 
                 string extension = Path.GetExtension(item);
-                if (string.Equals(extension, ".wud", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(extension, ".wux", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(extension, ".wua", StringComparison.OrdinalIgnoreCase))
+
+                if (string.Equals(extension, ".wud", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".wux", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".wua", StringComparison.OrdinalIgnoreCase))
                 {
-                    await ViewModel.AddFileAsync(item);
-                }
-                else if (string.Equals(extension, ".txt", StringComparison.OrdinalIgnoreCase))
-                {
-                    ViewModel.KeysPath = item;
+                    lastFile = item;
                 }
             }
+
+            if (lastFolder is not null && (lastFile is null || Array.IndexOf(items, lastFolder) > Array.IndexOf(items, lastFile)))
+                ViewModel.AddFolder(lastFolder);
+            else if (lastFile is not null)
+                await ViewModel.AddFileAsync(lastFile);
 
             e.Handled = true;
         }

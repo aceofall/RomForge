@@ -2,6 +2,8 @@ using Common;
 using RomForge.Core.Models.WiiU;
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using WiiU.Core.Models;
 using WiiU.Core.Services;
 
@@ -11,7 +13,7 @@ public sealed class RepackService()
 {
     public static async Task<IReadOnlyList<TitleInputEntry>> PeekFileAsync(string path, string keysTxtPath, CancellationToken ct)
     {
-        return await Task.Run(() =>
+        return await Task.Run(async () =>
         {
             var sources = UnpackService.OpenAll(path, keysTxtPath);
 
@@ -23,7 +25,7 @@ public sealed class RepackService()
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    rows.Add(BuildRow(path, isFolder: false, subTitleIndex: i, sources[i]));
+                    rows.Add(await BuildRowAsync(path, keysTxtPath, isFolder: false, subTitleIndex: i, sources[i]));
                 }
 
                 return (IReadOnlyList<TitleInputEntry>)rows;
@@ -39,14 +41,14 @@ public sealed class RepackService()
     {
         using var source = new FolderTitleSource(folderPath);
 
-        return BuildRow(folderPath, isFolder: true, subTitleIndex: 0, source);
+        return BuildRowFromFolder(folderPath, source);
     }
 
     public static IReadOnlyList<TitleInputEntry> ScanUnpacked(string outputPath, Action<string, LogLevel>? log = null)
     {
         string unpackedRoot = Path.Combine(outputPath, "unpacked");
 
-        if (!Directory.Exists(unpackedRoot)) 
+        if (!Directory.Exists(unpackedRoot))
             return [];
 
         var rows = new List<TitleInputEntry>();
@@ -60,9 +62,28 @@ public sealed class RepackService()
         return rows;
     }
 
-    private static TitleInputEntry BuildRow(string path, bool isFolder, int subTitleIndex, ITitleSource source)
+    private static async Task<TitleInputEntry> BuildRowAsync(string path, string keysTxtPath, bool isFolder, int subTitleIndex, ITitleSource source)
     {
         int fileCount = source.EnumerateFiles().Count();
+
+        string? titleName = null;
+        ImageSource? icon = null;
+
+        try
+        {
+            var meta = await WiiUMetadataExtractor.Extract(path, keysTxtPath);
+
+            if (meta is not null)
+            {
+                titleName = meta.Title;
+
+                if (meta.Image is { Length: > 0 } pngBytes)
+                    icon = TryLoadIcon(pngBytes);
+            }
+        }
+        catch
+        {
+        }
 
         return new TitleInputEntry
         {
@@ -73,7 +94,66 @@ public sealed class RepackService()
             TitleVersion = source.TitleVersion,
             Kind = TitleInputEntry.GuessKind(source.TitleIdHex),
             FileCount = fileCount,
+            TitleName = titleName,
+            Icon = icon,
         };
+    }
+
+    private static TitleInputEntry BuildRowFromFolder(string folderPath, FolderTitleSource source)
+    {
+        int fileCount = source.EnumerateFiles().Count();
+
+        string? titleName = null;
+        ImageSource? icon = null;
+
+        try
+        {
+            var meta = WiiUMetadataExtractor.ExtractFromFolder(folderPath);
+
+            if (meta is not null)
+            {
+                titleName = meta.Title;
+
+                if (meta.Image is { Length: > 0 } pngBytes)
+                    icon = TryLoadIcon(pngBytes);
+            }
+        }
+        catch
+        {  
+        }
+
+        return new TitleInputEntry
+        {
+            Path = folderPath,
+            IsFolder = true,
+            SubTitleIndex = 0,
+            TitleIdHex = source.TitleIdHex,
+            TitleVersion = source.TitleVersion,
+            Kind = TitleInputEntry.GuessKind(source.TitleIdHex),
+            FileCount = fileCount,
+            TitleName = titleName,
+            Icon = icon,
+        };
+    }
+
+    private static BitmapImage? TryLoadIcon(byte[] pngBytes)
+    {
+        try
+        {
+            using var ms = new MemoryStream(pngBytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = ms;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            return bitmap;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static ITitleSource ReopenSource(TitleInputEntry entry, string keysTxtPath)
@@ -163,7 +243,7 @@ public sealed class RepackService()
             }
             finally
             {
-                foreach (var s in sources) 
+                foreach (var s in sources)
                     s.Dispose();
             }
         }, ct);

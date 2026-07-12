@@ -19,6 +19,10 @@ public sealed class TitleInputEntry : ViewModelBase
 
     public int FileCount { get; init; }
 
+    public string? TitleName { get; init; }
+
+    public ImageSource? Icon { get; init; }
+
     private string? _patchPath;
     public string? PatchPath
     {
@@ -26,15 +30,17 @@ public sealed class TitleInputEntry : ViewModelBase
         set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchDisplay)); }
     }
 
-    public string Summary => $"{TitleIdHex}_v{TitleVersion}  ({FileCount:N0}개 파일)";
+    public string DisplayName => string.IsNullOrWhiteSpace(TitleName) ? SourceDisplay : TitleName!;
 
-    public string SourceDisplay => IsFolder ? Path : System.IO.Path.GetFileName(Path);
+    public string TitleIdVersionDisplay => $"{TitleIdHex}_v{TitleVersion}";
 
-    public string PatchDisplay => string.IsNullOrEmpty(PatchPath) ? "(없음)" : System.IO.Path.GetFileName(PatchPath);
+    public string SourceDisplay => Path;
+
+    public string PatchDisplay => string.IsNullOrEmpty(PatchPath) ? "(없음)" : PatchPath;
 
     public static string GuessKind(string titleIdHex)
     {
-        if (titleIdHex.Length < 8) 
+        if (titleIdHex.Length < 8)
             return "알수없음";
 
         return titleIdHex[..8].ToLowerInvariant() switch
