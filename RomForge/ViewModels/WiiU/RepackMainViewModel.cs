@@ -80,7 +80,7 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public bool HasSelection => SelectedEntry != null;
 
-    public bool KeysPathRequired => Entries.Any(e => !e.IsFolder && !string.Equals(Path.GetExtension(e.Path), ".wua", StringComparison.OrdinalIgnoreCase));
+    public bool KeysPathRequired => Entries.Any(e => !e.IsFolder && !string.Equals(Path.GetExtension(e.FilePath), ".wua", StringComparison.OrdinalIgnoreCase));
 
     public bool IsUnpackRunning => IsLocked && _currentMode == BuildMode.UnpackOnly;
 

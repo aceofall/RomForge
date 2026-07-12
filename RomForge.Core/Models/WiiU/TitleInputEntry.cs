@@ -3,10 +3,8 @@ using System.Windows.Media;
 
 namespace RomForge.Core.Models.WiiU;
 
-public sealed class TitleInputEntry : ViewModelBase
+public class TitleInputEntry(string filePath) : FileItemBase(filePath)
 {
-    public string Path { get; init; } = "";
-
     public bool IsFolder { get; init; }
 
     public int SubTitleIndex { get; init; }
@@ -34,7 +32,7 @@ public sealed class TitleInputEntry : ViewModelBase
 
     public string TitleIdVersionDisplay => $"{TitleIdHex}_v{TitleVersion}";
 
-    public string SourceDisplay => Path;
+    public string SourceDisplay => FilePath;
 
     public string PatchDisplay => string.IsNullOrEmpty(PatchPath) ? "(없음)" : PatchPath;
 
@@ -56,9 +54,6 @@ public sealed class TitleInputEntry : ViewModelBase
     {
         get
         {
-            //if (IsKeyMissing)
-            //    return new SolidColorBrush(Color.FromArgb(60, 220, 50, 50));
-
             return Kind switch
             {
                 "베이스" => new SolidColorBrush(Color.FromRgb(0x4F, 0x8E, 0xF7)),
@@ -68,4 +63,7 @@ public sealed class TitleInputEntry : ViewModelBase
             };
         }
     }
+
+    protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
+
 }

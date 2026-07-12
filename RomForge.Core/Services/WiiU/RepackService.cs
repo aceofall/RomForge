@@ -85,9 +85,8 @@ public sealed class RepackService()
         {
         }
 
-        return new TitleInputEntry
+        return new TitleInputEntry(path)
         {
-            Path = path,
             IsFolder = isFolder,
             SubTitleIndex = subTitleIndex,
             TitleIdHex = source.TitleIdHex,
@@ -122,9 +121,8 @@ public sealed class RepackService()
         {  
         }
 
-        return new TitleInputEntry
+        return new TitleInputEntry(folderPath)
         {
-            Path = folderPath,
             IsFolder = true,
             SubTitleIndex = 0,
             TitleIdHex = source.TitleIdHex,
@@ -159,9 +157,9 @@ public sealed class RepackService()
     private static ITitleSource ReopenSource(TitleInputEntry entry, string keysTxtPath)
     {
         if (entry.IsFolder)
-            return new FolderTitleSource(entry.Path);
+            return new FolderTitleSource(entry.FilePath);
 
-        var sources = UnpackService.OpenAll(entry.Path, keysTxtPath);
+        var sources = UnpackService.OpenAll(entry.FilePath, keysTxtPath);
 
         for (int i = 0; i < sources.Count; i++)
             if (i != entry.SubTitleIndex) sources[i].Dispose();
