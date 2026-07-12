@@ -53,7 +53,6 @@ public static class NcaGenerator
         using var ncaFile = new FileStream(ncaPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1024 * 1024, FileOptions.SequentialScan);
         NcaStructHelper.WriteStruct(ncaFile, ncaHeader);
 
-        // Section 0: ExeFS
         ct.ThrowIfCancellationRequested();
         progress?.Report((0, "ExeFS 빌드 중..."));
 
@@ -85,7 +84,6 @@ public static class NcaGenerator
         byte[] sectionHash0 = NcaStructHelper.CalculateSectionHash(ref ncaHeader, 0);
         NcaHeaderService.SetSectionHash(ref ncaHeader, 0, sectionHash0);
 
-        // Section 1: RomFS
         if (!string.IsNullOrEmpty(settings.RomfsDirectory) && Directory.Exists(settings.RomfsDirectory))
         {
             var ivfcStreams1 = BuildAndWriteRomfsSection(ncaFile, ref ncaHeader, 1, settings, "program_sec1_romfs_tmp", progress, ct);
@@ -105,7 +103,6 @@ public static class NcaGenerator
             finally { foreach (var s in ivfcStreams1) s?.Dispose(); }
         }
 
-        // Section 2: Logo
         if (!string.IsNullOrEmpty(settings.LogoDirectory) && Directory.Exists(settings.LogoDirectory))
         {
             const uint logoBlockSize = Pfs0Builder.LogoHashBlockSize;

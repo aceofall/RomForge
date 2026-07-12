@@ -85,9 +85,6 @@ public class PbpReader
             Discs = [.. isoPositions
                 .Where(x => x > 0)
                 .Select((x, i) => new PbpDiscEntry(stream, psarOffset + (int)x, i + 1))];
-
-            //if (Discs.Any(d => d.IsPvdMismatch))
-            //    throw new Exception("손상되거나 변형된 게임 파일입니다.");
         }
     }
 

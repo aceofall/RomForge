@@ -32,9 +32,6 @@ public static class NpdmProcessor
         if (aci0.Magic != MagicAci0)
             throw new InvalidDataException("Invalid ACI0 magic!");
 
-        //if (settings.TitleId != aci0.TitleId)
-        //    throw new InvalidDataException($"TitleID mismatch!\nACI0 TitleID: {aci0.TitleId:x16}");
-
         if (settings.NoSelfSignNcaSignature2 == 0 || !string.IsNullOrEmpty(settings.NcaSignatureModulus))
         {
             fl.Seek(npdm.AcidOffset + 0x100, SeekOrigin.Begin);

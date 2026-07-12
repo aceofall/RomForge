@@ -29,8 +29,8 @@ public static class NcaCryptoService
             ctrOfs >>= 8;
         }
 
-        const int batchSize = 0x10000000; // 256MB
-        const int chunkSize = 0x1000000;  // 16MB
+        const int batchSize = 0x10000000;
+        const int chunkSize = 0x1000000;
 
         byte[] batch = new byte[batchSize];
 
