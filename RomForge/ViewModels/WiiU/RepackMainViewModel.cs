@@ -107,6 +107,8 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public ICommand RemoveSelectedCommand { get; }
 
+    public ICommand RemoveAllCommand { get; }
+
     public ICommand BrowseKeysCommand { get; }
 
     public ICommand BrowsePatchForSelectedCommand { get; }
@@ -120,6 +122,7 @@ public class RepackMainViewModel : ToolTabViewModel
         BrowseAddFileCommand = new RelayCommand(async _ => await BrowseAddFile());
         BrowseAddFolderCommand = new RelayCommand(async _ => await BrowseAddFolder());
         RemoveSelectedCommand = new RelayCommand(_ => RemoveSelected(), _ => HasSelection);
+        RemoveAllCommand = new RelayCommand(_ => RemoveAll(), _ => Entries.Count > 0);
         BrowseKeysCommand = new RelayCommand(async _ => await BrowseKeys());
         BrowsePatchForSelectedCommand = new RelayCommand(async _ => await BrowsePatchForSelected(), _ => HasSelection);
         BrowseOutputCommand = new RelayCommand(async _ => await BrowseOutput());
@@ -143,13 +146,15 @@ public class RepackMainViewModel : ToolTabViewModel
         {
             bool isWua = string.Equals(Path.GetExtension(path), ".wua", StringComparison.OrdinalIgnoreCase);
 
-            if (!isWua && string.IsNullOrEmpty(KeysPath))
-            {
-                Log("keys.txt를 먼저 지정하세요 (wud/wux 입력에는 필요합니다).", LogLevel.Error);
-                return;
-            }
+            //if (!isWua && string.IsNullOrEmpty(KeysPath))
+            //{
+            //    Log("keys.txt를 먼저 지정하세요 (wud/wux 입력에는 필요합니다).", LogLevel.Error);
+            //    return;
+            //}
 
-            var rows = await RepackService.PeekFileAsync(path, KeysPath, CancellationToken.None);
+            string keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "keys.txt");
+
+            var rows = await RepackService.PeekFileAsync(path, keyPath, CancellationToken.None);
 
             foreach (var row in rows)
                 Entries.Add(row);
@@ -179,6 +184,8 @@ public class RepackMainViewModel : ToolTabViewModel
         if (SelectedEntry is not null)
             Entries.Remove(SelectedEntry);
     }
+
+    private void RemoveAll() => Entries.Clear();
 
     public async Task StartAsync(BuildMode mode)
     {
@@ -251,14 +258,16 @@ public class RepackMainViewModel : ToolTabViewModel
             Directory.CreateDirectory(OutputPath);
             var entriesSnapshot = Entries.ToList();
 
+            string keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "keys.txt");
+
             switch (mode)
             {
                 case BuildMode.UnpackOnly:
-                    await RepackService.UnpackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
+                    await RepackService.UnpackAsync(entriesSnapshot, keyPath, OutputPath, progress, Log, ct);
                     break;
                 case BuildMode.RebuildOnly:
                 case BuildMode.FullProcess:
-                    await RepackService.RepackAsync(entriesSnapshot, KeysPath, OutputPath, progress, Log, ct);
+                    await RepackService.RepackAsync(entriesSnapshot, keyPath, OutputPath, progress, Log, ct);
                     break;
             }
 
@@ -308,11 +317,11 @@ public class RepackMainViewModel : ToolTabViewModel
             return false;
         }
 
-        if (mode != BuildMode.RebuildOnly && KeysPathRequired && string.IsNullOrEmpty(KeysPath))
-        {
-            error = "keys.txt를 선택하세요 (wud/wux 입력에는 필요합니다).";
-            return false;
-        }
+        //if (mode != BuildMode.RebuildOnly && KeysPathRequired && string.IsNullOrEmpty(KeysPath))
+        //{
+        //    error = "keys.txt를 선택하세요 (wud/wux 입력에는 필요합니다).";
+        //    return false;
+        //}
 
         if (string.IsNullOrEmpty(OutputPath))
         {
@@ -388,6 +397,7 @@ public class RepackMainViewModel : ToolTabViewModel
             return;
 
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{SelectedEntry.Summary}에 적용할 한글패치 폴더 선택" };
+
         if (dlg.ShowDialog() == true)
             SelectedEntry.PatchPath = dlg.FolderName;
     }

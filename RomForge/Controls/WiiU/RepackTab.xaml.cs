@@ -1,8 +1,10 @@
 ﻿using NSW.Core.Enums;
+using RomForge.Core.Models.Switch;
 using RomForge.ViewModels.WiiU;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace RomForge.Controls.WiiU
 {
@@ -15,54 +17,59 @@ namespace RomForge.Controls.WiiU
             InitializeComponent();
         }
 
-        private void TxtRom_Drop(object sender, DragEventArgs e)
+        private void Root_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private async void Root_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                e.Handled = true;
+                return;
+            }
 
-                if (files != null && files.Length > 0)
+            string[]? items = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            if (items is null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            foreach (var item in items)
+            {
+                if (Directory.Exists(item))
                 {
-                    string filePath = files[0];
-                    string extension = Path.GetExtension(filePath);
+                    ViewModel.AddFolder(item);
+                    continue;
+                }
 
-                    if (string.Equals(extension, ".3ds", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(extension, ".cci", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(extension, ".cia", StringComparison.OrdinalIgnoreCase))
-                    {
-                        //ViewModel.InputPath = filePath;
-                    }
-                    else
-                    {
-
-                    }
+                string extension = Path.GetExtension(item);
+                if (string.Equals(extension, ".wud", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(extension, ".wux", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(extension, ".wua", StringComparison.OrdinalIgnoreCase))
+                {
+                    await ViewModel.AddFileAsync(item);
+                }
+                else if (string.Equals(extension, ".txt", StringComparison.OrdinalIgnoreCase))
+                {
+                    ViewModel.KeysPath = item;
                 }
             }
 
             e.Handled = true;
         }
 
-        private void TxtPatch_DragEnter(object sender, DragEventArgs e)
+        private void LvFiles_KeyUp(object sender, KeyEventArgs e)
         {
-            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-            e.Handled = true;
-        }
+            if (e.Key != Key.Delete)
+                return;
 
-        private void TxtPatch_DragOver(object sender, DragEventArgs e)
-        {
-            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-            e.Handled = true;
-        }
+            var selected = ViewModel?.SelectedEntry;
 
-        private void TxtPatch_Drop(object sender, DragEventArgs e)
-        {
-            var items = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-            var folder = items?.FirstOrDefault(Directory.Exists);
-
-            //if (folder != null)
-            //    ViewModel.PatchPath = folder;
-
-            e.Handled = true;
+            ViewModel?.Entries.Remove(selected);
         }
 
         private async void BtnStart_Click(object sender, RoutedEventArgs e)
@@ -87,7 +94,7 @@ namespace RomForge.Controls.WiiU
             await ViewModel.StartAsync(BuildMode.UnpackOnly);
         }
 
-        private void BtnRebuild_Click(object sender, RoutedEventArgs e)
+        private async void BtnRebuild_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.IsLocked)
             {
@@ -95,7 +102,7 @@ namespace RomForge.Controls.WiiU
                 return;
             }
 
-            _ = ViewModel.StartAsync(BuildMode.RebuildOnly);
+            await ViewModel.StartAsync(BuildMode.RebuildOnly);
         }
     }
 }
