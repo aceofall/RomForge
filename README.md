@@ -1,6 +1,6 @@
 # RomForge
 
-롬 패치 / 관리 툴
+롬 패치 / 압축 툴
 
 ## License
 
