@@ -13,7 +13,7 @@ This project uses the following open-source software:
 | Component                      | License          |
 | ------------------------------ | ---------------- |
 | MAME / CHDMan                  | GPL-2.0-or-later |
-| Dolphin Emulator / DolphinTool | GPL-2.0-or-later |
+| DolphinTool                    | GPL-2.0-or-later |
 | xdelta3                        | GPL-2.0          |
 | LibHac                         | MIT              |
 
