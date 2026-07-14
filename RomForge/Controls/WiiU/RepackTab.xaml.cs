@@ -4,59 +4,61 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace RomForge.Controls.WiiU
+namespace RomForge.Controls.WiiU;
+
+public partial class RepackTab : UserControl
 {
-    public partial class RepackTab : UserControl
+    RepackMainViewModel ViewModel => (RepackMainViewModel)DataContext;
+
+    public RepackTab()
     {
-        RepackMainViewModel ViewModel => (RepackMainViewModel)DataContext;
+        InitializeComponent();
+    }
 
-        public RepackTab()
+    private void LvFiles_KeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Delete)
+            return;
+
+        while (true)
         {
-            InitializeComponent();
+            if (ViewModel?.SelectedEntry is not null)
+                ViewModel?.Entries.Remove(ViewModel?.SelectedEntry);
+            else
+                break;
+        }
+    }
+
+    private async void BtnStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsLocked)
+        {
+            ViewModel.Cancel();
+            return;
         }
 
-        private void LvFiles_KeyUp(object sender, KeyEventArgs e)
+        await ViewModel.StartAsync(BuildMode.FullProcess);
+    }
+
+    private async void BtnUnpack_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsLocked)
         {
-            if (e.Key != Key.Delete)
-                return;
-
-            var selected = ViewModel?.SelectedEntry;
-
-            if (selected is not null)
-                ViewModel?.Entries.Remove(selected);
+            ViewModel.Cancel();
+            return;
         }
 
-        private async void BtnStart_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel.IsLocked)
-            {
-                ViewModel.Cancel();
-                return;
-            }
+        await ViewModel.StartAsync(BuildMode.UnpackOnly);
+    }
 
-            await ViewModel.StartAsync(BuildMode.FullProcess);
+    private async void BtnRebuild_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsLocked)
+        {
+            ViewModel.Cancel();
+            return;
         }
 
-        private async void BtnUnpack_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel.IsLocked)
-            {
-                ViewModel.Cancel();
-                return;
-            }
-
-            await ViewModel.StartAsync(BuildMode.UnpackOnly);
-        }
-
-        private async void BtnRebuild_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel.IsLocked)
-            {
-                ViewModel.Cancel();
-                return;
-            }
-
-            await ViewModel.StartAsync(BuildMode.RebuildOnly);
-        }
+        await ViewModel.StartAsync(BuildMode.RebuildOnly);
     }
 }

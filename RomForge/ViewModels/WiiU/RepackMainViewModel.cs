@@ -11,6 +11,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using WiiU.Core.Services;
 
 namespace RomForge.ViewModels.WiiU;
 
@@ -113,18 +114,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public bool StartEnabled => !IsLocked || _currentMode == BuildMode.FullProcess;
 
-    /// <summary>본편: wud/wux/wua 파일. wua가 여러 타이틀을 번들하고 있으면 그 안에서만 자체 분류를 신뢰한다.</summary>
-    public ICommand BrowseBaseFileCommand { get; }
-
-    /// <summary>본편: 폴더(언팩된 폴더 또는 WUP 폴더). title ID와 무관하게 무조건 본편으로 취급.</summary>
-    public ICommand BrowseBaseFolderCommand { get; }
-
-    /// <summary>업데이트: 폴더만. title ID와 무관하게 무조건 업데이트로 취급. 기존 업데이트는 교체.</summary>
-    public ICommand BrowseUpdateCommand { get; }
-
-    /// <summary>DLC: 폴더만, 여러 개 가능. title ID와 무관하게 무조건 DLC로 취급.</summary>
-    public ICommand BrowseDlcCommand { get; }
-
     public ICommand BrowsePatchForSelectedCommand { get; }
 
     public ICommand RemoveSelectedCommand { get; }
@@ -136,11 +125,6 @@ public class RepackMainViewModel : ToolTabViewModel
     public RepackMainViewModel()
     {
         OutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
-
-        BrowseBaseFileCommand = new RelayCommand(async _ => await BrowseBaseFile());
-        BrowseBaseFolderCommand = new RelayCommand(async _ => await BrowseBaseFolder());
-        BrowseUpdateCommand = new RelayCommand(async _ => await BrowseUpdate());
-        BrowseDlcCommand = new RelayCommand(async _ => await BrowseDlc());
 
         BrowsePatchForSelectedCommand = new RelayCommand(async _ => await BrowsePatchForSelected(), _ => HasSelection);
         RemoveSelectedCommand = new RelayCommand(_ => RemoveSelected(), _ => HasSelection);
@@ -163,45 +147,55 @@ public class RepackMainViewModel : ToolTabViewModel
 
     private bool IsDuplicate(string path) => Entries.Any(e => string.Equals(e.FilePath, path, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>role을 강제 지정해서 목록에 추가한다. 본편/업데이트는 기존 것을 교체하고, DLC는 그냥 추가한다.</summary>
-    private void AddWithRole(TitleInputEntry row, TitleRole role)
+    private void AssignByGuessedRole(TitleInputEntry row)
     {
-        row.Role = role;
-
-        if (role is TitleRole.Base or TitleRole.Update)
+        if (row.Role is TitleRole.Base or TitleRole.Update)
         {
-            var existing = Entries.FirstOrDefault(e => e.Role == role);
+            var existing = Entries.FirstOrDefault(e => e.Role == row.Role);
 
             if (existing is not null)
             {
                 Entries.Remove(existing);
-                Log($"기존 {(role == TitleRole.Base ? "본편" : "업데이트")}을(를) 새 항목으로 교체합니다.", LogLevel.Info);
+                Log($"기존 {row.Kind}을(를) 새 항목으로 교체합니다.", LogLevel.Info);
             }
         }
 
         Entries.Add(row);
     }
 
-    private async Task BrowseBaseFile()
+    /// <summary>드래그&amp;드롭 전용 진입점. title ID를 신뢰할 수 있는 입력(wua/wud/wux 파일, WUP 폴더)만
+    /// 받는다 — 각각 실제 Nintendo TMD/티켓에서 나온 진짜 title ID라 본편/업데이트/DLC 카테고리가 이미
+    /// 정확하다. "이미 언팩된 폴더(로드라인 형태)"는 여기로 받지 않는다 — 그건 언팩→패치→리빌드 흐름에서
+    /// RepackService.ScanUnpacked가 알아서 다시 읽어들인다.</summary>
+    public async Task AddDroppedItemAsync(string path)
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "본편 파일 선택",
-            Filter = "Wii U ROM 파일|*.wud;*.wux;*.wua",
-            Multiselect = false,
-        };
-
-        if (dlg.ShowDialog() != true)
-            return;
-
-        string path = dlg.FileName;
-
         if (IsDuplicate(path))
             return;
 
         try
         {
-            bool isWua = string.Equals(Path.GetExtension(path), ".wua", StringComparison.OrdinalIgnoreCase);
+            if (Directory.Exists(path))
+            {
+                if (!WupTitleSource.LooksLikeWupFolder(path))
+                {
+                    Log($"'{Path.GetFileName(path)}'는 WUP 폴더가 아니라서 자동 추가할 수 없습니다. 언팩 → 패치 → 리빌드 흐름을 이용해주세요.", LogLevel.Error);
+                    return;
+                }
+
+                var row = RepackService.PeekFolder(path);
+                AssignByGuessedRole(row);
+                return;
+            }
+
+            string ext = Path.GetExtension(path);
+            bool isWua = string.Equals(ext, ".wua", StringComparison.OrdinalIgnoreCase);
+            bool isWudOrWux = string.Equals(ext, ".wud", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".wux", StringComparison.OrdinalIgnoreCase);
+
+            if (!isWua && !isWudOrWux)
+            {
+                Log($"'{Path.GetFileName(path)}'는 지원하지 않는 형식입니다 (wud/wux/wua/WUP 폴더만 가능).", LogLevel.Error);
+                return;
+            }
 
             if (!isWua && !File.Exists(KeysPath))
             {
@@ -211,56 +205,15 @@ public class RepackMainViewModel : ToolTabViewModel
 
             var rows = await RepackService.PeekFileAsync(path, KeysPath, CancellationToken.None);
 
-            if (isWua && rows.Count > 1)
-            {
-                // WUA 하나에 여러 타이틀이 정상적으로 번들된 경우만 title ID 기준 자체 분류를 신뢰한다.
-                foreach (var row in rows)
-                    AddWithRole(row, row.Role);
+            foreach (var row in rows)
+                AssignByGuessedRole(row);
 
-                Log($"{Path.GetFileName(path)} — {rows.Count}개 타이틀 추가됨.", LogLevel.Info);
-            }
-            else
-            {
-                // wud/wux, 또는 단일 타이틀 wua는 title ID를 신뢰할 수 없으니 무조건 본편으로 지정한다.
-                AddWithRole(rows[0], TitleRole.Base);
-            }
+            Log($"{Path.GetFileName(path)} — {rows.Count}개 타이틀 추가됨.", LogLevel.Info);
         }
         catch (Exception ex)
         {
             Log($"'{path}' 추가 실패: {ex.Message}", LogLevel.Error);
         }
-    }
-
-    private async Task BrowseBaseFolder() => await BrowseFolderWithRole("본편 폴더 선택", TitleRole.Base);
-
-    private async Task BrowseUpdate() => await BrowseFolderWithRole("업데이트 폴더 선택", TitleRole.Update);
-
-    private async Task BrowseDlc() => await BrowseFolderWithRole("DLC 폴더 선택", TitleRole.Dlc);
-
-    private async Task BrowseFolderWithRole(string title, TitleRole role)
-    {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = title };
-
-        if (dlg.ShowDialog() != true)
-            return;
-
-        string path = dlg.FolderName;
-
-        if (IsDuplicate(path))
-            return;
-
-        try
-        {
-            var row = RepackService.PeekFolder(path);
-
-            AddWithRole(row, role);
-        }
-        catch (Exception ex)
-        {
-            Log($"'{path}' 추가 실패: {ex.Message}", LogLevel.Error);
-        }
-
-        await Task.CompletedTask;
     }
 
     private void RemoveSelected()
@@ -323,12 +276,7 @@ public class RepackMainViewModel : ToolTabViewModel
             foreach (var row in scanned)
             {
                 var existing = Entries.FirstOrDefault(e => e.TitleIdHex == row.TitleIdHex && e.TitleVersion == row.TitleVersion);
-
-                if (existing is not null)
-                {
-                    if (existing.PatchPath is not null) row.PatchPath = existing.PatchPath;
-                    row.Role = existing.Role;
-                }
+                if (existing?.PatchPath is not null) row.PatchPath = existing.PatchPath;
             }
 
             Entries.Clear();
