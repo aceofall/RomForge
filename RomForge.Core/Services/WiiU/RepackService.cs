@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Xml.Linq;
 using WiiU.Core.Models;
 using WiiU.Core.Services;
 
@@ -59,7 +58,22 @@ public sealed class RepackService()
 
         foreach (string dir in Directory.EnumerateDirectories(unpackedRoot))
         {
-            try { rows.Add(PeekFolder(dir)); }
+            try
+            {
+                var row = PeekFolder(dir);
+
+                // 폴더명에 우리가 언팩할 때 남긴 Role 표시가 있으면 title ID 추측(GuessRole)보다 우선한다 —
+                // 업데이트/DLC 폴더는 title ID가 본편이랑 같은 카테고리로 찍혀있는 경우가 흔해서 그것만으론
+                // 정확히 구분이 안 되기 때문. 표시가 없으면(본편) GuessRole 결과를 그대로 둔다.
+                string dirName = Path.GetFileName(dir);
+
+                if (dirName.Contains("_update", StringComparison.OrdinalIgnoreCase))
+                    row.Role = TitleRole.Update;
+                else if (dirName.Contains("_dlc", StringComparison.OrdinalIgnoreCase))
+                    row.Role = TitleRole.Dlc;
+
+                rows.Add(row);
+            }
             catch (Exception ex) { log($"'{dir}' 폴더를 읽지 못했습니다: {ex.Message}", LogLevel.Error); }
         }
 
@@ -186,14 +200,21 @@ public sealed class RepackService()
 
                 using var source = ReopenSource(entry, keysTxtPath);
 
-                // 폴더명은 반드시 Role로 보정된 title ID를 써야 한다. 원본 그대로(source.TitleIdHex)를 쓰면
-                // 본편/업데이트/DLC가 실제로는 같은 카테고리로 찍혀있는 경우(흔함) 서로 다른 타이틀인데도
-                // 같은 폴더 이름으로 언팩돼서 파일이 섞이거나 리팩 시 매칭이 꼬인다.
-                string correctedTitleIdHex = entry.RoleCorrectedTitleIdHex;
+                log($"[{entry.Kind}] {source.TitleIdHex}_v{source.TitleVersion} 언팩 중...", LogLevel.Info);
 
-                log($"[{entry.Kind}] {correctedTitleIdHex}_v{source.TitleVersion} 언팩 중...", LogLevel.Info);
+                // 실제 게임 데이터(meta.xml 등)는 절대 건드리지 않는다 — 업데이트/DLC 폴더의 title ID가
+                // 본편이랑 같은 카테고리로 찍혀있는 경우가 흔한데, 그건 우리가 신뢰할 수 없는 소스라서
+                // 고쳐써봐야 다시 신뢰할 수 있게 되는 게 아니다. 대신 우리가 완전히 통제하는 "폴더 이름"에만
+                // Role 표시(_update, _dlc)를 남겨서, 나중에 이 폴더를 다시 스캔할 때(ScanUnpacked) 그 표시로
+                // Role을 복원한다. 폴더명이 겹칠 걱정도 없다(본편은 접미사 없음, 업데이트/DLC는 접미사로 구분).
+                string roleSuffix = entry.Role switch
+                {
+                    TitleRole.Update => "_update",
+                    TitleRole.Dlc => "_dlc",
+                    _ => "",
+                };
 
-                string destFolder = Path.Combine(unpackedRoot, $"{correctedTitleIdHex}_v{source.TitleVersion}");
+                string destFolder = Utils.GetUniqueFilePath(Path.Combine(unpackedRoot, $"{source.TitleIdHex}_v{source.TitleVersion}{roleSuffix}"));
 
                 Directory.CreateDirectory(destFolder);
 
@@ -210,39 +231,8 @@ public sealed class RepackService()
                         });
                     },
                     cancellationToken: ct);
-
-                // meta.xml이 있으면 title_id를 보정된 값으로 다시 써준다 — FolderTitleSource가 폴더명보다
-                // meta.xml의 title_id를 우선해서 읽기 때문에, 이걸 안 고치면 나중에 이 폴더를 다시 스캔했을 때
-                // (리빌드 시 ScanUnpacked) 또 본편 카테고리로 잘못 읽혀서 Role 자동분류가 깨진다.
-                PatchMetaXmlTitleId(destFolder, correctedTitleIdHex);
             }
         }, ct);
-    }
-
-    /// <summary>언팩된 폴더의 meta/meta.xml 안 title_id를 보정된 값으로 다시 쓴다. meta.xml이 없거나
-    /// title_id 엘리먼트가 없으면 조용히 넘어간다(부가 보정이라 실패해도 언팩 자체는 계속 진행되어야 함).</summary>
-    private static void PatchMetaXmlTitleId(string destFolder, string correctedTitleIdHex)
-    {
-        string metaXmlPath = Path.Combine(destFolder, "meta", "meta.xml");
-
-        if (!File.Exists(metaXmlPath))
-            return;
-
-        try
-        {
-            var doc = XDocument.Load(metaXmlPath);
-            var titleIdElement = doc.Root?.Element("title_id");
-
-            if (titleIdElement is not null)
-            {
-                titleIdElement.Value = correctedTitleIdHex;
-                doc.Save(metaXmlPath);
-            }
-        }
-        catch
-        {
-            // meta.xml 보정은 부가 기능이므로 실패해도 언팩 자체는 계속 진행한다.
-        }
     }
 
     public static async Task RepackAsync(IReadOnlyList<TitleInputEntry> entries, string keysTxtPath, string outputPath, RepackOutputFormat format, Action<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
