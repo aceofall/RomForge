@@ -4,6 +4,7 @@ using RomForge.Core.Models;
 using RomForge.Core.Models.Util;
 using RomForge.ViewModels.Util;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -67,12 +68,6 @@ public partial class HashTab : UserControl
             var selected = lvFiles.SelectedItems.Cast<HashFileItem>().ToList();
             ViewModel.RemoveItems(selected);
         }
-
-        if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
-        {
-            CopySelectedHashes();
-            e.Handled = true;
-        }
     }
 
     private async void BtnAddFiles_Click(object sender, RoutedEventArgs e)
@@ -113,23 +108,44 @@ public partial class HashTab : UserControl
             e.Handled = true;
     }
 
-    private void MenuItem_CopyHash_Click(object sender, RoutedEventArgs e)
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool EmptyClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+    private void BtnCopyHash_Click(object sender, RoutedEventArgs e)
     {
-        CopySelectedHashes();
+        if (sender is FrameworkElement btn && btn.DataContext is HashFileItem item)
+        {
+            if (string.IsNullOrEmpty(item.HashResult)) 
+                return;
+
+            CopyTextDirect(item.HashResult);
+        }
     }
 
-    private void CopySelectedHashes()
+    private void CopyTextDirect(string text)
     {
-        var selected = lvFiles.SelectedItems.Cast<HashFileItem>()
-            .Where(item => !string.IsNullOrEmpty(item.HashResult))
-            .Select(item => item.HashResult)
-            .ToList();
-
-        if (selected.Count == 0)
+        if (!OpenClipboard(IntPtr.Zero)) 
             return;
 
-        string textToCopy = string.Join(Environment.NewLine, selected);
-        Clipboard.SetText(textToCopy);
+        try
+        {
+            EmptyClipboard();
+            IntPtr hGlobal = Marshal.StringToHGlobalUni(text);
+            SetClipboardData(13, hGlobal);
+        }
+        finally
+        {
+            CloseClipboard();
+        }
     }
 
     private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
