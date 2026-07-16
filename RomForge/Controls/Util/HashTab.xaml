@@ -184,25 +184,12 @@
                         </GridViewColumn.HeaderTemplate>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Margin="0,0,8,0" Click="BtnCopyHash_Click" ToolTip="해시값 복사">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HashResult}" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding HashResult}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
+                                <DockPanel LastChildFill="True" VerticalAlignment="Center">
+                                    <Button Margin="0,0,8,0" DockPanel.Dock="Right" Click="BtnCopyHash_Click" ToolTip="해시값 복사" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Visibility="{Binding IsHashAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Image Source="/Assets/Images/Copy.png" Width="24" Height="24"/>
                                     </Button>
                                     <TextBlock Text="{Binding HashResult}" Padding="6,0" FontFamily="Consolas" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                </DockPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

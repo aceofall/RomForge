@@ -12,8 +12,14 @@ public class HashFileItem(string filePath) : FileItemBase(filePath)
     public string HashResult
     {
         get => _hashResult;
-        set => SetProperty(ref _hashResult, value);
+        set
+        {
+            if (SetProperty(ref _hashResult, value))
+                OnPropertyChanged(nameof(IsHashAvailable));
+        }
     }
+
+    public bool IsHashAvailable => !string.IsNullOrEmpty(HashResult);
 
     public override string FileName => Path.GetFileName(FilePath);
 
