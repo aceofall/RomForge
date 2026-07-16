@@ -424,7 +424,7 @@ public sealed class WuaReader : IDisposable
             if (pos + 1 >= nameTable.Length) 
                 return string.Empty;
 
-            nameLength |= nameTable[pos] << 7;
+            nameLength |= nameTable[pos + 1] << 7;
             pos += 2;
         }
         else

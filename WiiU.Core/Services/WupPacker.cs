@@ -151,7 +151,7 @@ public static class WupPacker
 
     /// <summary>WUP 하나를 outputFolder에 만든다. groups[0]이 최우선순위(주로 code) 콘텐츠가 되도록
     /// 순서대로 index 1..N을 부여하며, index 0(FST)은 이 메서드가 자동으로 만들어 채운다.</summary>
-    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupContentGroup> groups)
+    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupContentGroup> groups, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputFolder);
 
@@ -165,6 +165,8 @@ public static class WupPacker
 
         foreach (var group in groups)
         {
+            ct.ThrowIfCancellationRequested();
+
             if (group.Files.Count == 0) continue;
 
             var layout = new List<(WupFileEntry, uint, uint)>();
@@ -172,6 +174,8 @@ public static class WupPacker
 
             foreach (var file in group.Files)
             {
+                ct.ThrowIfCancellationRequested();
+
                 // NUSPacker와 동일하게 offsetFactor(32)의 배수 경계에 정렬
                 long pad = (32 - (blob.Length % 32)) % 32;
                 if (pad > 0) blob.Write(new byte[pad]);
@@ -186,6 +190,8 @@ public static class WupPacker
             nextIndex++;
         }
 
+        ct.ThrowIfCancellationRequested();
+
         // 3) FST 작성 (index 0 콘텐츠가 될 평문 데이터)
         byte[] fstPlain = BuildFst(contentRecords);
 
@@ -197,9 +203,11 @@ public static class WupPacker
 
         foreach (var (index, hashed, plainBlob, _) in contentRecords)
         {
+            ct.ThrowIfCancellationRequested();
+
             if (hashed)
             {
-                var (enc, h3) = EncryptHashedContent(plainBlob, (ushort)index, titleKey);
+                var (enc, h3) = EncryptHashedContent(plainBlob, (ushort)index, titleKey, ct);
                 finalContents.Add(((uint)index, (ushort)index, 0x2003, (ulong)plainBlob.Length, enc, h3));
             }
             else
@@ -209,9 +217,13 @@ public static class WupPacker
             }
         }
 
+        ct.ThrowIfCancellationRequested();
+
         // 5) 파일로 저장
         foreach (var c in finalContents)
         {
+            ct.ThrowIfCancellationRequested();
+
             File.WriteAllBytes(Path.Combine(outputFolder, $"{c.Cid:x8}.app"), c.EncryptedAppBytes);
 
             if (c.H3 is not null)
@@ -298,8 +310,8 @@ public static class WupPacker
                 entries.Add((true, name, parentIndex, 0, 0, 0));
                 Serialize(child, parentIndex: dirIndex);
 
-                var e = entries[dirIndex];
-                entries[dirIndex] = (e.IsDir, e.Name, e.ParentOrCluster, entries.Count, e.FileSize, e.ClusterIndex);
+                var (IsDir, Name, ParentOrCluster, _, FileSize, ClusterIndex) = entries[dirIndex];
+                entries[dirIndex] = (IsDir, Name, ParentOrCluster, entries.Count, FileSize, ClusterIndex);
             }
 
             foreach (var (name, clusterIndex, offsetField, sizeField) in node.Files)
@@ -311,8 +323,8 @@ public static class WupPacker
         entries[0] = (true, "", 0, entries.Count, 0, 0);
 
         // 이름 테이블 오프셋 미리 계산
-        foreach (var e in entries.Skip(1))
-            GetNameOffset(e.Name);
+        foreach (var (IsDir, Name, ParentOrCluster, DirEndOrOffset, FileSize, ClusterIndex) in entries.Skip(1))
+            GetNameOffset(Name);
 
         int numCluster = contentRecords.Count + 1; // +1 = FST 자신(cluster0)
         int clusterTableOffset = 0x20;
@@ -341,15 +353,15 @@ public static class WupPacker
             ms.Write(new byte[0x20 - 0x15]);
         }
 
-        foreach (var e in entries)
+        foreach (var (IsDir, Name, ParentOrCluster, DirEndOrOffset, FileSize, ClusterIndex) in entries)
         {
-            uint typeAndNameOffset = (uint)(GetNameOffset(e.Name) & 0xFFFFFF) | (e.IsDir ? 0x01000000u : 0u);
+            uint typeAndNameOffset = (uint)(GetNameOffset(Name) & 0xFFFFFF) | (IsDir ? 0x01000000u : 0u);
 
             bw.U32(typeAndNameOffset);
-            bw.U32((uint)e.ParentOrCluster);
-            bw.U32(e.IsDir ? (uint)e.DirEndOrOffset : e.FileSize);
+            bw.U32((uint)ParentOrCluster);
+            bw.U32(IsDir ? (uint)DirEndOrOffset : FileSize);
             bw.U16(0); // unknown
-            bw.U16(e.ClusterIndex);
+            bw.U16(ClusterIndex);
         }
 
         foreach (var name in names)
@@ -493,7 +505,7 @@ public static class WupPacker
         return buf;
     }
 
-    private static (byte[] Encrypted, byte[] H3) EncryptHashedContent(byte[] plain, ushort contentIndex, byte[] titleKey)
+    private static (byte[] Encrypted, byte[] H3) EncryptHashedContent(byte[] plain, ushort contentIndex, byte[] titleKey, CancellationToken ct = default)
     {
         int chunkCount = Math.Max(1, (plain.Length + HashedDataSize - 1) / HashedDataSize);
 
@@ -559,6 +571,8 @@ public static class WupPacker
 
         for (int i = 0; i < chunkCount; i++)
         {
+            ct.ThrowIfCancellationRequested();
+
             int h0Group = i / 16;
             int h1Group = h0Group / 16;
 
