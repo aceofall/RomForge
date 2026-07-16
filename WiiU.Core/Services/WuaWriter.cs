@@ -1,43 +1,26 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
+using WiiU.Core.Models;
 using ZstdSharp;
 
 namespace WiiU.Core.Services;
 
 public sealed class WuaWriter(Stream output) : IDisposable
-{
+{    
     private const int CompressedBlockSize = 64 * 1024;
-    private const int EntriesPerOffsetRecord = 16;
     private const uint FooterMagic = 0x169f52d6;
     private const uint FooterVersion1 = 0x61bf3a01;
-    private const int OffsetRecordSize = 8 + 2 * EntriesPerOffsetRecord;
+    private const int OffsetRecordSize = 8 + 2 * OffsetRecord.EntriesPerOffsetRecord;
     private const int FileDirectoryEntrySize = 16;
     private const int FooterSize = 16 * 6 + 32 + 8 + 4 + 4;
-
-    private sealed class PathNode
-    {
-        public bool IsFile;
-        public uint NameIndex = uint.MaxValue;
-        public readonly List<PathNode> Subnodes = [];
-
-        public ulong FileOffset;
-        public ulong FileSize;
-        public uint NodeStartIndex;
-    }
-
-    private sealed class OffsetRecord
-    {
-        public ulong BaseOffset;
-        public readonly ushort[] Size = new ushort[EntriesPerOffsetRecord];
-    }
-
+    
     private readonly Stream _output = output ?? throw new ArgumentNullException(nameof(output));
     private readonly PathNode _root = new() { IsFile = false };
     private PathNode? _currentFileNode;
 
     private readonly List<string> _nodeNames = [];
-    private readonly Dictionary<string, uint> _nodeNameLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, uint> _nodeNameLookup = new(StringComparer.Ordinal);
     private readonly List<uint> _nodeNameOffsets = [];
 
     private readonly List<OffsetRecord> _offsetRecords = [];
@@ -216,11 +199,11 @@ public sealed class WuaWriter(Stream output) : IDisposable
             OutputData(compressed);
         }
 
-        if ((_numWrittenOffsetRecords % EntriesPerOffsetRecord) == 0)
+        if ((_numWrittenOffsetRecords % OffsetRecord.EntriesPerOffsetRecord) == 0)
             _offsetRecords.Add(new OffsetRecord { BaseOffset = compressedWriteOffset });
 
         var rec = _offsetRecords[^1];
-        rec.Size[_numWrittenOffsetRecords % EntriesPerOffsetRecord] = (ushort)(outputSize - 1);
+        rec.Size[_numWrittenOffsetRecords % OffsetRecord.EntriesPerOffsetRecord] = (ushort)(outputSize - 1);
         _numWrittenOffsetRecords++;
     }
 
@@ -233,7 +216,7 @@ public sealed class WuaWriter(Stream output) : IDisposable
         {
             BinaryPrimitives.WriteUInt64BigEndian(buf, rec.BaseOffset);
 
-            for (int i = 0; i < EntriesPerOffsetRecord; i++)
+            for (int i = 0; i < OffsetRecord.EntriesPerOffsetRecord; i++)
                 BinaryPrimitives.WriteUInt16BigEndian(buf.Slice(8 + i * 2, 2), rec.Size[i]);
 
             OutputData(buf);

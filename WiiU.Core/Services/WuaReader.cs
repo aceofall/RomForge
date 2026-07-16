@@ -10,30 +10,12 @@ public sealed class WuaReader : IDisposable
 {
     public const uint RootNode = 0;
     public const uint InvalidNodeHandle = InvalidNode;
-
     private const int CompressedBlockSize = 64 * 1024;
-    private const int EntriesPerOffsetRecord = 16;
     private const uint FooterMagic = 0x169f52d6;
     private const uint FooterVersion1 = 0x61bf3a01;
     private const int FooterSize = 16 * 6 + 32 + 8 + 4 + 4;
     private const int FileDirectoryEntrySize = 16;
     private const uint InvalidNode = 0xFFFFFFFF;
-
-    private sealed class OffsetRecord
-    {
-        public ulong BaseOffset;
-        public readonly ushort[] Size = new ushort[EntriesPerOffsetRecord];
-    }
-
-    private sealed class FileDirectoryEntry
-    {
-        public bool IsFile;
-        public uint NameOffset;
-        public ulong FileOffset;
-        public ulong FileSize;
-        public uint NodeStartIndex;
-        public uint Count;
-    }
 
     private readonly Stream _stream;
     private readonly List<OffsetRecord> _offsetRecords = [];
@@ -43,10 +25,7 @@ public sealed class WuaReader : IDisposable
     private ulong _compressedDataSize;
     private readonly Decompressor _zstd = new();
 
-    private WuaReader(Stream stream)
-    {
-        _stream = stream;
-    }
+    private WuaReader(Stream stream) => _stream = stream;
 
     public static WuaReader OpenFromFile(string path)
     {
@@ -125,7 +104,7 @@ public sealed class WuaReader : IDisposable
 
             var rec = new OffsetRecord { BaseOffset = BinaryPrimitives.ReadUInt64BigEndian(buf.AsSpan(0, 8)) };
 
-            for (int j = 0; j < EntriesPerOffsetRecord; j++)
+            for (int j = 0; j < OffsetRecord.EntriesPerOffsetRecord; j++)
                 rec.Size[j] = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(8 + j * 2, 2));
 
             reader._offsetRecords.Add(rec);
@@ -231,8 +210,7 @@ public sealed class WuaReader : IDisposable
 
     public ulong GetFileSize(uint node) => node < _fileTree.Count && _fileTree[(int)node].IsFile ? _fileTree[(int)node].FileSize : 0;
 
-    public uint GetDirEntryCount(uint node)
-        => node < _fileTree.Count && !_fileTree[(int)node].IsFile ? _fileTree[(int)node].Count : 0;
+    public uint GetDirEntryCount(uint node) => node < _fileTree.Count && !_fileTree[(int)node].IsFile ? _fileTree[(int)node].Count : 0;
 
     public bool GetDirEntry(uint node, uint index, out WuaDirEntry dirEntry)
     {
@@ -312,8 +290,8 @@ public sealed class WuaReader : IDisposable
             ulong blockIdx = rawReadOffset / CompressedBlockSize;
             int blockOffset = (int)(rawReadOffset % CompressedBlockSize);
             int stepSize = (int)Math.Min(remaining, (ulong)(CompressedBlockSize - blockOffset));
-
             byte[] block = LoadBlock(blockIdx);
+
             Array.Copy(block, blockOffset, buffer, bufferOffset + written, stepSize);
 
             rawReadOffset += (ulong)stepSize;
@@ -362,8 +340,8 @@ public sealed class WuaReader : IDisposable
 
     private byte[] LoadBlock(ulong blockIndex)
     {
-        uint recordIndex = (uint)(blockIndex / EntriesPerOffsetRecord);
-        uint recordSubIndex = (uint)(blockIndex % EntriesPerOffsetRecord);
+        uint recordIndex = (uint)(blockIndex / OffsetRecord.EntriesPerOffsetRecord);
+        uint recordSubIndex = (uint)(blockIndex % OffsetRecord.EntriesPerOffsetRecord);
 
         if (recordIndex >= _offsetRecords.Count)
             throw new InvalidDataException("Block index out of range — corrupt archive.");
