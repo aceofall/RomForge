@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using WiiU.Core.Models;
 
 namespace WiiU.Core.Services;
 
@@ -8,12 +9,6 @@ public sealed class TitleTicket
     private const int EncryptedTitleKeyOffset = 0x1BF;
     private const int TitleIdHighOffset = 0x1DC;
     private const int TitleIdLowOffset = 0x1E0;
-
-    private static readonly byte[] WiiUCommonKey =
-    [
-        0xD7, 0xB0, 0x04, 0x02, 0x65, 0x9B, 0xA2, 0xAB,
-        0xD2, 0xCB, 0x0D, 0xB2, 0x7F, 0xA2, 0xB6, 0x56
-    ];
 
     public ulong TitleId { get; }
 
@@ -48,7 +43,7 @@ public sealed class TitleTicket
 
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
-        aes.Key = WiiUCommonKey;
+        aes.Key = Constants.WiiUCommonKey;
         aes.IV = iv.ToArray();
 
         using var decryptor = aes.CreateDecryptor();

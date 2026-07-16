@@ -19,6 +19,8 @@ public static class WupPacker
     {
         Directory.CreateDirectory(outputFolder);
 
+        const long MaxHashedContentBytes = (long)HashedMaxChunks * HashedDataSize;
+
         // 1) 타이틀키는 아무 값이나 우리가 정해도 됨 (실기 커먼키로 암호화해서 티켓에 넣으면 콘솔이 복호화 가능)
         byte[] titleKey = RandomNumberGenerator.GetBytes(16);
 
@@ -34,14 +36,30 @@ public static class WupPacker
             if (group.Files.Count == 0) continue;
 
             var layout = new List<(WupFileEntry, uint, uint)>();
-            using var blob = new MemoryStream();
+            var blob = new MemoryStream();
+
+            void FlushCurrent()
+            {
+                if (layout.Count == 0) return;
+
+                contentRecords.Add((nextIndex, group.Hashed, blob.ToArray(), layout.ToList()));
+                nextIndex++;
+                layout.Clear();
+                blob = new MemoryStream();
+            }
 
             foreach (var file in group.Files)
             {
                 ct.ThrowIfCancellationRequested();
 
-                // NUSPacker와 동일하게 offsetFactor(32)의 배수 경계에 정렬
                 long pad = (32 - (blob.Length % 32)) % 32;
+
+                // hashed 콘텐츠는 해시트리 1단계 한계(~252MB)를 넘기기 전에 끊어서 새 index로 시작
+                if (group.Hashed && blob.Length + pad + file.Data.Length > MaxHashedContentBytes)
+                    FlushCurrent();
+
+                // NUSPacker와 동일하게 offsetFactor(32)의 배수 경계에 정렬
+                pad = (32 - (blob.Length % 32)) % 32;
                 if (pad > 0) blob.Write(new byte[pad]);
 
                 uint offsetField = (uint)(blob.Length / 32);
@@ -50,8 +68,7 @@ public static class WupPacker
                 layout.Add((file, offsetField, (uint)file.Data.Length));
             }
 
-            contentRecords.Add((nextIndex, group.Hashed, blob.ToArray(), layout));
-            nextIndex++;
+            FlushCurrent();
         }
 
         ct.ThrowIfCancellationRequested();
@@ -213,7 +230,7 @@ public static class WupPacker
         {
             bw.U32(0); bw.U32(0); // offUnits/sizeUnits: 실기에서 강제 검증 안 하는 것으로 확인됨(0으로 둬도 무방)
             ms.Write(new byte[0x14 - 8]);
-            ms.WriteByte((byte)(hashed ? 2 : 1));
+            ms.WriteByte((byte)(hashed ? 1 : 0));
             ms.Write(new byte[0x20 - 0x15]);
         }
 
