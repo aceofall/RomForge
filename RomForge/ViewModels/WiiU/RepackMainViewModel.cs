@@ -164,10 +164,6 @@ public class RepackMainViewModel : ToolTabViewModel
         Entries.Add(row);
     }
 
-    /// <summary>드래그&amp;드롭 전용 진입점. title ID를 신뢰할 수 있는 입력(wua/wud/wux 파일, WUP 폴더)만
-    /// 받는다 — 각각 실제 Nintendo TMD/티켓에서 나온 진짜 title ID라 본편/업데이트/DLC 카테고리가 이미
-    /// 정확하다. "이미 언팩된 폴더(로드라인 형태)"는 여기로 받지 않는다 — 그건 언팩→패치→리빌드 흐름에서
-    /// RepackService.ScanUnpacked가 알아서 다시 읽어들인다.</summary>
     public async Task AddDroppedItemAsync(string path)
     {
         if (IsDuplicate(path))

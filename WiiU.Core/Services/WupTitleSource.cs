@@ -321,7 +321,7 @@ public sealed class WupTitleSource : ITitleSource
         {
             long blockIndex = offset / HashedDataSize;
             long offsetWithinBlock = offset % HashedDataSize;
-            byte[] blockData = GetDecryptedHashedDataBlock(stream, blockIndex);
+            byte[] blockData = GetDecryptedHashedDataBlock(stream, blockIndex, clusterIndex);
             int copyLen = (int)Math.Min(size - totalRead, HashedDataSize - offsetWithinBlock);
 
             Array.Copy(blockData, offsetWithinBlock, dest, destOffset + totalRead, copyLen);
@@ -331,7 +331,7 @@ public sealed class WupTitleSource : ITitleSource
         }
     }
 
-    private byte[] GetDecryptedHashedDataBlock(FileStream stream, long blockIndex)
+    private byte[] GetDecryptedHashedDataBlock(FileStream stream, long blockIndex, int contentIndex)
     {
         long absolute = blockIndex * HashedBlockSize;
         var block = new byte[HashedBlockSize];
@@ -345,11 +345,17 @@ public sealed class WupTitleSource : ITitleSource
 
         var hashPart = block.AsSpan(0, HashedHeaderSize).ToArray();
 
-        AesCbcDecryptInPlace(hashPart, HashedHeaderSize, _titleKey, new byte[16]);
+        byte[] headerIv = new byte[16];
+        headerIv[1] = (byte)contentIndex;
+        AesCbcDecryptInPlace(hashPart, HashedHeaderSize, _titleKey, headerIv);
 
         int h0Index = (int)(blockIndex % 16);
         var h0 = hashPart.AsSpan(h0Index * 20, 20).ToArray();
         var iv = h0.AsSpan(0, 16).ToArray();
+
+        if (h0Index == 0)
+            iv[1] ^= (byte)contentIndex;
+
         var dataPart = block.AsSpan(HashedHeaderSize, HashedDataSize).ToArray();
         int dataAvailable = Math.Max(0, got - HashedHeaderSize);
         int alignedLen = dataAvailable - (dataAvailable % 16);

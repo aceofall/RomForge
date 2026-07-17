@@ -285,6 +285,8 @@ public sealed class RepackService()
 
     private static void RepackToWup(List<RepackEntry> repackEntries, List<ITitleSource> sources, IReadOnlyList<TitleInputEntry> entries, string fileName, string outputPath, Action<ProgressInfo>? progress, Action<string, LogLevel>? log, CancellationToken ct)
     {
+        var sw = Stopwatch.StartNew();
+
         for (int i = 0; i < sources.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
@@ -347,7 +349,18 @@ public sealed class RepackService()
 
             try
             {
-                WupPacker.Pack(wupFolder, titleId, titleVersion, groups, ct);
+                WupPacker.Pack(wupFolder, titleId, titleVersion, groups,
+                    onProgress: (done, total, label) =>
+                    {
+                        progress?.Invoke(new ProgressInfo
+                        {
+                            Percent = total > 0 ? (int)(done * 100.0 / total) : 100,
+                            Label = $"[{i + 1}/{sources.Count}] {label}",
+                            TimeInfo = $"{sw.Elapsed:mm\\:ss} 경과",
+                            Speed = string.Empty,
+                        });
+                    },
+                    ct: ct);
             }
             catch
             {
@@ -355,7 +368,6 @@ public sealed class RepackService()
                 {
                     try { Directory.Delete(wupFolder, true); } catch { }
                 }
-
                 throw;
             }
 
