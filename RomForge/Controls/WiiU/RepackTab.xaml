@@ -27,7 +27,27 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid Grid.Column="0">
-                    <ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Background="Transparent" BorderThickness="0" Margin="5" KeyUp="LvFiles_KeyUp">
+                    <ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Background="Transparent" BorderThickness="0" Margin="5" KeyUp="LvFiles_KeyUp" ContextMenuOpening="LvFiles_ContextMenuOpening">
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="폴더 열기" Click="MenuItem_OpenFolder_Click">
+                                    <MenuItem.Icon>
+                                        <Image Source="/Assets/Images/AddFolder.png" Width="20" Height="20"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="선택 삭제" Click="BtnRemove_Click">
+                                    <MenuItem.Icon>
+                                        <Image Source="/Assets/Images/Delete.png" Width="20" Height="20"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="전체 삭제" Click="BtnClear_Click">
+                                    <MenuItem.Icon>
+                                        <Image Source="/Assets/Images/Clear.png" Width="20" Height="20"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="종류" Width="90">
@@ -54,7 +74,25 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="한글패치" Width="150" DisplayMemberBinding="{Binding PatchDisplay}"/>
+                                <GridViewColumn Header="한글패치" Width="70">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Width="32" Height="32" Padding="0" ToolTip="{Binding PatchDisplay}" Command="{Binding DataContext.SetPatchCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource PatchButton}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding PatchPath}" Value="{x:Null}">
+                                                                <Setter Property="Background" Value="#3A3A40"/>
+                                                                <Setter Property="BorderBrush" Value="#5A5A62"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                                <Image Source="/Assets/Images/Patch.png" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            </Button>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="경로" Width="220" DisplayMemberBinding="{Binding FilePath}"/>
                             </GridView>
                         </ListView.View>
@@ -110,9 +148,6 @@
                 </Grid>
 
                 <StackPanel Grid.Column="1" Margin="5" VerticalAlignment="Top">
-                    <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowsePatchForSelectedCommand}">
-                        <Image Source="/Assets/Images/Patch.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="한글패치 폴더"/>
-                    </Button>
                     <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding RemoveSelectedCommand}">
                         <Image Source="/Assets/Images/Delete.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="선택 삭제"/>
                     </Button>
@@ -126,13 +161,12 @@
         <!-- 출력 포맷 선택 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5,0,0,10">
             <TextBlock Text="출력 포맷:" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <RadioButton Content="WUA" GroupName="OutputFormat" IsChecked="{Binding IsWuaFormat}" Foreground="White" VerticalAlignment="Center" Margin="0,0,15,0"/>
-            <RadioButton Content="WUP (실기 설치용)" GroupName="OutputFormat" IsChecked="{Binding IsWupFormat}" Foreground="White" VerticalAlignment="Center"/>
+            <RadioButton Content="WUA ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsWuaFormat}" Foreground="White" VerticalAlignment="Center" Margin="0,0,15,0"/>
+            <RadioButton Content="WUP ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsWupFormat}" Foreground="White" VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- 작업 폴더 -->
         <StackPanel Grid.Row="2" Margin="5,0,5,10">
-            <TextBlock Text="작업 폴더" FontSize="12" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,5"/>
             <Grid Height="36">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

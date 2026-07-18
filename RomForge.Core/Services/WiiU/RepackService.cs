@@ -233,16 +233,14 @@ public sealed class RepackService()
                 for (int i = 0; i < entries.Count; i++)
                     repackEntries.Add(new RepackEntry(sources[i], entries[i].PatchPath, TitleIdHexOverride: entries[i].RoleCorrectedTitleIdHex));
 
-                string fileName = entries[0].DisplayName;
-                fileName = NspNameBuilder.SafeFileName(fileName);
-
                 if (format == RepackOutputFormat.Wup)
                 {
-                    RepackToWup(repackEntries, sources, entries, fileName, outputPath, progress, log, ct);
+                    RepackToWup(repackEntries, sources, entries, outputPath, progress, log, ct);
                     return;
                 }
 
-                string outputWuaPath = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{fileName}_Repack.wua"));
+                string fileName = BuildWuaFileName(entries);
+                string outputWuaPath = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{fileName}.wua"));
 
                 var sw = Stopwatch.StartNew();
 
@@ -283,7 +281,35 @@ public sealed class RepackService()
         }, ct);
     }
 
-    private static void RepackToWup(List<RepackEntry> repackEntries, List<ITitleSource> sources, IReadOnlyList<TitleInputEntry> entries, string fileName, string outputPath, Action<ProgressInfo>? progress, Action<string, LogLevel>? log, CancellationToken ct)
+    private static string BuildWuaFileName(IReadOnlyList<TitleInputEntry> entries)
+    {
+        var baseEntry = entries.FirstOrDefault(e => e.Role != TitleRole.Update && e.Role != TitleRole.Dlc) ?? entries[0];
+
+        string titleName = baseEntry.TitleName ?? baseEntry.DisplayName;
+        string titleIdHex = baseEntry.TitleIdHex;
+
+        int baseCount = entries.Count(e => e.Role != TitleRole.Update && e.Role != TitleRole.Dlc);
+        int updateCount = entries.Count(e => e.Role == TitleRole.Update);
+        int dlcCount = entries.Count(e => e.Role == TitleRole.Dlc);
+
+        var parts = new List<string>();
+
+        if (baseCount > 0) 
+            parts.Add(baseCount > 1 ? $"{baseCount}B" : "B");
+
+        if (updateCount > 0) 
+            parts.Add(updateCount > 1 ? $"{updateCount}U" : "U");
+
+        if (dlcCount > 0) 
+            parts.Add(dlcCount > 1 ? $"{dlcCount}D" : "D");
+
+        string comp = string.Join("+", parts);
+        string safeName = NspNameBuilder.SafeFileName(titleName);
+
+        return $"{safeName} [{titleIdHex}] ({comp})";
+    }
+
+    private static void RepackToWup(List<RepackEntry> repackEntries, List<ITitleSource> sources, IReadOnlyList<TitleInputEntry> entries, string outputPath, Action<ProgressInfo>? progress, Action<string, LogLevel>? log, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
 
@@ -294,8 +320,16 @@ public sealed class RepackService()
             var source = sources[i];
             string? patchPath = repackEntries[i].PatchFolder;
 
-            var codeFiles = new List<WupFileEntry>();
-            var metaFiles = new List<WupFileEntry>();
+            var codeShared = new List<WupFileEntry>();
+            var codePerFile = new List<WupFileEntry>();
+            WupFileEntry? preloadFile = null;
+
+            var metaXml = new List<WupFileEntry>();
+            var metaBootGroup = new List<WupFileEntry>();
+            var metaManual = new List<WupFileEntry>();
+            var metaJpg = new List<WupFileEntry>();
+            var metaRest = new List<WupFileEntry>();
+
             var contentFiles = new List<WupFileEntry>();
 
             foreach (string relPath in source.EnumerateFiles())
@@ -319,31 +353,56 @@ public sealed class RepackService()
                 }
 
                 var entry = new WupFileEntry(relPath, data);
+                string fileName = Path.GetFileName(relPath);
+                string ext = Path.GetExtension(relPath).ToLowerInvariant();
 
                 if (relPath.StartsWith("code/", StringComparison.OrdinalIgnoreCase))
-                    codeFiles.Add(entry);
+                {
+                    if (string.Equals(fileName, "preload.txt", StringComparison.OrdinalIgnoreCase))
+                        preloadFile = entry;
+                    else if (ext is ".rpx" or ".rpl")
+                        codePerFile.Add(entry);
+                    else
+                        codeShared.Add(entry);
+                }
                 else if (relPath.StartsWith("meta/", StringComparison.OrdinalIgnoreCase))
-                    metaFiles.Add(entry);
+                {
+                    if (string.Equals(fileName, "meta.xml", StringComparison.OrdinalIgnoreCase))
+                        metaXml.Add(entry);
+                    else if (string.Equals(fileName, "bootMovie.h264", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(fileName, "bootLogoTex.tga", StringComparison.OrdinalIgnoreCase))
+                        metaBootGroup.Add(entry);
+                    else if (string.Equals(fileName, "Manual.bfma", StringComparison.OrdinalIgnoreCase))
+                        metaManual.Add(entry);
+                    else if (ext == ".jpg")
+                        metaJpg.Add(entry);
+                    else
+                        metaRest.Add(entry);
+                }
                 else
+                {
                     contentFiles.Add(entry);
+                }
             }
 
             var groups = new List<WupContentGroup>();
 
-            foreach (var f in codeFiles)
-                groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = [f] });
+            if (codeShared.Count > 0) groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = codeShared });
+            foreach (var f in codePerFile) groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = [f] });
+            if (preloadFile is not null) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0000, Files = [preloadFile] });
 
-            foreach (var f in metaFiles)
-                groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = [f] });
+            if (metaXml.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaXml });
+            if (metaBootGroup.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaBootGroup });
+            if (metaManual.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaManual });
+            if (metaJpg.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaJpg });
+            if (metaRest.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaRest });
 
-            if (contentFiles.Count > 0)
-                groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0400, Files = contentFiles });
+            if (contentFiles.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0400, Files = contentFiles });
 
             ulong titleId = entries[i].GetRoleCorrectedTitleId();
             ushort titleVersion = (ushort)source.TitleVersion;
-
-            string suffix = sources.Count > 1 ? $"_{i}_{entries[i].Kind}_v{titleVersion}" : "";
-            string wupFolder = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{fileName}{suffix}_WUP"));
+            var folderName = BuildWupFolderName(entries[i]);
+            string wupFolder = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{folderName}"));
 
             log?.Invoke($"WUP로 패키징 중 ({i + 1}/{sources.Count}): {wupFolder}", LogLevel.Info);
 
@@ -381,5 +440,20 @@ public sealed class RepackService()
 
             log?.Invoke($"완료: {wupFolder}", LogLevel.Ok);
         }
+    }
+
+    private static string BuildWupFolderName(TitleInputEntry entry)
+    {
+        string safeName = NspNameBuilder.SafeFileName(entry.TitleName ?? entry.DisplayName);
+        string titleIdHex = entry.TitleIdHex.ToUpper();
+
+        string roleTag = entry.Role switch
+        {
+            TitleRole.Update => "Update",
+            TitleRole.Dlc => "DLC",
+            _ => "Game"
+        };
+
+        return $"{safeName} [{roleTag}] [{titleIdHex}]";
     }
 }

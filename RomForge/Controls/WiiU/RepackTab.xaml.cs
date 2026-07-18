@@ -1,5 +1,8 @@
 ﻿using NSW.Core.Enums;
+using NSW.WPF.Services;
+using RomForge.Core.Models.PS;
 using RomForge.ViewModels.WiiU;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -36,8 +39,6 @@ namespace RomForge.Controls.WiiU
                 return;
             }
 
-            // wud/wux/wua 파일과 WUP 폴더는 title ID로 본편/업데이트/DLC 자동 분류가 가능하다.
-            // 그 외 폴더(이미 언팩된 폴더 등)는 ViewModel.AddDroppedItemAsync에서 거부하고 안내 메시지를 띄운다.
             foreach (var item in items)
                 await ViewModel.AddDroppedItemAsync(item);
 
@@ -86,6 +87,36 @@ namespace RomForge.Controls.WiiU
             }
 
             await ViewModel.StartAsync(BuildMode.RebuildOnly);
+        }
+
+        private void BtnRemove_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.SelectedEntry;
+
+            if (selected is not null)
+                ViewModel?.Entries.Remove(selected);
+        }
+
+        private void BtnClear_Click(object sender, RoutedEventArgs e) => ViewModel?.Entries.Clear();
+
+        private void LvFiles_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            var selected = ViewModel?.SelectedEntry;
+
+            if (selected == null)
+                e.Handled = true;
+        }
+
+        private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.SelectedEntry;
+
+            if (selected == null)
+                return;
+
+            string? dir = Path.GetDirectoryName(selected.FilePath);
+
+            dir?.OpenFolder();
         }
     }
 }

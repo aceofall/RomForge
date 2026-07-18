@@ -100,7 +100,7 @@ public sealed class WupTitleSource : ITitleSource
             bool isDir = ((typeAndNameOffset >> 24) & 0x01) != 0;
             bool isSharedWithBase = (typeAndNameOffset & 0x80000000) != 0;
             uint nameOffset = typeAndNameOffset & 0xFFFFFF;
-            string name = i == 0 ? "" : ReadCString(fst, nameTableOffset + (int)nameOffset);
+            string name = i == 0 ? string.Empty : ReadCString(fst, nameTableOffset + (int)nameOffset);
             var entry = new FstEntry { IsDirectory = isDir, Name = name, ClusterIndex = clusterIndex, IsSharedWithBase = isSharedWithBase };
 
             if (isDir)

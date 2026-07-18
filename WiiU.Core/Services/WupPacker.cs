@@ -10,10 +10,9 @@ public static class WupPacker
     private const int HashedHeaderSize = 0x400;
     private const int HashedBlockSize = 0x10000;
     private const int HashedMaxChunks = 16 * 16 * 16;
-    private const int RawContentPadding = 0x8000; // NUSPacker CONTENT_FILE_PADDING
+    private const int RawContentPadding = 0x8000;
 
-    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupContentGroup> groups,
-        Action<long, long, string>? onProgress = null, CancellationToken ct = default)
+    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupContentGroup> groups, Action<long, long, string>? onProgress = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputFolder);
 
@@ -28,17 +27,24 @@ public static class WupPacker
         foreach (var group in groups)
         {
             ct.ThrowIfCancellationRequested();
-            if (group.Files.Count == 0) continue;
+
+            if (group.Files.Count == 0)
+                continue;
 
             var layout = new List<(WupFileEntry, uint, uint)>();
             var blob = new MemoryStream();
 
             void FlushCurrent()
             {
-                if (layout.Count == 0) return;
+                if (layout.Count == 0)
+                    return;
+
                 contentRecords.Add((nextIndex, group.Hashed, group.FstFlags, blob.ToArray(), layout.ToList()));
+
                 nextIndex++;
+
                 layout.Clear();
+
                 blob = new MemoryStream();
             }
 
@@ -52,11 +58,12 @@ public static class WupPacker
                     FlushCurrent();
 
                 pad = (32 - (blob.Length % 32)) % 32;
+
                 if (pad > 0) blob.Write(new byte[pad]);
 
                 uint offsetField = (uint)(blob.Length / 32);
-                blob.Write(file.Data);
 
+                blob.Write(file.Data);
                 layout.Add((file, offsetField, (uint)file.Data.Length));
             }
 
@@ -65,17 +72,20 @@ public static class WupPacker
 
         ct.ThrowIfCancellationRequested();
 
-        // 각 콘텐츠의 암호화 후 실제 바이트 크기를 미리 계산 (offUnits/sizeUnits, TMD size 계산에 필요)
         var encryptedSizeByIndex = new Dictionary<int, long>();
 
         foreach (var c in contentRecords)
-        {
-            encryptedSizeByIndex[c.Index] = c.Hashed
-                ? (long)Math.Max(1, (c.PlainBlob.Length + HashedDataSize - 1) / HashedDataSize) * HashedBlockSize
-                : Align(c.PlainBlob.Length, RawContentPadding);
-        }
+            encryptedSizeByIndex[c.Index] = c.Hashed ? (long)Math.Max(1, (c.PlainBlob.Length + HashedDataSize - 1) / HashedDataSize) * HashedBlockSize : Align(c.PlainBlob.Length, RawContentPadding);
 
-        byte[] fstPlain = BuildFst(contentRecords, encryptedSizeByIndex);
+        ulong parentTitleIdForContent = titleId & ~0x0000000F00000000UL;
+        uint contentGroupId = (uint)((titleId >> 8) & 0xFFFF);
+
+        byte[] fstPlain = BuildFst(contentRecords, parentTitleIdForContent, contentGroupId, encryptedSizeByIndex, fstRawUnitsOverride: 0);
+        long fstEncBytes = Align(fstPlain.Length, RawContentPadding);
+        long fstRawUnits = fstEncBytes / RawContentPadding;
+
+        if (fstRawUnits != 0)
+            fstPlain = BuildFst(contentRecords, parentTitleIdForContent, contentGroupId, encryptedSizeByIndex, fstRawUnitsOverride: fstRawUnits);
 
         long totalBytes = fstPlain.Length + contentRecords.Sum(c => (long)c.PlainBlob.Length);
         long processedBytes = 0;
@@ -89,7 +99,9 @@ public static class WupPacker
         var finalContents = new List<(uint Cid, ushort Index, ushort Type, byte[] EncryptedAppBytes, byte[]? H3)>();
 
         byte[] fstEncrypted = EncryptRawContent(fstPlain, 0, titleKey);
+
         finalContents.Add(((uint)0, 0, 0x2001, fstEncrypted, null));
+
         ReportProgress(fstPlain.Length, "FST");
 
         foreach (var (index, hashed, _, plainBlob, _) in contentRecords)
@@ -124,17 +136,17 @@ public static class WupPacker
                 File.WriteAllBytes(Path.Combine(outputFolder, $"{c.Cid:x8}.h3"), c.H3);
         }
 
-        // TMD size 필드 = 암호화된 .app 파일의 실제 바이트 크기 (평문 크기 아님)
         var tmdContents = finalContents
             .Select(c => (c.Cid, c.Index, c.Type, Size: (ulong)c.EncryptedAppBytes.Length, Hash: SHA256.HashData(c.EncryptedAppBytes)))
             .ToList();
 
         byte[] tmd = BuildTmd(titleId, titleVersion, tmdContents);
+
         File.WriteAllBytes(Path.Combine(outputFolder, "title.tmd"), tmd);
 
         byte[] tik = BuildTicket(titleId, titleKey);
-        File.WriteAllBytes(Path.Combine(outputFolder, "title.tik"), tik);
 
+        File.WriteAllBytes(Path.Combine(outputFolder, "title.tik"), tik);
         File.WriteAllBytes(Path.Combine(outputFolder, "title.cert"), Convert.FromBase64String(Constants.CertTemplateBase64));
 
         onProgress?.Invoke(totalBytes, totalBytes, "완료");
@@ -144,15 +156,7 @@ public static class WupPacker
 
     #region FST Writer
 
-    private sealed class FstDirNode
-    {
-        public readonly SortedDictionary<string, FstDirNode> Dirs = new(StringComparer.Ordinal);
-        public readonly List<(string Name, int ClusterIndex, uint OffsetField, uint SizeField)> Files = [];
-    }
-
-    private static byte[] BuildFst(
-        List<(int Index, bool Hashed, ushort FstFlags, byte[] PlainBlob, List<(WupFileEntry File, uint OffsetField, uint SizeField)> Layout)> contentRecords,
-        Dictionary<int, long> encryptedSizeByIndex)
+    private static byte[] BuildFst(List<(int Index, bool Hashed, ushort FstFlags, byte[] PlainBlob, List<(WupFileEntry File, uint OffsetField, uint SizeField)> Layout)> contentRecords, ulong parentTitleIdForContent, uint contentGroupId, Dictionary<int, long> encryptedSizeByIndex, long fstRawUnitsOverride)
     {
         var flagsByIndex = contentRecords.ToDictionary(c => c.Index, c => c.FstFlags);
         var root = new FstDirNode();
@@ -188,7 +192,9 @@ public static class WupPacker
             if (nameOffsets.TryGetValue(name, out var off)) return off;
 
             off = nameTableSize;
+
             names.Add(name);
+
             nameOffsets[name] = off;
             nameTableSize += System.Text.Encoding.UTF8.GetByteCount(name) + 1;
 
@@ -197,7 +203,7 @@ public static class WupPacker
 
         var entries = new List<(bool IsDir, string Name, int ParentOrCluster, int DirEndOrOffset, uint FileSize, ushort ClusterIndex)>
         {
-            (true, "", 0, 0, 0, 0),
+            (true, string.Empty, 0, 0, 0, 0),
         };
 
         void Serialize(FstDirNode node, int parentIndex)
@@ -219,7 +225,7 @@ public static class WupPacker
 
         Serialize(root, parentIndex: 0);
 
-        entries[0] = (true, "", 0, entries.Count, 0, 0);
+        entries[0] = (true, string.Empty, 0, entries.Count, 0, 0);
 
         foreach (var (IsDir, Name, ParentOrCluster, DirEndOrOffset, FileSize, ClusterIndex) in entries.Skip(1))
             GetNameOffset(Name);
@@ -227,7 +233,6 @@ public static class WupPacker
         int numCluster = contentRecords.Count + 1;
         int clusterTableOffset = 0x20;
         int fileTableOffset = clusterTableOffset + numCluster * 0x20;
-
         using var ms = new MemoryStream();
         var bw = new BeWriter(ms);
 
@@ -236,42 +241,54 @@ public static class WupPacker
         bw.U32((uint)numCluster);
         ms.Write(new byte[clusterTableOffset - (int)ms.Length]);
 
-        // cluster0 = FST 자신 — 항상 offUnits/sizeUnits/hashMode 전부 0 (NUSPacker 기준)
-        bw.U32(0); bw.U32(0);
+        long runningOffset = 0;
+        long fstAdvance = fstRawUnitsOverride == 1 ? 0 : fstRawUnitsOverride;
+
+        bw.U32((uint)runningOffset);
+        bw.U32(0);
         ms.Write(new byte[0x14 - 8]);
         ms.WriteByte(0);
         ms.Write(new byte[0x20 - 0x15]);
 
-        // 콘텐츠들의 가상 주소 공간 오프셋(offUnits/sizeUnits, 0x8000바이트 단위) 계산
-        // FST 자신의 암호화 크기를 먼저 units로 환산해서 시작 오프셋을 잡음 (NUSPacker와 동일한 +2 보정)
-        long fstEncryptedBytes = Align((contentRecords.Count == 0 ? 0 : 0), RawContentPadding); // placeholder, 아래서 실제 값으로 재계산됨
-        // 실제로는 FST 바이트 길이를 이 시점에 정확히 알 수 없으므로(자기 자신을 쓰는 중), 클러스터 테이블 "구조"는 값과 무관하게 고정 크기이니
-        // 호출자(Pack)에서 fstPlain.Length를 얻은 뒤 필요시 재사용 가능. 여기서는 안전하게 0으로 시작하고 +2만 적용.
-        long contentOffsetUnits = 2;
+        runningOffset += fstAdvance + 2;
+
+        Span<byte> ptidBuf = stackalloc byte[8];
+        Span<byte> gidBuf = stackalloc byte[4];
 
         foreach (var (index, hashed, flags, plainBlob, _) in contentRecords)
         {
             long encBytes = encryptedSizeByIndex[index];
-            long units = encBytes / RawContentPadding;
-            if (units == 0) units = 1; // 0바이트 방지
+            long rawUnits = encBytes / RawContentPadding;
 
-            long unitsWritten = units;
+            if (rawUnits == 0) 
+                rawUnits = 1;
+
+            long sizeUnitsWritten = rawUnits;
 
             if (hashed)
             {
-                long overhead = (units / 64 + 1) * 2;
-                unitsWritten -= overhead;
-                if (unitsWritten < 0) unitsWritten = 0;
+                long overhead = (rawUnits / 64 + 1) * 2;
+                sizeUnitsWritten = Math.Max(0, rawUnits - overhead);
             }
 
-            bw.U32((uint)contentOffsetUnits);
-            bw.U32((uint)unitsWritten);
-            ms.Write(new byte[0x14 - 8]); // parentTitleID(8) — 항상 0 (base 콘텐츠 기준)
-            ms.WriteByte((byte)(hashed ? 2 : 1)); // hashMode: 1=raw, 2=hashed (NUSPacker 기준으로 원복)
-            ms.Write(new byte[0x20 - 0x15]); // groupID(4) 자리 포함 — 0
+            bw.U32((uint)runningOffset);
+            bw.U32((uint)sizeUnitsWritten);
 
-            contentOffsetUnits += units;
+            ulong parentTitleId = flags == 0x0400 ? parentTitleIdForContent : 0UL;
+            uint groupId = flags switch { 0x0400 => contentGroupId, 0x0040 => 0x0400u, _ => 0u };
+                        
+            BinaryPrimitives.WriteUInt64BigEndian(ptidBuf, parentTitleId);
+            ms.Write(ptidBuf);
+            
+            BinaryPrimitives.WriteUInt32BigEndian(gidBuf, groupId);
+            ms.Write(gidBuf);
+
+            ms.WriteByte((byte)(hashed ? 2 : 1));
+            ms.Write(new byte[0x20 - 0x15]);
+
+            runningOffset += rawUnits;
         }
+
 
         foreach (var (IsDir, Name, ParentOrCluster, DirEndOrOffset, FileSize, ClusterIndex) in entries)
         {
@@ -288,6 +305,7 @@ public static class WupPacker
         foreach (var name in names)
         {
             var bytes = System.Text.Encoding.UTF8.GetBytes(name);
+
             ms.Write(bytes);
             ms.WriteByte(0);
         }
@@ -328,24 +346,24 @@ public static class WupPacker
         int contentInfoOffset = bodyStart + 0xC4;
         int contentTableOffset = contentInfoOffset + 64 * 36;
         int totalSize = contentTableOffset + contents.Count * 48;
-
         var buf = new byte[totalSize];
 
         BinaryPrimitives.WriteUInt32BigEndian(buf.AsSpan(0, 4), 0x00010004);
 
         var issuer = "Root-CA00000003-CP0000000b\0"u8;
+
         issuer.CopyTo(buf.AsSpan(bodyStart, issuer.Length));
 
-        buf[bodyStart + 0x40] = 1; // version
+        buf[bodyStart + 0x40] = 1;
 
-        BinaryPrimitives.WriteUInt64BigEndian(buf.AsSpan(bodyStart + 0x44, 8), 0x000500101000400AUL); // systemVersion
-        BinaryPrimitives.WriteUInt64BigEndian(buf.AsSpan(bodyStart + 0x4C, 8), titleId);               // titleID
-        BinaryPrimitives.WriteUInt32BigEndian(buf.AsSpan(bodyStart + 0x54, 4), 0x00000100);             // titleType
-        BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0x58, 2), 0);                      // groupID
-        BinaryPrimitives.WriteUInt32BigEndian(buf.AsSpan(bodyStart + 0x5A, 4), 0x80000000);             // appType — 0x9A → 0x5A로 수정
+        BinaryPrimitives.WriteUInt64BigEndian(buf.AsSpan(bodyStart + 0x44, 8), 0x000500101000400AUL);
+        BinaryPrimitives.WriteUInt64BigEndian(buf.AsSpan(bodyStart + 0x4C, 8), titleId);
+        BinaryPrimitives.WriteUInt32BigEndian(buf.AsSpan(bodyStart + 0x54, 4), 0x00000100);
+        BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0x58, 2), 0);
+        BinaryPrimitives.WriteUInt32BigEndian(buf.AsSpan(bodyStart + 0x5A, 4), 0x80000000);
         BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0x9C, 2), titleVersion);
         BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0x9E, 2), (ushort)contents.Count);
-        BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0xA0, 2), 0);                      // bootIndex
+        BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(bodyStart + 0xA0, 2), 0);
 
         for (int i = 0; i < contents.Count; i++)
         {
@@ -356,6 +374,7 @@ public static class WupPacker
             BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(off + 4, 2), c.Index);
             BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(off + 6, 2), c.Type);
             BinaryPrimitives.WriteUInt64BigEndian(buf.AsSpan(off + 8, 8), c.Size);
+
             c.Hash.CopyTo(buf.AsSpan(off + 16, 32));
         }
 
@@ -364,6 +383,7 @@ public static class WupPacker
 
         BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(contentInfoOffset, 2), 0);
         BinaryPrimitives.WriteUInt16BigEndian(buf.AsSpan(contentInfoOffset + 2, 2), (ushort)contents.Count);
+
         contentTableHash.CopyTo(buf.AsSpan(contentInfoOffset + 4, 32));
 
         byte[] contentInfoBytes = buf.AsSpan(contentInfoOffset, 64 * 36).ToArray();
@@ -380,11 +400,12 @@ public static class WupPacker
     private static byte[] BuildTicket(ulong titleId, byte[] titleKeyPlain)
     {
         byte[] tik = Convert.FromBase64String(Constants.TicketTemplateBase64);
-
         byte[] iv = new byte[16];
+
         BinaryPrimitives.WriteUInt64BigEndian(iv.AsSpan(0, 8), titleId);
 
         using var aes = Aes.Create();
+
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = Constants.WiiUCommonKey;
@@ -392,9 +413,10 @@ public static class WupPacker
 
         using var encryptor = aes.CreateEncryptor();
         byte[] encKey = new byte[16];
-        encryptor.TransformBlock(titleKeyPlain, 0, 16, encKey, 0);
 
+        encryptor.TransformBlock(titleKeyPlain, 0, 16, encKey, 0);
         encKey.CopyTo(tik.AsSpan(0x1BF, 16));
+
         BinaryPrimitives.WriteUInt64BigEndian(tik.AsSpan(0x1DC, 8), titleId);
 
         return tik;
@@ -406,13 +428,18 @@ public static class WupPacker
 
     private static byte[] EncryptRawContent(byte[] plain, ushort contentIndex, byte[] titleKey)
     {
-        int padded = (int)Align(plain.Length, RawContentPadding);
-        if (padded == 0) padded = RawContentPadding;
+        const int ContentFilePadding = 0x8000;
+        int padded = (int)(((long)plain.Length + ContentFilePadding - 1) / ContentFilePadding) * ContentFilePadding;
+
+        if (padded == 0) 
+            padded = ContentFilePadding;
 
         byte[] buf = new byte[padded];
+
         plain.CopyTo(buf, 0);
 
         byte[] iv = new byte[16];
+
         iv[0] = (byte)(contentIndex >> 8);
         iv[1] = (byte)(contentIndex & 0xFF);
 
@@ -426,11 +453,10 @@ public static class WupPacker
         int chunkCount = Math.Max(1, (plain.Length + HashedDataSize - 1) / HashedDataSize);
 
         if (chunkCount > HashedMaxChunks)
-            throw new NotSupportedException(
-                $"콘텐츠가 너무 커서(해시트리 1단계 한계 {HashedMaxChunks}청크 ≈ {HashedMaxChunks * (long)HashedDataSize / 1024 / 1024}MB 초과) " +
-                "단일 hashed 콘텐츠로 만들 수 없습니다. 여러 콘텐츠로 나눠서 담아야 합니다.");
+            throw new NotSupportedException($"콘텐츠가 너무 커서(해시트리 1단계 한계 {HashedMaxChunks}청크 ≈ {HashedMaxChunks * (long)HashedDataSize / 1024 / 1024}MB 초과) " + "단일 hashed 콘텐츠로 만들 수 없습니다. 여러 콘텐츠로 나눠서 담아야 합니다.");
 
         byte[] padded = new byte[chunkCount * HashedDataSize];
+
         plain.CopyTo(padded, 0);
 
         var h0Hashes = new byte[chunkCount][];
@@ -456,6 +482,7 @@ public static class WupPacker
             for (int j = 0; j < 16; j++)
             {
                 int chunkIdx = g * 16 + j;
+
                 if (chunkIdx < chunkCount)
                     h0Stored[chunkIdx].CopyTo(table, j * 20);
             }
@@ -475,6 +502,7 @@ public static class WupPacker
             for (int j = 0; j < 16; j++)
             {
                 int idx = g * 16 + j;
+
                 if (idx < h0GroupCount)
                     h1Hashes[idx].CopyTo(table, j * 20);
             }
@@ -498,14 +526,17 @@ public static class WupPacker
 
             int h0Group = i / 16;
             int h1Group = h0Group / 16;
-
             var header = new byte[HashedHeaderSize];
+
             h0Tables[h0Group].CopyTo(header, 0);
             h1Tables[h1Group].CopyTo(header, 0x140);
             h2Table.CopyTo(header, 0x280);
 
             byte[] headerIv = new byte[16];
-            headerIv[1] = (byte)contentIndex;
+
+            headerIv[0] = (byte)(contentIndex >> 8);
+            headerIv[1] = (byte)(contentIndex & 0xFF);
+
             AesCbcEncryptInPlace(header, HashedHeaderSize, titleKey, headerIv);
 
             var chunk = padded.AsSpan(i * HashedDataSize, HashedDataSize).ToArray();
@@ -525,6 +556,7 @@ public static class WupPacker
     private static void AesCbcEncryptInPlace(byte[] data, int length, byte[] key, byte[] iv)
     {
         using var aes = Aes.Create();
+
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
