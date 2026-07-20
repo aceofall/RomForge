@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace NSW.M1.Core.Services;
+﻿namespace NSW.M1.Core.Services;
 
 public sealed class WorkDirs(string outputDir)
 {
@@ -14,7 +12,9 @@ public sealed class WorkDirs(string outputDir)
     {
         foreach (var dir in new[] { Unpacked, Temp, BuildNca })
         {
-            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            if (Directory.Exists(dir)) 
+                Directory.Delete(dir, true);
+
             Directory.CreateDirectory(dir);
         }
     }
@@ -25,7 +25,8 @@ public sealed class WorkDirs(string outputDir)
         {
             try
             {
-                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                if (Directory.Exists(dir)) 
+                    Directory.Delete(dir, true);
             }
             catch (Exception ex)
             {

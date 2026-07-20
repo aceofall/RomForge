@@ -50,6 +50,15 @@ namespace RomForge.Controls.Switch
                 ViewModel.CoverImagePath = files[0];
         }
 
-        private async void BtnStart_Click(object sender, RoutedEventArgs e) => await ViewModel.ConvertAsync();
+        private async void BtnStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.IsLocked)
+            {
+                ViewModel.Cancel();
+                return;
+            }
+
+            await ViewModel.ConvertAsync();
+        }
     }
 }
