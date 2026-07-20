@@ -205,82 +205,23 @@ public partial class LanguageTabControl : UserControl
         e.Handled = true;
         var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
 
-        if (files is not { Length: > 0 }) 
+        if (files is not { Length: > 0 })
             return;
 
         string ext = Path.GetExtension(files[0]).ToLowerInvariant();
-
-        if (!SupportedExts.Contains(ext)) 
+        if (!SupportedExts.Contains(ext))
             return;
 
         try
         {
-            byte[] finalBytes;
-            BitmapSource bitmapSource;
-
-            using (var image = SixLabors.ImageSharp.Image.Load<Bgra32>(files[0]))
-            {
-                image.Mutate(x => x.Resize(256, 256));
-
-                byte[] pixels = new byte[image.Width * image.Height * 4];
-                image.CopyPixelDataTo(pixels);
-
-                using (var tempBitmap = new System.Drawing.Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb))
-                {
-                    var bitmapData = tempBitmap.LockBits(
-                        new System.Drawing.Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height),
-                        ImageLockMode.WriteOnly,
-                        tempBitmap.PixelFormat);
-
-                    System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bitmapData.Scan0, pixels.Length);
-                    tempBitmap.UnlockBits(bitmapData);
-
-                    using var cleanBitmap = new System.Drawing.Bitmap(256, 256, PixelFormat.Format32bppArgb);
-                    using (var graphics = System.Drawing.Graphics.FromImage(cleanBitmap))
-                    {
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-                        graphics.Clear(System.Drawing.Color.Transparent);
-                        graphics.DrawImage(tempBitmap, 0, 0, 256, 256);
-                    }
-
-                    using var ms = new MemoryStream();
-                    var encoder = ImageCodecInfo.GetImageEncoders()
-                        .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
-
-                    if (encoder != null)
-                    {
-                        var encoderParameters = new EncoderParameters(1);
-                        encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 95L);
-                        cleanBitmap.Save(ms, encoder, encoderParameters);
-                    }
-                    else
-                        cleanBitmap.Save(ms, ImageFormat.Jpeg);
-
-                    finalBytes = ms.ToArray();
-                }
-
-                var wb = new WriteableBitmap(image.Width, image.Height, 96, 96, PixelFormats.Bgra32, null);
-                wb.WritePixels(new Int32Rect(0, 0, image.Width, image.Height), pixels, image.Width * 4, 0);
-                wb.Freeze();
-
-                bitmapSource = wb;
-            }
-
-            imgGame.Source = bitmapSource;
+            byte[] finalBytes = files[0].ToImageBytes();
+            imgGame.Source = finalBytes.ToBitmapImage();
 
             if (lbLanguages.SelectedItem is LanguageItem selectedItem && CurrentMetadata != null)
             {
                 selectedItem.Logo = finalBytes;
-
-                var target = CurrentMetadata.Languages
-                    .FirstOrDefault(l => l.Language == selectedItem.Language);
-
-                if (target != null)
-                    target.LogoData = finalBytes;
+                var target = CurrentMetadata.Languages.FirstOrDefault(l => l.Language == selectedItem.Language);
+                if (target != null) target.LogoData = finalBytes;
             }
         }
         catch (Exception ex)

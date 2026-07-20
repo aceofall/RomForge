@@ -4,19 +4,17 @@ using LibHac.Ns;
 using NSW.Core.Enums;
 using NSW.M1.Core.Services;
 using NSW.WPF.Services;
-using NSW.WPF.UI;
 using RomForge.Core.Models;
 using RomForge.Core.Services.Switch;
 using RomForge.Core.UI.Command;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels.Switch
 {
@@ -33,6 +31,8 @@ namespace RomForge.ViewModels.Switch
         private string _cuePath = string.Empty;
         private string _nspPath = string.Empty;
         private string _coverImagePath = string.Empty;
+        private ImageSource? _coverImageSource;        
+        
         private bool _isConverting;
         private string _progressLabel = "대기 중...";
         private string _progressPercent = "0%";
@@ -74,7 +74,24 @@ namespace RomForge.ViewModels.Switch
         public string CoverImagePath
         {
             get => _coverImagePath;
-            set { _coverImagePath = value; OnPropertyChanged(); OnPropertyChanged(nameof(CoverHintVisibility)); }
+            set
+            {
+                _coverImagePath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CoverHintVisibility));
+
+                if (!string.IsNullOrEmpty(value) && File.Exists(value))
+                {
+                    byte[] bytes = value.ToImageBytes();
+                    CoverImageSource = bytes.ToBitmapImage();
+                }
+            }
+        }
+
+        public ImageSource? CoverImageSource
+        {
+            get => _coverImageSource;
+            set { _coverImageSource = value; OnPropertyChanged(); }
         }
 
         public bool IsConverting { get => _isConverting; set { _isConverting = value; OnPropertyChanged(); } }
@@ -274,7 +291,7 @@ namespace RomForge.ViewModels.Switch
                 koLang.Publisher = Publisher;
                 koLang.Flag = true;
                 if (!string.IsNullOrEmpty(CoverImagePath) && File.Exists(CoverImagePath))
-                    koLang.LogoData = BuildCoverBytes(CoverImagePath);
+                    koLang.LogoData = CoverImagePath.ToImageBytes();
             }
 
             token.ThrowIfCancellationRequested();
@@ -349,17 +366,6 @@ namespace RomForge.ViewModels.Switch
             }
 
             return true;
-        }
-
-        private static byte[] BuildCoverBytes(string imagePath)
-        {
-            using var image = Image.Load<Bgra32>(imagePath);
-            image.Mutate(x => x.Resize(256, 256));
-
-            using var ms = new MemoryStream();
-            image.SaveAsJpeg(ms);
-
-            return ms.ToArray();
         }
 
         private void Log(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
