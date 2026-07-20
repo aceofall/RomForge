@@ -346,7 +346,8 @@ public sealed class WupTitleSource : ITitleSource
         var hashPart = block.AsSpan(0, HashedHeaderSize).ToArray();
 
         byte[] headerIv = new byte[16];
-        headerIv[1] = (byte)contentIndex;
+        headerIv[0] = (byte)(contentIndex >> 8);
+        headerIv[1] = (byte)(contentIndex & 0xFF);
         AesCbcDecryptInPlace(hashPart, HashedHeaderSize, _titleKey, headerIv);
 
         int h0Index = (int)(blockIndex % 16);

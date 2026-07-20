@@ -10,6 +10,8 @@ public class SwitchMainViewModel : MultiToolTabViewModel
 
     public ConverterMainViewModel ConverterVM { get; } = new();
 
+    public ConvertSaturnMainViewModel ConvertSaturnVM { get; } = new ();
+
     public KeygenMainViewModel KeygenVM { get; } = new();
 
     public SwitchMainViewModel()
@@ -17,6 +19,7 @@ public class SwitchMainViewModel : MultiToolTabViewModel
         Tools.Add(RepackVM);
         Tools.Add(MergeVM);
         Tools.Add(ConverterVM);
+        Tools.Add(ConvertSaturnVM);
         Tools.Add(KeygenVM);
 
         InitializeMultiTools();

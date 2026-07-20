@@ -147,6 +147,7 @@ public sealed class RepackService()
         {
             using var ms = new MemoryStream(pngBytes);
             var bitmap = new BitmapImage();
+
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.StreamSource = ms;
@@ -227,9 +228,11 @@ public sealed class RepackService()
         {
             Directory.CreateDirectory(outputPath);
             var sources = entries.Select(e => ReopenSource(e, keysTxtPath)).ToList();
+
             try
             {
                 var repackEntries = new List<RepackEntry>();
+
                 for (int i = 0; i < entries.Count; i++)
                     repackEntries.Add(new RepackEntry(sources[i], entries[i].PatchPath, TitleIdHexOverride: entries[i].RoleCorrectedTitleIdHex));
 
@@ -241,14 +244,11 @@ public sealed class RepackService()
 
                 string fileName = BuildWuaFileName(entries);
                 string outputWuaPath = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{fileName}.wua"));
-
                 var sw = Stopwatch.StartNew();
 
                 try
                 {
-                    WiiURepackService.RepackMultiple(
-                        repackEntries,
-                        outputWuaPath,
+                    WiiURepackService.RepackMultiple(repackEntries, outputWuaPath,
                         onFileProgress: (done, total, path) =>
                         {
                             progress?.Invoke(new ProgressInfo
@@ -284,14 +284,11 @@ public sealed class RepackService()
     private static string BuildWuaFileName(IReadOnlyList<TitleInputEntry> entries)
     {
         var baseEntry = entries.FirstOrDefault(e => e.Role != TitleRole.Update && e.Role != TitleRole.Dlc) ?? entries[0];
-
         string titleName = baseEntry.TitleName ?? baseEntry.DisplayName;
         string titleIdHex = baseEntry.TitleIdHex;
-
         int baseCount = entries.Count(e => e.Role != TitleRole.Update && e.Role != TitleRole.Dlc);
         int updateCount = entries.Count(e => e.Role == TitleRole.Update);
         int dlcCount = entries.Count(e => e.Role == TitleRole.Dlc);
-
         var parts = new List<string>();
 
         if (baseCount > 0) 
@@ -319,35 +316,32 @@ public sealed class RepackService()
 
             var source = sources[i];
             string? patchPath = repackEntries[i].PatchFolder;
-
             var codeShared = new List<WupFileEntry>();
-            var codePerFile = new List<WupFileEntry>();
-            WupFileEntry? preloadFile = null;
-
+            var codePerFile = new List<WupFileEntry>();            
             var metaXml = new List<WupFileEntry>();
             var metaBootGroup = new List<WupFileEntry>();
             var metaManual = new List<WupFileEntry>();
             var metaJpg = new List<WupFileEntry>();
             var metaRest = new List<WupFileEntry>();
-
             var contentFiles = new List<WupFileEntry>();
+            WupFileEntry? preloadFile = null;
+            WupFileEntry? metaBootMovie = null;
+            WupFileEntry? metaBootLogo = null;
 
             foreach (string relPath in source.EnumerateFiles())
             {
                 ct.ThrowIfCancellationRequested();
 
                 byte[] data;
-
                 string? patchFilePath = patchPath is null ? null : Path.Combine(patchPath, relPath.Replace('/', Path.DirectorySeparatorChar));
 
                 if (patchFilePath is not null && File.Exists(patchFilePath))
-                {
                     data = File.ReadAllBytes(patchFilePath);
-                }
                 else
                 {
                     using var stream = source.OpenRead(relPath);
                     using var ms = new MemoryStream();
+
                     stream.CopyTo(ms);
                     data = ms.ToArray();
                 }
@@ -369,9 +363,10 @@ public sealed class RepackService()
                 {
                     if (string.Equals(fileName, "meta.xml", StringComparison.OrdinalIgnoreCase))
                         metaXml.Add(entry);
-                    else if (string.Equals(fileName, "bootMovie.h264", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(fileName, "bootLogoTex.tga", StringComparison.OrdinalIgnoreCase))
-                        metaBootGroup.Add(entry);
+                    else if (string.Equals(fileName, "bootMovie.h264", StringComparison.OrdinalIgnoreCase))
+                        metaBootMovie = entry;
+                    else if (string.Equals(fileName, "bootLogoTex.tga", StringComparison.OrdinalIgnoreCase))
+                        metaBootLogo = entry;
                     else if (string.Equals(fileName, "Manual.bfma", StringComparison.OrdinalIgnoreCase))
                         metaManual.Add(entry);
                     else if (ext == ".jpg")
@@ -380,19 +375,23 @@ public sealed class RepackService()
                         metaRest.Add(entry);
                 }
                 else
-                {
                     contentFiles.Add(entry);
-                }
             }
 
             var groups = new List<WupContentGroup>();
 
-            if (codeShared.Count > 0) groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = codeShared });
-            foreach (var f in codePerFile) groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = [f] });
-            if (preloadFile is not null) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0000, Files = [preloadFile] });
+            if (codeShared.Count > 0) 
+                groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = codeShared });
+
+            foreach (var f in codePerFile) 
+                groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = [f] });
+
+            if (preloadFile is not null) 
+                groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0000, Files = [preloadFile] });
 
             if (metaXml.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaXml });
-            if (metaBootGroup.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaBootGroup });
+            if (metaBootMovie is not null) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = [metaBootMovie] });
+            if (metaBootLogo is not null) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = [metaBootLogo] });
             if (metaManual.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaManual });
             if (metaJpg.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaJpg });
             if (metaRest.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaRest });
@@ -402,7 +401,7 @@ public sealed class RepackService()
             ulong titleId = entries[i].GetRoleCorrectedTitleId();
             ushort titleVersion = (ushort)source.TitleVersion;
             var folderName = BuildWupFolderName(entries[i]);
-            string wupFolder = Utils.GetUniqueFilePath(Path.Combine(outputPath, $"{folderName}"));
+            string wupFolder = Utils.GetUniqueFolderPath(Path.Combine(outputPath, $"{folderName}"));
 
             log?.Invoke($"WUP로 패키징 중 ({i + 1}/{sources.Count}): {wupFolder}", LogLevel.Info);
 

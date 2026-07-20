@@ -50,6 +50,14 @@ public static class Utils
         return filePath;
     }
 
+    public static string GetUniqueFolderPath(string folderPath)
+    {
+        while (Directory.Exists(folderPath))
+            folderPath += "_";
+
+        return folderPath;
+    }
+
     public static async Task CopyStreamAsync(Stream src, Stream dst, Action<long>? onRead = null, CancellationToken ct = default)
     {
         const int bufferSize = 81920;

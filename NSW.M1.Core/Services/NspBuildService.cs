@@ -57,6 +57,16 @@ public static class NspBuildService
 
         var settingsList = StepBuildSettings(req, unpackResult, keySet, dirs, log);
 
+        if (req.OverrideTitleId.HasValue)
+        {
+            foreach (var s in settingsList)
+                s.TitleId = req.OverrideTitleId.Value + s.IdOffset;
+
+            unpackResult.TitleId = req.OverrideTitleId.Value;
+
+            log($"  Title ID 오버라이드: {req.OverrideTitleId.Value:x16}", LogLevel.Ok);
+        }
+
         if (req.TargetIdOffset.HasValue)
         {
             settingsList = [.. settingsList.Where(s => s.IdOffset == req.TargetIdOffset.Value)];
@@ -220,7 +230,7 @@ public static class NspBuildService
 
         foreach (var (idOffset, htmlDir) in unpackResult.HtmlDocDirs)
         {
-            if (!Directory.Exists(htmlDir) || Directory.GetFileSystemEntries(htmlDir).Length == 0) 
+            if (!Directory.Exists(htmlDir) || Directory.GetFileSystemEntries(htmlDir).Length == 0)
                 continue;
 
             var settings = settingsList.FirstOrDefault(s => s.IdOffset == idOffset) ?? settingsList[0];
@@ -241,7 +251,7 @@ public static class NspBuildService
 
         foreach (var (idOffset, legalDir) in unpackResult.LegalDirs)
         {
-            if (!Directory.Exists(legalDir) || Directory.GetFileSystemEntries(legalDir).Length == 0) 
+            if (!Directory.Exists(legalDir) || Directory.GetFileSystemEntries(legalDir).Length == 0)
                 continue;
 
             var settings = settingsList.FirstOrDefault(s => s.IdOffset == idOffset) ?? settingsList[0];
@@ -252,7 +262,7 @@ public static class NspBuildService
             var manualSettings = settings.WithRomfs(legalDir, LibHac.FsSystem.NcaHeader.ContentType.Manual);
             var currentNca = NcaGenerator.GenerateRomfsNca(manualSettings, "Manual", progress, ct);
 
-            if (currentNca == null) 
+            if (currentNca == null)
                 continue;
 
             settings.ManualNcaPaths.Add(currentNca);

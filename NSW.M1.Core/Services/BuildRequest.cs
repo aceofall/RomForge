@@ -19,5 +19,7 @@ public sealed record BuildRequest(string BaseFilePath, string UpdateFilePath, IR
 
     public byte? OverrideKeyGeneration { get; set; }
 
+    public ulong? OverrideTitleId { get; set; }
+
     public byte? TargetIdOffset { get; set; }
 }
