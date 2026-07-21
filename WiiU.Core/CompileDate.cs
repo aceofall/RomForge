@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace NUSPacker
+namespace WiiU.Core
 {
     public class CompileDate
     {

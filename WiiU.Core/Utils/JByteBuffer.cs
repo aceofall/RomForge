@@ -1,4 +1,4 @@
-namespace NUSPacker.Utils
+namespace WiiU.Core.Utils
 {
     /// <summary>
     /// Minimal re-implementation of java.nio.ByteBuffer's relevant subset, in BIG ENDIAN

@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using NUSPacker.Nuspackage.Crypto;
-using NUSPacker.Nuspackage.Packaging;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage.Packaging;
+using WiiU.Core.Utils;
 
-namespace NUSPacker
+namespace WiiU.Core
 {
     public class Starter
     {

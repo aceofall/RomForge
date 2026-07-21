@@ -1,10 +1,11 @@
 ﻿using System.Security.Cryptography;
-using NUSPacker;
-using NUSPacker.Nuspackage.Contents;
-using NUSPacker.Nuspackage.Crypto;
-using NUSPacker.Nuspackage.Packaging;
-using NUSPacker.Utils;
 using WiiU.Core.Models;
+using WiiU.Core.Nuspackage;
+using WiiU.Core.Nuspackage.Contents;
+using WiiU.Core.Nuspackage.Crypto;
+using WiiU.Core.Nuspackage.Fst;
+using WiiU.Core.Nuspackage.Packaging;
+using WiiU.Core.Utils;
 
 namespace WiiU.Core.Services;
 
@@ -15,11 +16,13 @@ namespace WiiU.Core.Services;
 /// NUSPacker.jar - diffed byte-for-byte against the real jar's output; matches exactly except for
 /// the two genuinely-random padding regions in title.tik).
 ///
-/// Deliberately does NOT do any custom content-grouping/tree-building. It writes the files to a
-/// scratch folder and calls NUSPackageFactory.CreateNewPackage() with ContentRules.GetCommonRules()
-/// - the exact same call the CLI tool (Starter.cs) makes, which is the part that was actually
-/// verified byte-identical against the real jar. The WupContentGroup list's Hashed/FstFlags fields
-/// are intentionally ignored; grouping is decided by the same regex rules the real tool uses.
+/// The FST tree is built entirely IN MEMORY - input bytes are never staged to disk. Grouping is
+/// decided by the same ContentRules regex rules the CLI tool uses (ContentRules.GetCommonRules),
+/// walked directly against the in-memory tree (ContentRulesService never touches the filesystem).
+///
+/// The only disk I/O that's unavoidable is the packing algorithm's own scratch ".dec" files (one
+/// per content, used while hashing/encrypting) and the final .app/.h3/title.* output - that part is
+/// intrinsic to how content hashing and encryption work and isn't "extra" I/O.
 /// </summary>
 public static class WupPacker
 {
@@ -34,16 +37,46 @@ public static class WupPacker
         Directory.CreateDirectory(outputFolder);
 
         string scratchRoot = Path.Combine(Path.GetTempPath(), "romforge_pack_" + Guid.NewGuid().ToString("N"));
-        string sourceTree = Path.Combine(scratchRoot, "src");
         string prevTmpDir = Settings.tmpDir;
         Settings.tmpDir = Path.Combine(scratchRoot, "tmp");
 
         try
         {
-            Directory.CreateDirectory(sourceTree);
             Directory.CreateDirectory(Settings.tmpDir);
 
             long totalBytes = 0;
+            foreach (var group in groups)
+                foreach (var file in group.Files)
+                    totalBytes += file.Length;
+
+            // ---- build the FST tree entirely in memory ----
+            var contents = new Contents();
+            var fst = new FST(contents);
+            FSTEntry root = fst.GetFSTEntries().GetRootEntry()!;
+            root.SetContent(contents.GetFSTContent());
+
+            var dirsByPath = new Dictionary<string, FSTEntry>(StringComparer.Ordinal) { [""] = root };
+            var seenFilePaths = new HashSet<string>(StringComparer.Ordinal);
+
+            FSTEntry GetOrCreateDir(string dirPath)
+            {
+                if (dirsByPath.TryGetValue(dirPath, out var existing))
+                    return existing;
+
+                int slash = dirPath.LastIndexOf('/');
+                string parentPath = slash < 0 ? "" : dirPath[..slash];
+                string name = slash < 0 ? dirPath : dirPath[(slash + 1)..];
+
+                FSTEntry parent = GetOrCreateDir(parentPath);
+                var dir = new FSTEntry(false);
+                dir.SetDir(true);
+                dir.SetFileName(name);
+                parent.AddChildren(dir);
+                dirsByPath[dirPath] = dir;
+                return dir;
+            }
+
+            byte[]? appXmlBytes = null;
 
             foreach (var group in groups)
             {
@@ -51,15 +84,34 @@ public static class WupPacker
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    string diskPath = Path.Combine(sourceTree, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-                    Directory.CreateDirectory(Path.GetDirectoryName(diskPath)!);
-                    File.WriteAllBytes(diskPath, file.Data);
-                    totalBytes += file.Data.LongLength;
+                    string relPath = file.RelativePath.Trim('/');
+
+                    if (!seenFilePaths.Add(relPath))
+                        throw new InvalidOperationException($"같은 경로가 두 번 등장했습니다 (대소문자까지 포함해서 동일함): {relPath}");
+
+                    if (string.Equals(relPath, "code/app.xml", StringComparison.Ordinal))
+                    {
+                        // app.xml is tiny (a few hundred bytes) - fine to read fully here, unlike
+                        // content files which can be huge and must stay stream-based end to end.
+                        using var s = file.OpenRead();
+                        using var ms = new MemoryStream();
+                        s.CopyTo(ms);
+                        appXmlBytes = ms.ToArray();
+                    }
+
+                    int lastSlash = relPath.LastIndexOf('/');
+                    string dirPath = lastSlash < 0 ? "" : relPath[..lastSlash];
+                    string leafName = lastSlash < 0 ? relPath : relPath[(lastSlash + 1)..];
+
+                    FSTEntry parentDir = GetOrCreateDir(dirPath);
+                    var entry = new FSTEntry(leafName, file.OpenRead, file.Length);
+                    parentDir.AddChildren(entry);
                 }
             }
 
-            // Same defaults Starter.cs uses on the command line, overridden by app.xml below if present -
-            // exactly mirroring what the CLI tool does by default (it parses app.xml unless told not to).
+            // Same defaults Starter.cs uses on the command line, overridden by app.xml below if
+            // present - mirrors what the CLI tool does by default (it parses app.xml unless told
+            // not to).
             var appInfo = new AppXMLInfo();
             appInfo.SetTitleID((long)titleId);
             appInfo.SetGroupID((short)((titleId >> 8) & 0xFFFF));
@@ -67,13 +119,13 @@ public static class WupPacker
             appInfo.SetTitleVersion((short)titleVersion);
             appInfo.SetAppType(unchecked((int)0x80000000));
 
-            string appXmlPath = Path.Combine(sourceTree, "code", "app.xml");
-            if (File.Exists(appXmlPath))
+            if (appXmlBytes != null)
             {
                 try
                 {
                     var parser = new XMLParser();
-                    parser.LoadDocument(appXmlPath);
+                    using var ms = new MemoryStream(appXmlBytes);
+                    parser.LoadDocument(ms);
                     appInfo = parser.GetAppXMLInfo();
                 }
                 catch
@@ -86,18 +138,19 @@ public static class WupPacker
             long parentTitleId = appInfo.GetTitleID() & ~0x0000000F00000000L;
 
             var rules = ContentRules.GetCommonRules(contentGroup, parentTitleId);
+            ContentRulesService.ApplyRules(root, contents, rules);
 
             byte[] titleKeyPlain = RandomNumberGenerator.GetBytes(16);
             var encryptionKey = new Key(titleKeyPlain);
             var encryptWithKey = new Key(Constants.WiiUCommonKey);
 
-            var config = new NusPackageConfiguration(sourceTree, appInfo, encryptionKey, encryptWithKey, rules);
+            ct.ThrowIfCancellationRequested();
 
-            NUSPackage nusPackage = NUSPackageFactory.CreateNewPackage(config);
+            NUSPackage nusPackage = NUSPackageFactory.CreatePackageFromBuiltTree(contents, fst, appInfo, encryptionKey, encryptWithKey);
 
-            // Each content is processed in two full passes (hash, then encrypt), so total "work"
-            // is roughly 2x the plain input size. Track how far each content has gotten in each
-            // phase so we can turn per-block callbacks into a single smoothly increasing total.
+            // Each content is processed in two full passes (hash, then encrypt), so total "work" is
+            // roughly 2x the plain input size. Track how far each content has gotten in each phase
+            // so per-block callbacks turn into one smoothly increasing total.
             var contentProgress = new Dictionary<Content, (long hash, long encrypt)>();
             long totalWork = totalBytes * 2;
             long doneWork = 0;
@@ -123,7 +176,7 @@ public static class WupPacker
                 contentProgress[content] = prev;
 
                 doneWork += delta;
-                long reportedBytes = Math.Min(doneWork / 2, totalBytes);
+                long reportedBytes = totalWork > 0 ? Math.Min(doneWork * totalBytes / totalWork, totalBytes) : totalBytes;
                 onProgress?.Invoke(reportedBytes, totalBytes, $"{phase} #{content.GetID():x8}");
             });
 

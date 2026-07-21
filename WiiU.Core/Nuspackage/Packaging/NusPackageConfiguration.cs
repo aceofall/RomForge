@@ -1,7 +1,7 @@
-using NUSPacker.Nuspackage.Crypto;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage.Crypto;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage.Packaging
+namespace WiiU.Core.Nuspackage.Packaging
 {
     public class NusPackageConfiguration
     {

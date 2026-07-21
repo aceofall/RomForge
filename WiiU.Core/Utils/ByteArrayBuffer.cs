@@ -1,4 +1,4 @@
-namespace NUSPacker.Utils
+namespace WiiU.Core.Utils
 {
     public class ByteArrayBuffer
     {

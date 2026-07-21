@@ -11,12 +11,12 @@ public sealed class WupTitleSource : ITitleSource
     private const int HashedBlockSize = 0x10000;
     private const int HashedHeaderSize = 0x400;
     private const int HashedDataSize = 0xFC00;
-        
+
     private readonly int _fstOffsetFactor;
     private readonly byte[] _titleKey;
     private readonly string _folder;
     private readonly List<WupContent> _contents;
-    private readonly List<FstEntry> _entries = [];    
+    private readonly List<FstEntry> _entries = [];
     private readonly Dictionary<int, byte[]> _rawContentCache = [];
     private readonly Dictionary<int, FileStream> _hashedStreams = [];
 
@@ -31,10 +31,10 @@ public sealed class WupTitleSource : ITitleSource
         string tmdPath = Path.Combine(folderPath, "title.tmd");
         string tikPath = Path.Combine(folderPath, "title.tik");
 
-        if (!File.Exists(tmdPath)) 
+        if (!File.Exists(tmdPath))
             throw new FileNotFoundException("title.tmd를 찾을 수 없습니다.", tmdPath);
 
-        if (!File.Exists(tikPath)) 
+        if (!File.Exists(tikPath))
             throw new FileNotFoundException("title.tik를 찾을 수 없습니다.", tikPath);
 
         var tmdBytes = File.ReadAllBytes(tmdPath);
@@ -189,18 +189,67 @@ public sealed class WupTitleSource : ITitleSource
         if (entry.IsSharedWithBase)
             throw new InvalidOperationException($"'{path}'는 본편과 동일해서 이 업데이트 안에는 실제 데이터가 없습니다. 본편 쪽에서 읽어야 합니다.");
 
-        var buffer = new byte[entry.FileSize];
+        return new FstEntryStream(this, entry, path);
+    }
 
-        try
+    /// <summary>
+    /// Lazily reads an FstEntry's bytes on demand instead of eagerly allocating a single
+    /// entry.FileSize-sized byte[] up front (the previous OpenRead did this, which both wasted
+    /// memory for every read and outright crashed - via an OverflowException converting the size
+    /// to an array length - for any content file over ~2GB, since entry.FileSize is a uint that no
+    /// longer fits as a single array's length past that point).
+    /// </summary>
+    private sealed class FstEntryStream(WupTitleSource owner, FstEntry entry, string path) : Stream
+    {
+        private long _position;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => true;
+        public override bool CanWrite => false;
+        public override long Length => entry.FileSize;
+
+        public override long Position
         {
-            ReadFileEntry(entry, 0, buffer, 0, buffer.Length);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidDataException($"'{path}' 읽기 실패 (clusterIndex={entry.ClusterIndex}, offsetField={entry.FileOffsetField}, " + $"byteOffset={(long)entry.FileOffsetField * _fstOffsetFactor}, size={entry.FileSize}): {ex.Message}", ex);
+            get => _position;
+            set => _position = value;
         }
 
-        return new MemoryStream(buffer, writable: false);
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            long remaining = entry.FileSize - _position;
+            if (remaining <= 0)
+                return 0;
+
+            int toRead = (int)Math.Min(count, remaining);
+
+            try
+            {
+                owner.ReadFileEntry(entry, _position, buffer, offset, toRead);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException($"'{path}' 읽기 실패 (clusterIndex={entry.ClusterIndex}, offsetField={entry.FileOffsetField}, " + $"byteOffset={(long)entry.FileOffsetField * owner._fstOffsetFactor}, size={entry.FileSize}): {ex.Message}", ex);
+            }
+
+            _position += toRead;
+            return toRead;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            _position = origin switch
+            {
+                SeekOrigin.Begin => offset,
+                SeekOrigin.Current => _position + offset,
+                SeekOrigin.End => entry.FileSize + offset,
+                _ => throw new ArgumentOutOfRangeException(nameof(origin)),
+            };
+            return _position;
+        }
+
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     private FstEntry? FindEntry(string path)
@@ -226,7 +275,7 @@ public sealed class WupTitleSource : ITitleSource
                 idx = _entries[idx].IsDirectory ? _entries[idx].DirEndIndex : idx + 1;
             }
 
-            if (found is null) 
+            if (found is null)
                 return null;
 
             currentIndex = found.Value;

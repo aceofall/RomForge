@@ -1,8 +1,8 @@
 using System;
-using NUSPacker.Nuspackage.Interfaces;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage.Interfaces;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage.Contents
+namespace WiiU.Core.Nuspackage.Contents
 {
     public class ContentInfos : IHasData
     {

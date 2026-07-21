@@ -1,11 +1,10 @@
 using System;
 using System.Text;
-using NUSPacker.Nuspackage.Contents;
-using NUSPacker.Nuspackage.Fst;
-using NUSPacker.Nuspackage.Interfaces;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage.Fst;
+using WiiU.Core.Nuspackage.Interfaces;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage
+namespace WiiU.Core.Nuspackage
 {
     public class FST : IHasData
     {

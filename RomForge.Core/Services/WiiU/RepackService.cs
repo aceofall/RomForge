@@ -33,7 +33,7 @@ public sealed class RepackService()
             }
             finally
             {
-                foreach (var s in sources) 
+                foreach (var s in sources)
                     s.Dispose();
             }
         }, ct);
@@ -170,7 +170,7 @@ public sealed class RepackService()
         var sources = UnpackService.OpenAll(entry.FilePath, keysTxtPath);
 
         for (int i = 0; i < sources.Count; i++)
-            if (i != entry.SubTitleIndex) 
+            if (i != entry.SubTitleIndex)
                 sources[i].Dispose();
 
         return sources[entry.SubTitleIndex];
@@ -291,13 +291,13 @@ public sealed class RepackService()
         int dlcCount = entries.Count(e => e.Role == TitleRole.Dlc);
         var parts = new List<string>();
 
-        if (baseCount > 0) 
+        if (baseCount > 0)
             parts.Add(baseCount > 1 ? $"{baseCount}B" : "B");
 
-        if (updateCount > 0) 
+        if (updateCount > 0)
             parts.Add(updateCount > 1 ? $"{updateCount}U" : "U");
 
-        if (dlcCount > 0) 
+        if (dlcCount > 0)
             parts.Add(dlcCount > 1 ? $"{dlcCount}D" : "D");
 
         string comp = string.Join("+", parts);
@@ -317,7 +317,7 @@ public sealed class RepackService()
             var source = sources[i];
             string? patchPath = repackEntries[i].PatchFolder;
             var codeShared = new List<WupFileEntry>();
-            var codePerFile = new List<WupFileEntry>();            
+            var codePerFile = new List<WupFileEntry>();
             var metaXml = new List<WupFileEntry>();
             var metaBootGroup = new List<WupFileEntry>();
             var metaManual = new List<WupFileEntry>();
@@ -332,21 +332,35 @@ public sealed class RepackService()
             {
                 ct.ThrowIfCancellationRequested();
 
-                byte[] data;
+                // Build a lazy, re-openable stream source for this file's bytes instead of reading
+                // it fully into a byte[] here. Content files can be hundreds of MB to several GB;
+                // WupPacker streams through each file exactly once during packing, so there's no
+                // need (and real cost, in both time and memory) to materialize it up front.
+                //
+                // ITitleSource ("source") stays alive for the duration of this method (disposed by
+                // the caller's finally block in RepackAsync), so it's safe for the closures below to
+                // keep calling into it lazily during WupPacker.Pack(), which runs synchronously.
+                string capturedRelPath = relPath;
+                ITitleSource capturedSource = source;
+
+                Func<Stream> openRead;
+                long length;
+
                 string? patchFilePath = patchPath is null ? null : Path.Combine(patchPath, relPath.Replace('/', Path.DirectorySeparatorChar));
 
                 if (patchFilePath is not null && File.Exists(patchFilePath))
-                    data = File.ReadAllBytes(patchFilePath);
+                {
+                    string capturedPatchPath = patchFilePath;
+                    openRead = () => File.OpenRead(capturedPatchPath);
+                    length = new FileInfo(patchFilePath).Length;
+                }
                 else
                 {
-                    using var stream = source.OpenRead(relPath);
-                    using var ms = new MemoryStream();
-
-                    stream.CopyTo(ms);
-                    data = ms.ToArray();
+                    openRead = () => capturedSource.OpenRead(capturedRelPath);
+                    length = capturedSource.GetFileSize(capturedRelPath);
                 }
 
-                var entry = new WupFileEntry(relPath, data);
+                var entry = new WupFileEntry(relPath, openRead, length);
                 string fileName = Path.GetFileName(relPath);
                 string ext = Path.GetExtension(relPath).ToLowerInvariant();
 
@@ -380,13 +394,13 @@ public sealed class RepackService()
 
             var groups = new List<WupContentGroup>();
 
-            if (codeShared.Count > 0) 
+            if (codeShared.Count > 0)
                 groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = codeShared });
 
-            foreach (var f in codePerFile) 
+            foreach (var f in codePerFile)
                 groups.Add(new WupContentGroup { Hashed = false, FstFlags = 0x0000, Files = [f] });
 
-            if (preloadFile is not null) 
+            if (preloadFile is not null)
                 groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0000, Files = [preloadFile] });
 
             if (metaXml.Count > 0) groups.Add(new WupContentGroup { Hashed = true, FstFlags = 0x0040, Files = metaXml });

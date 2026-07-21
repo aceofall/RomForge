@@ -1,4 +1,4 @@
-namespace NUSPacker.Nuspackage.Interfaces
+namespace WiiU.Core.Nuspackage.Interfaces
 {
     /// <summary>
     /// A interface for the serialized data

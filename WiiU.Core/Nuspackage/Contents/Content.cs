@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using NUSPacker.Nuspackage.Crypto;
-using NUSPacker.Nuspackage.Fst;
-using NUSPacker.Nuspackage.Interfaces;
-using NUSPacker.Nuspackage.Packaging;
-using NUSPacker.Utils;
+using WiiU.Core;
+using WiiU.Core.Nuspackage.Crypto;
+using WiiU.Core.Nuspackage.Fst;
+using WiiU.Core.Nuspackage.Interfaces;
+using WiiU.Core.Nuspackage.Packaging;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage.Contents
+namespace WiiU.Core.Nuspackage.Contents
 {
     /// <summary>
     /// Represents a content used in a package.

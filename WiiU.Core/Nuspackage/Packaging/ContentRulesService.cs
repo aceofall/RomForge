@@ -1,10 +1,10 @@
 using System;
 using System.Text.RegularExpressions;
-using NUSPacker.Nuspackage.Contents;
-using NUSPacker.Nuspackage.Fst;
-using NUSPacker.Nuspackage.Interfaces;
+using WiiU.Core.Nuspackage.Contents;
+using WiiU.Core.Nuspackage.Fst;
+using WiiU.Core.Nuspackage.Interfaces;
 
-namespace NUSPacker.Nuspackage.Packaging
+namespace WiiU.Core.Nuspackage.Packaging
 {
     public static class ContentRulesService
     {

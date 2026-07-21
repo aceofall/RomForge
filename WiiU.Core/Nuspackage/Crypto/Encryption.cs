@@ -1,10 +1,11 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
-using NUSPacker.Nuspackage.Contents;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage;
+using WiiU.Core.Nuspackage.Contents;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage.Crypto
+namespace WiiU.Core.Nuspackage.Crypto
 {
     public class Encryption
     {
@@ -41,7 +42,7 @@ namespace NUSPacker.Nuspackage.Crypto
         }
 
         // TODO: remove hardcoded output dir
-        public void EncryptFileWithPadding(NUSPacker.Nuspackage.FST fst, string output_filename, short contentID, int BLOCKSIZE)
+        public void EncryptFileWithPadding(FST fst, string output_filename, short contentID, int BLOCKSIZE)
         {
             using Stream in_ = new MemoryStream(fst.GetAsData());
             using FileStream out_ = new FileStream(output_filename, FileMode.Create, FileAccess.Write);

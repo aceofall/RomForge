@@ -1,6 +1,6 @@
-using NUSPacker.Utils;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage
+namespace WiiU.Core.Nuspackage
 {
     public static class Cert
     {

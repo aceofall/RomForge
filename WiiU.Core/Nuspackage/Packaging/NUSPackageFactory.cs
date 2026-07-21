@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.IO;
-using NUSPacker.Nuspackage.Contents;
-using NUSPacker.Nuspackage.Crypto;
-using NUSPacker.Nuspackage.Fst;
-using NUSPacker.Utils;
+using WiiU.Core.Nuspackage;
+using WiiU.Core.Nuspackage.Contents;
+using WiiU.Core.Nuspackage.Crypto;
+using WiiU.Core.Nuspackage.Fst;
+using WiiU.Core.Utils;
 
-namespace NUSPacker.Nuspackage.Packaging
+namespace WiiU.Core.Nuspackage.Packaging
 {
     public static class NUSPackageFactory
     {
