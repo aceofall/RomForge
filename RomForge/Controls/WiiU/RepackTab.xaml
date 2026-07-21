@@ -6,8 +6,7 @@
              xmlns:vm="clr-namespace:RomForge.ViewModels.WiiU"
              xmlns:core="clr-namespace:NSW.WPF.UI;assembly=NSW.WPF"
              mc:Ignorable="d" 
-             d:DesignHeight="640" d:DesignWidth="800"
-             AllowDrop="True" DragEnter="Root_DragEnter" DragOver="Root_DragEnter" Drop="Root_Drop">
+             d:DesignHeight="640" d:DesignWidth="800">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -27,7 +26,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid Grid.Column="0">
-                    <ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Background="Transparent" BorderThickness="0" Margin="5" KeyUp="LvFiles_KeyUp" ContextMenuOpening="LvFiles_ContextMenuOpening">
+                    <ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Background="Transparent" BorderThickness="0" Margin="5" KeyUp="LvFiles_KeyUp" ContextMenuOpening="LvFiles_ContextMenuOpening" AllowDrop="True" DragEnter="Root_DragEnter" DragOver="Root_DragEnter" Drop="Root_Drop">
                         <ListView.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="폴더 열기" Click="MenuItem_OpenFolder_Click">
@@ -67,7 +66,7 @@
                                                     <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
                                                 </Border>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding DisplayName}" Foreground="#E8E8F0" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="200" ToolTip="{Binding DisplayName}"/>
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="#E8E8F0" FontSize="12" FontWeight="SemiBold" ToolTip="{Binding DisplayName}"/>
                                                     <TextBlock Text="{Binding TitleIdVersionDisplay}" Foreground="#8888A8" FontSize="11" Margin="0,2,0,0"/>
                                                 </StackPanel>
                                             </StackPanel>

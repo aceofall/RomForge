@@ -14,14 +14,13 @@ using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace RomForge.ViewModels.Switch
 {
     public class ConvertSaturnMainViewModel : ToolTabViewModel
     {
         private string _gameTitle = string.Empty;
-        private string _publisher = string.Empty;
+        private string _publisher = "SEGA";
         private string _gameId = string.Empty;
         private string _gameVersion = string.Empty;
 
@@ -30,6 +29,7 @@ namespace RomForge.ViewModels.Switch
 
         private string _cuePath = string.Empty;
         private string _nspPath = string.Empty;
+        private string _workPath = string.Empty;
         private string _coverImagePath = string.Empty;
         private ImageSource? _coverImageSource;        
         
@@ -71,6 +71,12 @@ namespace RomForge.ViewModels.Switch
             set { _nspPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(NspHintVisibility)); }
         }
 
+        public string WorkPath
+        {
+            get => _workPath;
+            set { _workPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(WorkHintVisibility)); }
+        }
+
         public string CoverImagePath
         {
             get => _coverImagePath;
@@ -95,23 +101,36 @@ namespace RomForge.ViewModels.Switch
         }
 
         public bool IsConverting { get => _isConverting; set { _isConverting = value; OnPropertyChanged(); } }
+
         public string ProgressLabel { get => _progressLabel; set { _progressLabel = value; OnPropertyChanged(); } }
+
         public string ProgressPercent { get => _progressPercent; set { _progressPercent = value; OnPropertyChanged(); } }
+
         public string ProgressSpeed { get => _progressSpeed; set { _progressSpeed = value; OnPropertyChanged(); } }
+
         public string ProgressTime { get => _progressTime; set { _progressTime = value; OnPropertyChanged(); } }
+
         public double ProgressPct { get => _progressPct; set { _progressPct = value; OnPropertyChanged(); } }
 
         public Visibility CueHintVisibility => string.IsNullOrEmpty(CuePath) ? Visibility.Visible : Visibility.Collapsed;
+
         public Visibility NspHintVisibility => string.IsNullOrEmpty(NspPath) ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility WorkHintVisibility => string.IsNullOrEmpty(WorkPath) ? Visibility.Visible : Visibility.Collapsed;
+
         public Visibility CoverHintVisibility => string.IsNullOrEmpty(CoverImagePath) ? Visibility.Visible : Visibility.Collapsed;
 
         public ICommand BrowseCueCommand { get; }
+
         public ICommand BrowseNspCommand { get; }
+
+        public ICommand BrowseWorkCommand { get; }
 
         public ConvertSaturnMainViewModel()
         {
             BrowseCueCommand = new RelayCommand(_ => BrowseCue());
             BrowseNspCommand = new RelayCommand(_ => BrowseNsp());
+            BrowseWorkCommand = new RelayCommand(_ => BrowseWork());
         }
 
         private void BrowseCue()
@@ -124,6 +143,14 @@ namespace RomForge.ViewModels.Switch
         {
             var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "NSP/NSZ 파일|*.nsp;*.nsz" };
             if (dlg.ShowDialog() == true) NspPath = dlg.FileName;
+        }
+
+        private async Task BrowseWork()
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "작업 폴더 선택" };
+
+            if (dlg.ShowDialog() == true)
+                WorkPath = dlg.FolderName;
         }
 
         private async Task ParseSaturnDataAsync(string cuePath)
@@ -227,87 +254,95 @@ namespace RomForge.ViewModels.Switch
 
         private async Task RunConversionProcess(CancellationToken token)
         {
-            string outputDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
-            string unpackedDir = Path.Combine(outputDir, "unpacked");
+            if(!Directory.Exists(WorkPath))
+                WorkPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
+
+            string unpackedDir = Path.Combine(WorkPath, "unpacked");
             string romfsDir = Path.Combine(unpackedDir, "romfs");
-            Directory.CreateDirectory(outputDir);
 
-            var progress = new Progress<(int pct, string label)>(p =>
+            try
             {
-                ProgressPct = p.pct >= 0 ? p.pct : 0;
-                ProgressPercent = ProgressPct.ToString("0.00") + "%";
-                ProgressLabel = p.pct >= 0 ? $"{p.label} ({p.pct}%)" : p.label;
-                ProgressTime = $"{_totalSw.Elapsed:mm\\:ss} 경과";
-            });
+                var progress = new Progress<(int pct, string label)>(p =>
+                {
+                    ProgressPct = p.pct >= 0 ? p.pct : 0;
+                    ProgressPercent = ProgressPct.ToString("0.00") + "%";
+                    ProgressLabel = p.pct >= 0 ? $"{p.label} ({p.pct}%)" : p.label;
+                    ProgressTime = $"{_totalSw.Elapsed:mm\\:ss} 경과";
+                });
 
-            Log("원본 NSP 언팩 중...");
-            var unpackReq = new BuildRequest(NspPath, string.Empty, [], string.Empty, outputDir);
-            await NspBuildService.Run(unpackReq, BuildMode.UnpackOnly, progress, (msg, lvl) => Log(msg), token);
+                Log("원본 NSP 언팩 중...");
+                var unpackReq = new BuildRequest(NspPath, string.Empty, [], string.Empty, WorkPath);
+                await NspBuildService.Run(unpackReq, BuildMode.UnpackOnly, progress, (msg, lvl) => Log(msg), token);
 
-            token.ThrowIfCancellationRequested();
+                token.ThrowIfCancellationRequested();
 
-            string? existingCuePath = (Directory.Exists(romfsDir)
-                ? Directory.GetFiles(romfsDir, "*.cue", SearchOption.AllDirectories).FirstOrDefault()
-                : null) ?? throw new FileNotFoundException($"romfs 안에서 cue 파일을 찾을 수 없습니다.");
+                string? existingCuePath = (Directory.Exists(romfsDir)
+                    ? Directory.GetFiles(romfsDir, "*.cue", SearchOption.AllDirectories).FirstOrDefault()
+                    : null) ?? throw new FileNotFoundException($"romfs 안에서 cue 파일을 찾을 수 없습니다.");
 
-            string targetDir = Path.GetDirectoryName(existingCuePath)!;
-            var oldBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(existingCuePath);
+                string targetDir = Path.GetDirectoryName(existingCuePath)!;
+                var oldBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(existingCuePath);
 
-            foreach (var bin in oldBins)
-            {
-                if (File.Exists(bin)) File.Delete(bin);
+                foreach (var bin in oldBins)
+                {
+                    if (File.Exists(bin)) File.Delete(bin);
+                }
+                File.Delete(existingCuePath);
+
+                var newBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(CuePath);
+                if (newBins.Count == 0) throw new FileNotFoundException("입력한 CUE에서 참조하는 BIN 파일을 찾을 수 없습니다.");
+
+                foreach (var bin in newBins)
+                {
+                    if (!File.Exists(bin)) throw new FileNotFoundException($"BIN 파일이 존재하지 않습니다: {bin}");
+                    await CopyFileAsync(bin, Path.Combine(targetDir, Path.GetFileName(bin)), token);
+                }
+
+                string cueFileName = Path.GetFileName(existingCuePath);
+                IniHandler ini = new($"{targetDir}\\{Path.GetFileNameWithoutExtension(cueFileName)}_Switch.ini");
+                await ini.LoadAsync();
+                ini.SetValue("Screen", "WideScreen", WideScreen ? "1" : "0");
+                ini.SetValue("Screen", "Scanline", Scanline ? "1" : "0");
+                ini.SetValue("Screen", "ScanlineRatio", "100");
+                ini.SetValue("Sound", "Volume", "1.00");
+                await ini.SaveAsync();
+
+                await CopyFileAsync(CuePath, Path.Combine(targetDir, cueFileName), token);
+
+                uint crc = Crc32Helper.ComputeFile(newBins[0]);
+                string titleIdStr = Crc32Helper.BuildTitleId(crc);
+                var metadata = MetadataService.GetGameMetadataFromUnpacked(unpackedDir);
+                var koLang = metadata?.Languages.FirstOrDefault(l => l.Language == ApplicationControlProperty.Language.Korean)
+                             ?? metadata?.Languages.First();
+
+                if (koLang != null)
+                {
+                    koLang.TitleName = GameTitle;
+                    koLang.Publisher = Publisher;
+                    koLang.Flag = true;
+                    if (!string.IsNullOrEmpty(CoverImagePath) && File.Exists(CoverImagePath))
+                        koLang.LogoData = CoverImagePath.ToImageBytes();
+                }
+
+                token.ThrowIfCancellationRequested();
+
+                Log("리팩 중...");
+                var rebuildReq = new BuildRequest(string.Empty, string.Empty, [], string.Empty, WorkPath)
+                {
+                    UserMetadata = metadata,
+                    Language = ApplicationControlProperty.Language.None,
+                    OverrideTitleId = ulong.Parse(titleIdStr, System.Globalization.NumberStyles.HexNumber)
+                };
+
+                string finalNspPath = await NspBuildService.Run(rebuildReq, BuildMode.RebuildOnly, progress, (msg, lvl) => Log(msg), token);
+                string finalRenamedPath = RenameOutputFile(finalNspPath, GameTitle, titleIdStr);
+
+                Path.GetDirectoryName(finalRenamedPath)!.OpenFolder();
             }
-            File.Delete(existingCuePath);
-
-            var newBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(CuePath);
-            if (newBins.Count == 0) throw new FileNotFoundException("입력한 CUE에서 참조하는 BIN 파일을 찾을 수 없습니다.");
-
-            foreach (var bin in newBins)
+            finally
             {
-                if (!File.Exists(bin)) throw new FileNotFoundException($"BIN 파일이 존재하지 않습니다: {bin}");
-                await CopyFileAsync(bin, Path.Combine(targetDir, Path.GetFileName(bin)), token);
+                Directory.Delete(unpackedDir, true);
             }
-
-            string cueFileName = Path.GetFileName(existingCuePath);
-            IniHandler ini = new($"{targetDir}\\{Path.GetFileNameWithoutExtension(cueFileName)}_Switch.ini");
-            await ini.LoadAsync();
-            ini.SetValue("Screen", "WideScreen", WideScreen ? "1" : "0");
-            ini.SetValue("Screen", "Scanline", Scanline ? "1" : "0");
-            ini.SetValue("Screen", "ScanlineRatio", "100");
-            ini.SetValue("Sound", "Volume", "1.00");
-            await ini.SaveAsync();
-
-            await CopyFileAsync(CuePath, Path.Combine(targetDir, cueFileName), token);
-
-            uint crc = Crc32Helper.ComputeFile(newBins[0]);
-            string titleIdStr = Crc32Helper.BuildTitleId(crc);
-            var metadata = MetadataService.GetGameMetadataFromUnpacked(unpackedDir);
-            var koLang = metadata?.Languages.FirstOrDefault(l => l.Language == ApplicationControlProperty.Language.Korean)
-                         ?? metadata?.Languages.First();
-
-            if (koLang != null)
-            {
-                koLang.TitleName = GameTitle;
-                koLang.Publisher = Publisher;
-                koLang.Flag = true;
-                if (!string.IsNullOrEmpty(CoverImagePath) && File.Exists(CoverImagePath))
-                    koLang.LogoData = CoverImagePath.ToImageBytes();
-            }
-
-            token.ThrowIfCancellationRequested();
-
-            Log("리팩 중...");
-            var rebuildReq = new BuildRequest(string.Empty, string.Empty, [], string.Empty, outputDir)
-            {
-                UserMetadata = metadata,
-                Language = ApplicationControlProperty.Language.None,
-                OverrideTitleId = ulong.Parse(titleIdStr, System.Globalization.NumberStyles.HexNumber)
-            };
-
-            string finalNspPath = await NspBuildService.Run(rebuildReq, BuildMode.RebuildOnly, progress, (msg, lvl) => Log(msg), token);
-            string finalRenamedPath = RenameOutputFile(finalNspPath, GameTitle, titleIdStr);
-
-            Path.GetDirectoryName(finalRenamedPath)!.OpenFolder();
         }
 
         private static async Task CopyFileAsync(string sourcePath, string destPath, CancellationToken ct)
