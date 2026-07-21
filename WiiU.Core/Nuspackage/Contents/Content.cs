@@ -333,12 +333,15 @@ namespace NUSPacker.Nuspackage.Contents
             return ID == other_.ID;
         }
 
-        public override int GetHashCode()
-        {
-            // The original Java class overrides equals() by ID but (like the original) does not
-            // rely on hashCode()-sensitive collections across different Contents collections;
-            // basing it on ID keeps behavior consistent (and safe) for use as a Dictionary key.
-            return ID;
-        }
+        // NOTE: deliberately NOT overriding GetHashCode() here (same as the original Java class,
+        // which overrides equals() but not hashCode() either). NUSPackageFactory keys static
+        // Dictionaries by Content instances; if GetHashCode() were ID-based, Content objects from
+        // two DIFFERENT packages built in the same process (e.g. packing title A, then title B) but
+        // sharing the same numeric ID (IDs restart at 0 per package) would hash-collide and be
+        // treated as "the same" content by Dictionary lookups - silently reusing a stale
+        // package/encryption key from the earlier package. Falling back to the inherited
+        // identity-based GetHashCode() keeps every Content instance's bucket unique regardless of ID,
+        // which is what every real call site in this codebase actually relies on (they always look
+        // up using the very same object reference that was inserted).
     }
 }

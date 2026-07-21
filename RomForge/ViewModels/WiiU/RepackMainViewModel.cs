@@ -186,9 +186,9 @@ public class RepackMainViewModel : ToolTabViewModel
         {
             if (Directory.Exists(path))
             {
-                if (!WupTitleSource.LooksLikeWupFolder(path))
+                if (!LooksLikeSupportedFolder(path))
                 {
-                    Log($"'{Path.GetFileName(path)}'는 WUP 폴더가 아니라서 자동 추가할 수 없습니다. 언팩 → 패치 → 리빌드 흐름을 이용해주세요.", LogLevel.Error);
+                    Log($"'{Path.GetFileName(path)}'는 WUP 폴더나 로드라인(code/content/meta) 폴더가 아니라서 자동 추가할 수 없습니다. 언팩 → 패치 → 리빌드 흐름을 이용해주세요.", LogLevel.Error);
                     return;
                 }
 
@@ -225,6 +225,12 @@ public class RepackMainViewModel : ToolTabViewModel
             Log($"'{path}' 추가 실패: {ex.Message}", LogLevel.Error);
         }
     }
+
+    private static bool LooksLikeSupportedFolder(string path) =>
+        WupTitleSource.LooksLikeWupFolder(path) ||
+        (Directory.Exists(Path.Combine(path, "code")) &&
+         Directory.Exists(Path.Combine(path, "content")) &&
+         Directory.Exists(Path.Combine(path, "meta")));
 
     private void RemoveSelected()
     {
@@ -399,21 +405,7 @@ public class RepackMainViewModel : ToolTabViewModel
         });
     }
 
-    private void Log(string msg, LogLevel level = LogLevel.Info) =>
-        Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
-
-    private async Task BrowsePatchForSelected()
-    {
-        if (SelectedEntry is null)
-            return;
-
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{SelectedEntry.TitleName}에 적용할 한글패치 폴더 선택" };
-
-        if (dlg.ShowDialog() == true)
-            SelectedEntry.PatchPath = dlg.FolderName;
-
-        await Task.CompletedTask;
-    }
+    private void Log(string msg, LogLevel level = LogLevel.Info) => Application.Current.Dispatcher.Invoke(() => LogEntries.Add(new LogEntry { Message = msg, Level = level }));
 
     private async Task BrowseOutput()
     {

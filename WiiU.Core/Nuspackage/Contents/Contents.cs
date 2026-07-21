@@ -154,12 +154,23 @@ namespace NUSPacker.Nuspackage.Contents
         /// </summary>
         public void PackContents(string outputDir)
         {
+            PackContents(outputDir, null);
+        }
+
+        /// <param name="onContentPacked">
+        /// Optional: invoked right after each non-FST Content finishes packing (its
+        /// GetEncryptedFileSize() is already set at that point). Purely observational - does not
+        /// change what gets packed or how.
+        /// </param>
+        public void PackContents(string outputDir, System.Action<Content>? onContentPacked)
+        {
             // At first pack all non FST contents.
             foreach (Content c in GetContents())
             {
                 if (!c.Equals(GetFSTContent()))
                 {
                     c.PackContentToFile(outputDir);
+                    onContentPacked?.Invoke(c);
                 }
             }
 

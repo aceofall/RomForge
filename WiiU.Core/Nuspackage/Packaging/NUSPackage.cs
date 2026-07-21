@@ -48,6 +48,11 @@ namespace NUSPacker.Nuspackage.Packaging
 
         public void PackContents(string outputDir)
         {
+            PackContents(outputDir, null);
+        }
+
+        public void PackContents(string outputDir, System.Action<Content>? onContentPacked)
+        {
             if (outputDir != null && outputDir.Length != 0)
             {
                 SetOutputdir(outputDir);
@@ -56,7 +61,7 @@ namespace NUSPacker.Nuspackage.Packaging
             // Do this before creating the title.tmd.
             try
             {
-                GetFST().GetContents().PackContents(outputDir!);
+                GetFST().GetContents().PackContents(outputDir!, onContentPacked);
             }
             catch (IOException e1)
             {

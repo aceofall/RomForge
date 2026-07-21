@@ -19,7 +19,7 @@
         </Grid.RowDefinitions>
 
         <!-- 목록 -->
-        <Border Grid.Row="0" Margin="5,0,5,10" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8">
+        <Border Grid.Row="0" Margin="5,0,5,10" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" IsEnabled="{Binding IsIdle}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
