@@ -98,6 +98,12 @@ namespace RomForge.Controls.WiiU
 
         private void BtnClear_Click(object sender, RoutedEventArgs e) => ViewModel?.Entries.Clear();
 
+        private void BtnRemovePatch_Click(object sender, RoutedEventArgs e)
+        {
+            if(ViewModel?.SelectedEntry != null)
+                ViewModel.SelectedEntry.PatchPath = null;
+        }
+
         private void LvFiles_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             var selected = ViewModel?.SelectedEntry;

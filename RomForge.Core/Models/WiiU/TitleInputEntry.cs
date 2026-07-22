@@ -47,7 +47,13 @@ public class TitleInputEntry(string filePath, string titleIdHex) : ViewModelBase
     public string? PatchPath
     {
         get => _patchPath;
-        set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchDisplay)); }
+        set 
+        { 
+            _patchPath = value; 
+            OnPropertyChanged(); 
+            OnPropertyChanged(nameof(PatchDisplay));
+            OnPropertyChanged(nameof(PatchIconSource));
+        }
     }
 
     public string DisplayName => string.IsNullOrWhiteSpace(TitleName) ? FilePath : TitleName!;
@@ -55,6 +61,10 @@ public class TitleInputEntry(string filePath, string titleIdHex) : ViewModelBase
     public string TitleIdVersionDisplay => $"{TitleIdHex}_v{TitleVersion}";
 
     public string PatchDisplay => string.IsNullOrEmpty(PatchPath) ? "(없음)" : PatchPath;
+
+    public string PatchIconSource => string.IsNullOrEmpty(PatchPath)
+        ? "/Assets/Images/NoPatch.png"
+        : "/Assets/Images/Patch.png";
 
     public static TitleRole GuessRole(string titleIdHex)
     {

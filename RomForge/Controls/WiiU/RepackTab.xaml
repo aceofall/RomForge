@@ -35,6 +35,12 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
+                                <MenuItem Header="한글패치 취소" Click="BtnRemovePatch_Click">
+                                    <MenuItem.Icon>
+                                        <Image Source="/Assets/Images/Cancel.png" Width="20" Height="20"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
                                 <MenuItem Header="선택 삭제" Click="BtnRemove_Click">
                                     <MenuItem.Icon>
                                         <Image Source="/Assets/Images/Delete.png" Width="20" Height="20"/>
@@ -79,6 +85,8 @@
                                             <Button Width="32" Height="32" Padding="0" ToolTip="{Binding PatchDisplay}" Command="{Binding DataContext.SetPatchCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource PatchButton}">
+                                                        <Setter Property="Background" Value="#3A3A40"/>
+                                                        <Setter Property="BorderBrush" Value="#5A5A62"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding PatchPath}" Value="{x:Null}">
                                                                 <Setter Property="Background" Value="#3A3A40"/>
@@ -87,7 +95,7 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Button.Style>
-                                                <Image Source="/Assets/Images/Patch.png" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                <Image Source="{Binding PatchIconSource}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
                                             </Button>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
@@ -198,34 +206,9 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <core:IconButton Grid.Column="0"
-                             DefaultText="언팩"
-                             DefaultIcon="/Assets/Images/Unpack.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsUnpackRunning}"
-                             IsEnabled="{Binding UnpackEnabled}"
-                             Click="BtnUnpack_Click"/>
-
-            <core:IconButton Grid.Column="1"
-                             Margin="5,0,0,0"
-                             DefaultText="리팩 (폴더 기반)"
-                             DefaultIcon="/Assets/Images/Repack.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsRebuildRunning}"
-                             IsEnabled="{Binding RebuildEnabled}"
-                             Click="BtnRebuild_Click"/>
-
-            <core:IconButton Grid.Column="2"
-                             Margin="5,0,5,0"
-                             DefaultText="언팩 + 리팩 (Full)"
-                             DefaultIcon="/Assets/Images/Run.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsFullRunning}"
-                             IsEnabled="{Binding StartEnabled}"
-                             Click="BtnStart_Click"/>
+            <core:IconButton Grid.Column="0" DefaultText="언팩" DefaultIcon="/Assets/Images/Unpack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsUnpackRunning}" IsEnabled="{Binding UnpackEnabled}" Click="BtnUnpack_Click"/>
+            <core:IconButton Grid.Column="1" Margin="5,0,0,0" DefaultText="리팩 (폴더 기반)" DefaultIcon="/Assets/Images/Repack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsRebuildRunning}" IsEnabled="{Binding RebuildEnabled}" Click="BtnRebuild_Click"/>
+            <core:IconButton Grid.Column="2" Margin="5,0,5,0" DefaultText="언팩 + 리팩 (Full)" DefaultIcon="/Assets/Images/Run.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsFullRunning}" IsEnabled="{Binding StartEnabled}" Click="BtnStart_Click"/>
         </Grid>
 
         <!-- 진행률 -->

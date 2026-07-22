@@ -25,7 +25,10 @@ namespace RomForge.ViewModels.Switch
         private string _gameVersion = string.Empty;
 
         private bool _wideScreen = false;
-        private bool _scanline = false;
+        private string _selectedSoundVolume = "100%";
+
+        public ObservableCollection<string> SoundVolumeItems { get; } =
+            [ "60%", "80%", "100%", "120%" ];
 
         private string _cuePath = string.Empty;
         private string _nspPath = string.Empty;
@@ -57,7 +60,11 @@ namespace RomForge.ViewModels.Switch
 
         public bool WideScreen { get => _wideScreen; set { _wideScreen = value; OnPropertyChanged(); } }
 
-        public bool Scanline { get => _scanline; set { _scanline = value; OnPropertyChanged(); } }
+        public string SelectedSoundVolume
+        {
+            get => _selectedSoundVolume;
+            set { _selectedSoundVolume = value; OnPropertyChanged(); }
+        }
 
         public string CuePath
         {
@@ -302,11 +309,14 @@ namespace RomForge.ViewModels.Switch
                 IniHandler ini = new($"{targetDir}\\{Path.GetFileNameWithoutExtension(cueFileName)}_Switch.ini");
                 await ini.LoadAsync();
                 ini.SetValue("Screen", "WideScreen", WideScreen ? "1" : "0");
-                ini.SetValue("Screen", "Scanline", Scanline ? "1" : "0");
-                ini.SetValue("Screen", "ScanlineRatio", "100");
-                ini.SetValue("Sound", "Volume", "1.00");
-                await ini.SaveAsync();
 
+                double volumeMultiplier = 1.0;
+                
+                if (!string.IsNullOrEmpty(SelectedSoundVolume) && double.TryParse(SelectedSoundVolume.TrimEnd('%'), out double parsedVal))
+                    volumeMultiplier = parsedVal / 100.0;
+                
+                ini.SetValue("Sound", "Volume", volumeMultiplier.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
+                await ini.SaveAsync();
                 await CopyFileAsync(CuePath, Path.Combine(targetDir, cueFileName), token);
 
                 uint crc = Crc32Helper.ComputeFile(newBins[0]);
