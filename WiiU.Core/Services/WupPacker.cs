@@ -1,6 +1,5 @@
 ﻿using System.Security.Cryptography;
 using WiiU.Core.Models;
-using WiiU.Core.WUP;
 using WiiU.Core.WUP.Crypto;
 using WiiU.Core.WUP.Models;
 using WiiU.Core.WUP.Services;
@@ -9,7 +8,7 @@ namespace WiiU.Core.Services;
 
 public static class WupPacker
 {
-    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupContentGroup> groups, Action<ulong, ulong, string>? onProgress = null, CancellationToken ct = default)
+    public static void Pack(string outputFolder, ulong titleId, ushort titleVersion, IReadOnlyList<WupFileEntry> files, Action<ulong, ulong, string>? onProgress = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputFolder);
 
@@ -23,9 +22,8 @@ public static class WupPacker
 
             ulong totalBytes = 0;
 
-            foreach (var group in groups)
-                foreach (var file in group.Files)
-                    totalBytes += (ulong)file.Length;
+            foreach (var file in files)
+                totalBytes += (ulong)file.Length;
 
             var contents = new Contents();
             var fst = new FST(contents);
@@ -58,35 +56,32 @@ public static class WupPacker
 
             byte[]? appXmlBytes = null;
 
-            foreach (var group in groups)
+            foreach (var file in files)
             {
-                foreach (var file in group.Files)
+                ct.ThrowIfCancellationRequested();
+
+                string relPath = file.RelativePath.Trim('/');
+
+                if (!seenFilePaths.Add(relPath))
+                    throw new InvalidOperationException($"같은 경로가 두 번 등장했습니다 (대소문자까지 포함해서 동일함): {relPath}");
+
+                if (string.Equals(relPath, "code/app.xml", StringComparison.Ordinal))
                 {
-                    ct.ThrowIfCancellationRequested();
+                    using var s = file.OpenRead();
+                    using var ms = new MemoryStream();
 
-                    string relPath = file.RelativePath.Trim('/');
+                    s.CopyTo(ms);
 
-                    if (!seenFilePaths.Add(relPath))
-                        throw new InvalidOperationException($"같은 경로가 두 번 등장했습니다 (대소문자까지 포함해서 동일함): {relPath}");
-
-                    if (string.Equals(relPath, "code/app.xml", StringComparison.Ordinal))
-                    {
-                        using var s = file.OpenRead();
-                        using var ms = new MemoryStream();
-
-                        s.CopyTo(ms);
-
-                        appXmlBytes = ms.ToArray();
-                    }
-
-                    int lastSlash = relPath.LastIndexOf('/');
-                    string dirPath = lastSlash < 0 ? string.Empty : relPath[..lastSlash];
-                    string leafName = lastSlash < 0 ? relPath : relPath[(lastSlash + 1)..];
-                    FSTEntry parentDir = GetOrCreateDir(dirPath);
-
-                    var entry = new FSTEntry(leafName, file.OpenRead, file.Length);
-                    parentDir.AddChildren(entry);
+                    appXmlBytes = ms.ToArray();
                 }
+
+                int lastSlash = relPath.LastIndexOf('/');
+                string dirPath = lastSlash < 0 ? string.Empty : relPath[..lastSlash];
+                string leafName = lastSlash < 0 ? relPath : relPath[(lastSlash + 1)..];
+                FSTEntry parentDir = GetOrCreateDir(dirPath);
+
+                var entry = new FSTEntry(leafName, file.OpenRead, file.Length);
+                parentDir.AddChildren(entry);
             }
 
             var appInfo = new AppXMLInfo();
@@ -140,14 +135,14 @@ public static class WupPacker
 
                 long delta = done - prevDone;
 
-                if (delta < 0) 
+                if (delta < 0)
                     delta = 0;
 
                 contentLastDone[key] = done;
 
                 doneWork += delta;
 
-                if (doneWork > totalWork) 
+                if (doneWork > totalWork)
                     doneWork = totalWork;
 
                 ulong reportedBytes = totalWork > 0 ? (ulong)((double)doneWork / totalWork * totalBytes) : totalBytes;
@@ -176,12 +171,12 @@ public static class WupPacker
         {
             Settings.TmpDir = prevTmpDir;
 
-            try 
-            { 
-                if (Directory.Exists(scratchRoot)) 
+            try
+            {
+                if (Directory.Exists(scratchRoot))
                     Directory.Delete(scratchRoot, true);
-            } 
-            catch {}
+            }
+            catch { }
         }
     }
 }

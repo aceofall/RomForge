@@ -1,0 +1,302 @@
+﻿<UserControl x:Class="RomForge.Controls.WiiU.ConverterTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:RomForge.ViewModels.WiiU"
+             mc:Ignorable="d"
+             d:DesignHeight="650" d:DesignWidth="1016"
+             Background="#1E1E1E">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="300"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <ListView x:Name="lvFiles" Grid.Row="0"
+                      ItemsSource="{Binding FileItems}"
+                      IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
+                      SelectionMode="Extended"
+                      KeyUp="LvFiles_KeyUp"
+                      AllowDrop="True"
+                      Drop="LvFiles_Drop"
+                      DragOver="LvFiles_DragOver"
+                      ContextMenuOpening="LvFiles_ContextMenuOpening">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#252526"/>
+                                <Setter Property="BorderBrush" Value="#3F3F46"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#073655"/>
+                                <Setter Property="BorderBrush" Value="#1C97EA"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="폴더 열기" Click="MenuItem_OpenFolder_Click">
+                            <MenuItem.Icon>
+                                <Image Source="/Assets/Images/AddFolder.png" Width="20" Height="20"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="선택 삭제" Click="BtnRemove_Click">
+                            <MenuItem.Icon>
+                                <Image Source="/Assets/Images/Delete.png" Width="20" Height="20"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="전체 삭제" Click="BtnClear_Click">
+                            <MenuItem.Icon>
+                                <Image Source="/Assets/Images/Clear.png" Width="20" Height="20"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </ListView.ContextMenu>
+
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="No" Width="50">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding No}" Foreground="#888888" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="타이틀" Width="260">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,5">
+                                        <Border Width="36" Height="36" CornerRadius="6" Margin="0,0,12,0" Background="#252526" ClipToBounds="True">
+                                            <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ShortDescription}" Foreground="#E8E8F0" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="200" ToolTip="{Binding FilePath}"/>
+                                            <TextBlock Text="{Binding TitleIdVersionDisplay}" Foreground="#8888A8" FontSize="11" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="입력" Width="75">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding ExtensionBackground}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" Margin="2,0">
+                                        <TextBlock Text="{Binding Extension}" Foreground="#111111" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="출력" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding AvailableFormats}"
+                                              SelectedItem="{Binding SelectedTargetFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              Width="80"
+                                              Height="26"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center">
+                                        <ComboBox.ItemContainerStyle>
+                                            <Style TargetType="ComboBoxItem">
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Style>
+                                        </ComboBox.ItemContainerStyle>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="용량" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding FileSize}" Padding="6,0" HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="상태" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Status}" Foreground="#BBBBBB" FontSize="11" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="진행률" Width="120">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="6,0">
+                                        <ProgressBar Value="{Binding Progress}" Maximum="100" Style="{StaticResource ProgressBarStyle}"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Progress}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="%" Foreground="White" FontSize="10" FontWeight="Bold" Margin="1,0,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <Border Grid.Row="0" IsHitTestVisible="False"
+                    Visibility="{Binding HintVisibility}"
+                    BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15"
+                    CornerRadius="6">
+                <Border.Background>
+                    <SolidColorBrush Color="#181818" Opacity="0.95"/>
+                </Border.Background>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85">
+                    <Image Source="/Assets/Images/drag.png" Width="28" Height="28" Margin="0,0,0,8"/>
+                    <TextBlock Text="WUP/Loadiine 폴더, wud/wux/wua 파일을 여기에 드래그&amp;드롭하세요" Foreground="LightGray" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="하기 기준으로 상호 변환합니다" Foreground="#D4AF37" FontSize="13" FontWeight="Bold" Margin="0,8,0,0" HorizontalAlignment="Center"/>
+                    <TextBlock TextAlignment="Left" Foreground="#A0A0A0" FontSize="11" Margin="0,15,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <Image Grid.Row="0" Grid.Column="0" Source="/Assets/Images/WiiU.png" Width="16" Height="16" Margin="0,0,6,4"/>
+                            <Image Grid.Row="1" Grid.Column="0" Source="/Assets/Images/WiiU.png" Width="16" Height="16" Margin="0,0,6,4"/>
+                            <Image Grid.Row="2" Grid.Column="0" Source="/Assets/Images/WiiU.png" Width="16" Height="16" Margin="0,0,6,4"/>
+                            <Image Grid.Row="3" Grid.Column="0" Source="/Assets/Images/WiiU.png" Width="16" Height="16" Margin="0,0,6,4"/>
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="WUP" Foreground="#8FA3FF" FontWeight="Bold" HorizontalAlignment="Left" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Loadiine" Foreground="#FFC169" FontWeight="Bold" HorizontalAlignment="Left" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="WUD/WUX" Foreground="#D4915A" FontWeight="Bold" HorizontalAlignment="Left" Margin="0,0,8,4"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="WUA" Foreground="#54FFB5" FontWeight="Bold" HorizontalAlignment="Left" Margin="0,0,8,4"/>
+
+                            <TextBlock Grid.Row="0" Grid.Column="2" Margin="0,0,0,4">
+                                <Run Text="(폴더)" Foreground="#888888"/>
+                                <Run Text=" ➔ " Foreground="#00BCD4" FontWeight="Bold"/>
+                                <Run Text="Loadiine 폴더, WUA" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            </TextBlock>
+
+                            <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,0,0,4">
+                                <Run Text="(폴더)" Foreground="#888888"/>
+                                <Run Text=" ➔ " Foreground="#00BCD4" FontWeight="Bold"/>
+                                <Run Text="WUP 폴더, WUA" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            </TextBlock>
+
+                            <TextBlock Grid.Row="2" Grid.Column="2" Margin="0,0,0,4">
+                                <Run Text="(디스크 이미지)" Foreground="#888888"/>
+                                <Run Text=" ➔ " Foreground="#00BCD4" FontWeight="Bold"/>
+                                <Run Text="WUA, WUP 폴더, Loadiine 폴더" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            </TextBlock>
+
+                            <TextBlock Grid.Row="3" Grid.Column="2" Margin="0,0,0,4">
+                                <Run Text="(Cemu 아카이브)" Foreground="#888888"/>
+                                <Run Text=" ➔ " Foreground="#00BCD4" FontWeight="Bold"/>
+                                <Run Text="WUP 폴더, Loadiine 폴더" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            </TextBlock>
+                        </Grid>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 출력 폴더 -->
+        <StackPanel Grid.Row="1" Margin="5,10,5,10">
+            <Grid Height="36">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
+                    <Grid>
+                        <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
+                        <TextBlock Text="출력 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False" Margin="10,0,0,0"/>
+                    </Grid>
+                </Border>
+                <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Margin="5,0,0,0">
+                    <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Button>
+            </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="시작" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting}" Command="{Binding CancelCommand}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="취소" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFiles_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="파일 추가" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFolder_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/AddFolder.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="폴더 추가" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnRemove_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Delete.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="선택 삭제" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnClear_Click" Margin="0,0,6,0">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="전체 삭제" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>
