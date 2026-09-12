@@ -25,11 +25,22 @@ public class CcdCompanionCopier(Action<string, LogLevel> log)
             else
                 File.Copy(sourceCcdPath, outputCcdPath, true);
 
+            string sourceSubPath = Path.ChangeExtension(sourcePath, ".sub");
+            string outputSubPath = Path.ChangeExtension(outputPath, ".sub");
+
+            if (File.Exists(sourceSubPath))
+            {
+                if (moveInsteadOfCopy)
+                    File.Move(sourceSubPath, outputSubPath, true);
+                else
+                    File.Copy(sourceSubPath, outputSubPath, true);
+            }
+
             return outputCcdPath;
         }
         catch (Exception ex)
         {
-            log($"CCD 파일 복사 중 오류 발생: {ex.Message}", LogLevel.Error);
+            log($"CCD 및 동반 파일 복사 중 오류 발생: {ex.Message}", LogLevel.Error);
 
             return null;
         }

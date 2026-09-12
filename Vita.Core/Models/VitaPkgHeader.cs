@@ -24,7 +24,13 @@ public sealed class VitaPkgHeader
 
     public required long ItemsSize { get; init; }
 
+    public required string ContentId { get; init; }
+
     public const int HeaderSize = 192;
 
     public const int HeaderExtSize = 64;
+
+    public const int ContentIdOffset = 0x30;
+
+    public const int ContentIdSize = 0x30;
 }

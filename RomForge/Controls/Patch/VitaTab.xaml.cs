@@ -1,10 +1,6 @@
-﻿using LibHac.Ncm;
-using Microsoft.Win32;
-using RomForge.ViewModels;
-using RomForge.ViewModels.Patch;
+﻿using RomForge.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 
 namespace RomForge.Controls.Patch;
 

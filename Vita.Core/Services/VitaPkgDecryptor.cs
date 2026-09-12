@@ -1,4 +1,5 @@
 ﻿using System.Buffers.Binary;
+using System.Text;
 using Vita.Core.Cryptography;
 using Vita.Core.Models;
 
@@ -58,6 +59,10 @@ public sealed class VitaPkgDecryptor
         if (contentType is not ((uint)VitaContentType.App or (uint)VitaContentType.Dlc or (uint)VitaContentType.Psm or (uint)VitaContentType.PsmUnk))
             throw new NotSupportedException($"지원하지 않는 PKG content type: 0x{contentType:x}");
 
+        string contentId = Encoding.ASCII
+            .GetString(header, VitaPkgHeader.ContentIdOffset, VitaPkgHeader.ContentIdSize)
+            .TrimEnd('\0');
+
         return new VitaPkgHeader
         {
             MetaOffset = metaOffset,
@@ -70,21 +75,24 @@ public sealed class VitaPkgDecryptor
             KeyType = keyType,
             ContentType = contentType,
             ItemsOffset = itemsOffset,
-            ItemsSize = itemsSize
+            ItemsSize = itemsSize,
+            ContentId = contentId
         };
     }
 
-    public static void ExtractTo(Stream pkgStream, VitaPkgHeader header, string outputDir, IProgress<double>? progress = null, CancellationToken ct = default)
+    public static VitaAes128Ctr CreateCipher(VitaPkgHeader header)
     {
         byte[] mainKey = VitaPkgKeys.DeriveMainKey(header.KeyType, header.Iv);
-        using var ctr = new VitaAes128Ctr(mainKey, header.Iv);
 
-        Directory.CreateDirectory(outputDir);
+        return new VitaAes128Ctr(mainKey, header.Iv);
+    }
+
+    public static List<VitaPkgItem> ReadItemTable(Stream pkgStream, VitaPkgHeader header, VitaAes128Ctr ctr)
+    {
+        var items = new List<VitaPkgItem>(header.ItemCount);
 
         for (int i = 0; i < header.ItemCount; i++)
         {
-            ct.ThrowIfCancellationRequested();
-
             long itemOffset = header.ItemsOffset + i * 32;
             var item = new byte[32];
 
@@ -103,11 +111,48 @@ public sealed class VitaPkgDecryptor
             pkgStream.ReadExactly(nameBytes);
             ctr.XorAt(nameOffset / 16, nameBytes);
 
-            string name = System.Text.Encoding.UTF8.GetString(nameBytes);
-            bool isDirectory = flags is 4 or 18;
-            string outPath = Path.Combine(outputDir, name.Replace('/', Path.DirectorySeparatorChar));
+            string name = Encoding.UTF8.GetString(nameBytes);
 
-            if (isDirectory)
+            items.Add(new VitaPkgItem
+            {
+                Name = name,
+                DataOffset = dataOffset,
+                DataSize = dataSize,
+                Flags = flags
+            });
+        }
+
+        return items;
+    }
+
+    public static bool IsDirectory(VitaPkgItem item) => item.Flags is 4 or 18;
+
+    public static byte[] DecryptItemData(Stream pkgStream, VitaPkgHeader header, VitaAes128Ctr ctr, VitaPkgItem item)
+    {
+        var data = new byte[item.DataSize];
+
+        pkgStream.Seek(header.EncOffset + item.DataOffset, SeekOrigin.Begin);
+        pkgStream.ReadExactly(data);
+        ctr.XorAt(item.DataOffset / 16, data);
+
+        return data;
+    }
+
+    public static void ExtractTo(Stream pkgStream, VitaPkgHeader header, string outputDir, IProgress<double>? progress = null, CancellationToken ct = default)
+    {
+        using var ctr = CreateCipher(header);
+        var items = ReadItemTable(pkgStream, header, ctr);
+
+        Directory.CreateDirectory(outputDir);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var item = items[i];
+            string outPath = Path.Combine(outputDir, item.Name.Replace('/', Path.DirectorySeparatorChar));
+
+            if (IsDirectory(item))
             {
                 Directory.CreateDirectory(outPath);
                 continue;
@@ -115,10 +160,10 @@ public sealed class VitaPkgDecryptor
 
             Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
 
-            using var outFile = File.Create(outPath);
             const int chunkSize = 1 * 1024 * 1024;
-            long remaining = dataSize;
-            long blockCursor = dataOffset;
+            long remaining = item.DataSize;
+            long blockCursor = item.DataOffset;
+            using var outFile = File.Create(outPath);
 
             while (remaining > 0)
             {
@@ -136,7 +181,7 @@ public sealed class VitaPkgDecryptor
                 remaining -= toRead;
             }
 
-            progress?.Report((double)(i + 1) / header.ItemCount);
+            progress?.Report((double)(i + 1) / items.Count);
         }
     }
 }

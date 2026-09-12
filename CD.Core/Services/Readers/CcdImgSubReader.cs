@@ -47,11 +47,6 @@ public class CcdImgSubReader : IDiscImageReader
             if (entries.Count == 0)
                 throw new InvalidDataException($"CCD 파일에서 유효한 [TRACK] 또는 [Entry] 섹션을 찾지 못했습니다: {filePath}");
 
-            if (entries.Count > 1)
-                throw new InvalidDataException(
-                    $"[TRACK] 섹션이 없고 [Entry]로 확인된 트랙이 {entries.Count}개(멀티트랙)입니다. " +
-                    $"Entry 정보만으로는 트랙 간 pregap을 알 수 없어 정확한 변환이 불가능합니다: {filePath}");
-
             tracks = BuildDiscTracksFromEntries(entries, imgPath, totalImgSectors, filePath);
         }
 
@@ -173,34 +168,39 @@ public class CcdImgSubReader : IDiscImageReader
 
     private static List<DiscTrack> BuildDiscTracksFromEntries(List<(int Point, byte Control, long Plba)> entries, string imgPath, long totalImgSectors, string ccdFilePath)
     {
-        var (_, control, plba) = entries[0];
+        var tracks = new List<DiscTrack>();
 
-        var trackStart = plba;
-        var lengthSectors = totalImgSectors - trackStart;
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var (point, control, plba) = entries[i];
 
-        if (trackStart < 0 || lengthSectors <= 0)
-            throw new InvalidDataException(
-                $"Entry 기반 트랙의 섹터 범위가 IMG 파일 크기를 벗어나거나 비정상입니다 " +
-                $"(start={trackStart}, length={lengthSectors}, imgSectors={totalImgSectors}): {ccdFilePath}");
+            var trackStart = plba;
+            var nextStart = i + 1 < entries.Count ? entries[i + 1].Plba : totalImgSectors;
+            var lengthSectors = nextStart - trackStart;
 
-        var isData = (control & 0x04) != 0;
-        var dataType = isData ? MapTrackMode(DetectDataMode(imgPath, trackStart)) : CueFormatStrings.Audio;
-        var streamOffset = trackStart * SectorSize;
-        var streamLength = lengthSectors * SectorSize;
+            if (trackStart < 0 || nextStart > totalImgSectors || lengthSectors <= 0)
+                throw new InvalidDataException(
+                    $"Entry 기반 트랙 {i + 1}의 섹터 범위가 IMG 파일 크기를 벗어나거나 비정상입니다 " +
+                    $"(start={trackStart}, length={lengthSectors}, imgSectors={totalImgSectors}): {ccdFilePath}");
 
-        return
-        [
-            new DiscTrack
+            var isData = (control & 0x04) != 0;
+            var dataType = isData ? MapTrackMode(DetectDataMode(imgPath, trackStart)) : CueFormatStrings.Audio;
+            var streamOffset = trackStart * SectorSize;
+            var streamLength = lengthSectors * SectorSize;
+
+            tracks.Add(new DiscTrack
             {
-                Number = 1,
+                Number = point > 0 ? point : i + 1,
                 DataType = dataType,
                 PregapSectors = 0,
                 LengthSectors = (int)lengthSectors,
                 SourceSectorSize = SectorSize,
                 SubchannelSize = 0,
                 OpenSectorStream = () => OpenTrackStream(imgPath, streamOffset, streamLength)
-            }
-        ];
+            });
+        }
+
+        return tracks;
     }
 
     private static List<(int Point, byte Control, long Plba)> ParseEntries(string[] lines)
@@ -263,7 +263,7 @@ public class CcdImgSubReader : IDiscImageReader
 
         FlushCurrent();
 
-        return entries.OrderBy(e => e.Point).ToList();
+        return [.. entries.OrderBy(e => e.Point)];
     }
 
     private static int DetectDataMode(string imgPath, long lba)

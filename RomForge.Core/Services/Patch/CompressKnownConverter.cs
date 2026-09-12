@@ -38,6 +38,11 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
 
                         File.Delete(outputPath);
                         File.Delete(outputCcdPath!);
+
+                        var subPath = Path.ChangeExtension(outputCcdPath, ".sub");
+
+                        if (File.Exists(subPath))
+                            File.Delete(subPath);
                     }
                     finally
                     {
