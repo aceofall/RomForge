@@ -21,10 +21,19 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
         _ctr = VitaPkgDecryptor.CreateCipher(Header);
 
         var items = VitaPkgDecryptor.ReadItemTable(_stream, Header, _ctr);
+        var nonDirItems = items.Where(i => !VitaPkgDecryptor.IsDirectory(i)).ToList();
+        var groups = nonDirItems.GroupBy(i => i.Name.Trim('/'), StringComparer.OrdinalIgnoreCase).ToList();
+        var duplicates = groups.Where(g => g.Count() > 1).ToList();
 
-        _items = items
-            .Where(i => !VitaPkgDecryptor.IsDirectory(i))
-            .ToDictionary(i => i.Name.Trim('/'), StringComparer.OrdinalIgnoreCase);
+        if (duplicates.Count > 0)
+        {
+            var detail = string.Join("\n", duplicates.Select(g =>
+                $"key='{g.Key}' -> " + string.Join(" | ", g.Select(i => $"[Name='{i.Name}', DataOffset={i.DataOffset}, DataSize={i.DataSize}, Flags={i.Flags}]"))));
+
+            throw new InvalidDataException($"PKG 아이템 테이블에 중복 이름이 있습니다 (전체 항목 {nonDirItems.Count}개):\n{detail}");
+        }
+
+        _items = groups.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         byte[] klicensee = VitaPkgLicenseResolver.ResolveKlicensee(license, Header.ContentId);
 

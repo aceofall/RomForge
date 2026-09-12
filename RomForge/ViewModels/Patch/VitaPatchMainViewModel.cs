@@ -21,6 +21,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     private string? _sourcePath = string.Empty;
     private string? _patchPath = string.Empty;
+    private string? _licenseInput = string.Empty;
     private string? _outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output", "vita");
     private bool _buildEmu = true;
     private bool _buildRetail;
@@ -40,6 +41,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 _sourcePath = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SourceLabel));
+                OnPropertyChanged(nameof(IsPkgSource));
             }
         }
     }
@@ -57,6 +59,14 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             }
         }
     }
+
+    public string? LicenseInput
+    {
+        get => _licenseInput;
+        set { _licenseInput = value; OnPropertyChanged(); }
+    }
+
+    public bool IsPkgSource => !string.IsNullOrEmpty(SourcePath) && string.Equals(Path.GetExtension(SourcePath), ".pkg", StringComparison.OrdinalIgnoreCase);
 
     public string SourceLabel => string.IsNullOrEmpty(SourcePath) ? "원본(PKG/ZIP/폴더)을 드래그&드롭하세요" : Path.GetFileName(SourcePath);
 
@@ -102,7 +112,8 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     public VitaPatchMainViewModel()
     {
-        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && !string.IsNullOrWhiteSpace(SourcePath) && !string.IsNullOrWhiteSpace(PatchPath) && !string.IsNullOrWhiteSpace(OutputPath) && (BuildEmu || BuildRetail));
+        RunCommand = new RelayCommand(async _ => await RunAsync(),
+            _ => !IsLocked && !string.IsNullOrWhiteSpace(SourcePath) && !string.IsNullOrWhiteSpace(PatchPath) && !string.IsNullOrWhiteSpace(OutputPath) && (BuildEmu || BuildRetail) && (!IsPkgSource || !string.IsNullOrWhiteSpace(LicenseInput)));
         CancelCommand = new RelayCommand(_ => Cancel());
     }
 
@@ -125,7 +136,9 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
                     string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_emu.zip", PatchPath!);
                     string emuZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath, emuFileName));
-                    var result = await VitaPatchOnlyBuilder.BuildAsync(SourcePath, PatchPath, emuZip, VitaOutputTarget.Emu, msg => Log(msg), progress, _cts.Token);
+                    var result = IsPkgSource
+                        ? await VitaPatchOnlyBuilder.BuildFromPkgAsync(SourcePath, LicenseInput!, PatchPath, emuZip, VitaOutputTarget.Emu, msg => Log(msg), progress, _cts.Token)
+                        : await VitaPatchOnlyBuilder.BuildAsync(SourcePath, PatchPath, emuZip, VitaOutputTarget.Emu, msg => Log(msg), progress, _cts.Token);
 
                     Log($"에뮬용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {emuZip}", LogLevel.Ok);
                 }
@@ -136,7 +149,9 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
                     string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_retail.zip", PatchPath!);
                     string retailZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath, retailFileName));
-                    var result = await VitaPatchOnlyBuilder.BuildAsync(SourcePath, PatchPath, retailZip, VitaOutputTarget.Retail, msg => Log(msg), progress, _cts.Token);
+                    var result = IsPkgSource
+                        ? await VitaPatchOnlyBuilder.BuildFromPkgAsync(SourcePath, LicenseInput!, PatchPath, retailZip, VitaOutputTarget.Retail, msg => Log(msg), progress, _cts.Token)
+                        : await VitaPatchOnlyBuilder.BuildAsync(SourcePath, PatchPath, retailZip, VitaOutputTarget.Retail, msg => Log(msg), progress, _cts.Token);
 
                     Log($"실기용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {retailZip}", LogLevel.Ok);
                 }
@@ -168,6 +183,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         SourcePath = null;
         PatchPath = null;
+        LicenseInput = null;
 
         ProgressPct = 0;
         ProgressLabel = string.Empty;

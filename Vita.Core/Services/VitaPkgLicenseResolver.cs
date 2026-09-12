@@ -38,11 +38,3 @@ public static class VitaPkgLicenseResolver
         return buf;
     }
 }
-
-internal class VitaZrifDecoder
-{
-    internal static byte[] Decode(string license)
-    {
-        throw new NotImplementedException();
-    }
-}

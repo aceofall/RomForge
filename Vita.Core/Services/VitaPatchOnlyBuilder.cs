@@ -13,9 +13,7 @@ public static class VitaPatchOnlyBuilder
         using var source = VitaSourceAccessorFactory.Open(sourcePath);
         using var patch = VitaSourceAccessorFactory.Open(patchPath);
         var allPatchFiles = patch.EnumerateAllFiles().ToList();
-        var patchFiles = allPatchFiles
-            .Where(f => PatchExtensions.Contains(Path.GetExtension(f)))
-            .ToDictionary(f => Path.GetFileNameWithoutExtension(f)!, f => f, StringComparer.OrdinalIgnoreCase);
+        var patchFiles = BuildPatchFileMap(allPatchFiles, log);
         var rawOverwriteFiles = allPatchFiles
             .Where(f => !PatchExtensions.Contains(Path.GetExtension(f)))
             .ToList();
@@ -87,9 +85,7 @@ public static class VitaPatchOnlyBuilder
         using var source = new PkgSourceAccessor(pkgPath, license);
         using var patch = VitaSourceAccessorFactory.Open(patchPath);
         var allPatchFiles = patch.EnumerateAllFiles().ToList();
-        var patchFiles = allPatchFiles
-            .Where(f => PatchExtensions.Contains(Path.GetExtension(f)))
-            .ToDictionary(f => Path.GetFileNameWithoutExtension(f)!, f => f, StringComparer.OrdinalIgnoreCase);
+        var patchFiles = BuildPatchFileMap(allPatchFiles, log);
         var rawOverwriteFiles = allPatchFiles
             .Where(f => !PatchExtensions.Contains(Path.GetExtension(f)))
             .ToList();
@@ -109,9 +105,29 @@ public static class VitaPatchOnlyBuilder
         using var zipStream = new FileStream(outputZipPath, FileMode.Create, FileAccess.Write);
         using var zip = new ZipArchive(zipStream, ZipArchiveMode.Create);
 
-        var (matched, success) = await ProcessItemAsync(source, patch, item, patchFiles, rawOverwriteFiles, target, zip, null, null, log, ct, progress);
+        var r = await ProcessItemAsync(source, patch, item, patchFiles, rawOverwriteFiles, target, zip, null, null, log, ct, progress);
 
-        return new VitaPatchOnlyResult { MatchedCandidates = matched, PatchedSuccessfully = success };
+        return new VitaPatchOnlyResult { MatchedCandidates = r.matched, PatchedSuccessfully = r.success };
+    }
+
+    private static Dictionary<string, string> BuildPatchFileMap(List<string> allPatchFiles, Action<string> log)
+    {
+        var groups = allPatchFiles
+            .Where(f => PatchExtensions.Contains(Path.GetExtension(f)))
+            .GroupBy(f => Path.GetFileNameWithoutExtension(f)!, StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in groups)
+        {
+            var list = group.ToList();
+
+            if (list.Count > 1)
+                log($"패치 대상 '{group.Key}'에 대한 패치 파일이 {list.Count}개 중복됨: {string.Join(", ", list)} - 첫 번째({list[0]})만 사용함");
+
+            map[group.Key] = list[0];
+        }
+
+        return map;
     }
 
     private static HashSet<string> TryGetOwnedPaths(IVitaSourceAccessor source, VitaSourceItem item, Action<string> log)

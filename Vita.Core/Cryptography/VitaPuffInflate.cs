@@ -15,7 +15,7 @@ internal sealed class VitaPuffInflate
     private sealed class Huffman
     {
         public short[] Count = new short[MaxBits + 1];
-        public short[] Symbol = new short[MaxLCodes];
+        public short[] Symbol = new short[FixLCodes];
     }
 
     private byte[]? _out;
@@ -103,7 +103,6 @@ internal sealed class VitaPuffInflate
             return 2;
 
         int len = _in[_inCnt++];
-
         len |= _in[_inCnt++] << 8;
 
         if (_in[_inCnt++] != (~len & 0xff) || _in[_inCnt++] != ((~len >> 8) & 0xff))
@@ -200,7 +199,6 @@ internal sealed class VitaPuffInflate
         }
 
         var offs = new short[MaxBits + 1];
-
         offs[1] = 0;
 
         for (int len = 1; len < MaxBits; len++)
@@ -318,6 +316,7 @@ internal sealed class VitaPuffInflate
         var lengths = new short[MaxCodes];
         var lenCode = new Huffman();
         var distCode = new Huffman();
+
         int nlen = Bits(5) + 257;
         int ndist = Bits(5) + 1;
         int ncode = Bits(4) + 4;
@@ -378,14 +377,12 @@ internal sealed class VitaPuffInflate
             return -9;
 
         var litLengths = lengths[..nlen];
-
         err = Construct(lenCode, litLengths, nlen);
 
         if (err != 0 && (err < 0 || nlen != lenCode.Count[0] + lenCode.Count[1]))
             return -7;
 
         var distLengths = lengths[nlen..(nlen + ndist)];
-
         err = Construct(distCode, distLengths, ndist);
 
         if (err != 0 && (err < 0 || ndist != distCode.Count[0] + distCode.Count[1]))

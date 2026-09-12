@@ -58,6 +58,15 @@
         </Grid>
 
         <StackPanel Grid.Row="3" Orientation="Vertical" Margin="0,0,0,6">
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="라이선스 (work.bin 경로 또는 zRIF, PKG일 때만 필요):" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox Grid.Column="1" Text="{Binding PatchVM.VitaVM.LicenseInput, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" IsEnabled="{Binding PatchVM.VitaVM.IsPkgSource}"/>
+            </Grid>
+
             <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
                 <TextBlock Text="출력 포맷:" Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <RadioButton Content="에뮬 (app, addcont)" GroupName="VitaOutputTargetGroup" IsChecked="{Binding PatchVM.VitaVM.BuildEmu}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding PatchVM.IsIdle}"/>
