@@ -1,4 +1,6 @@
-﻿namespace Vita.Core.Models;
+﻿using Vita.Core.Services;
+
+namespace Vita.Core.Models;
 
 public sealed class VitaSourceItem
 {
@@ -9,4 +11,6 @@ public sealed class VitaSourceItem
     public string? ContentIdSuffix { get; init; }
 
     public required string SourcePath { get; init; }
+
+    public IVitaSourceAccessor? Accessor { get; init; }
 }

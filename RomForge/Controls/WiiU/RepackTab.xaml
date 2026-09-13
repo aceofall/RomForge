@@ -149,7 +149,7 @@
                                             <TextBlock Text="{Binding FilePath}" VerticalAlignment="Center"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
-                                </GridViewColumn>                                
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>

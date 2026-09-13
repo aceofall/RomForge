@@ -10,34 +10,29 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
     private readonly FileStream _stream;
     private readonly VitaAes128Ctr _ctr;
     private readonly Dictionary<string, VitaPkgItem> _items;
-    private readonly byte[] _workBinBytes;
+    private readonly byte[]? _workBinBytes;
 
     public VitaPkgHeader Header { get; }
 
-    public PkgSourceAccessor(string pkgPath, string license)
+    public PkgSourceAccessor(string pkgPath, string? license = null)
     {
         _stream = new FileStream(pkgPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         Header = VitaPkgDecryptor.ReadHeader(_stream);
         _ctr = VitaPkgDecryptor.CreateCipher(Header);
 
         var items = VitaPkgDecryptor.ReadItemTable(_stream, Header, _ctr);
-        var nonDirItems = items.Where(i => !VitaPkgDecryptor.IsDirectory(i)).ToList();
-        var groups = nonDirItems.GroupBy(i => i.Name.Trim('/'), StringComparer.OrdinalIgnoreCase).ToList();
-        var duplicates = groups.Where(g => g.Count() > 1).ToList();
 
-        if (duplicates.Count > 0)
+        _items = items
+            .Where(i => !VitaPkgDecryptor.IsDirectory(i))
+            .GroupBy(i => i.Name.Trim('/'), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        if (license != null)
         {
-            var detail = string.Join("\n", duplicates.Select(g =>
-                $"key='{g.Key}' -> " + string.Join(" | ", g.Select(i => $"[Name='{i.Name}', DataOffset={i.DataOffset}, DataSize={i.DataSize}, Flags={i.Flags}]"))));
+            byte[] klicensee = VitaPkgLicenseResolver.ResolveKlicensee(license, Header.ContentId);
 
-            throw new InvalidDataException($"PKG 아이템 테이블에 중복 이름이 있습니다 (전체 항목 {nonDirItems.Count}개):\n{detail}");
+            _workBinBytes = VitaPkgLicenseResolver.BuildWorkBin(Header.ContentId, klicensee);
         }
-
-        _items = groups.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-        byte[] klicensee = VitaPkgLicenseResolver.ResolveKlicensee(license, Header.ContentId);
-
-        _workBinBytes = VitaPkgLicenseResolver.BuildWorkBin(Header.ContentId, klicensee);
     }
 
     public bool DirectoryExists(string relativePath)
@@ -79,13 +74,16 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
         return names;
     }
 
-    public IEnumerable<string> EnumerateAllFiles() => _items.Keys.Append(WorkBinRelativePath);
+    public IEnumerable<string> EnumerateAllFiles() => _workBinBytes != null ? _items.Keys.Append(WorkBinRelativePath) : _items.Keys;
 
     public bool FileExists(string relativePath)
     {
         string rel = Normalize(relativePath);
 
-        return rel.Equals(WorkBinRelativePath, StringComparison.OrdinalIgnoreCase) || _items.ContainsKey(rel);
+        if (rel.Equals(WorkBinRelativePath, StringComparison.OrdinalIgnoreCase))
+            return _workBinBytes != null;
+
+        return _items.ContainsKey(rel);
     }
 
     public byte[] ReadAllBytes(string relativePath)
@@ -93,7 +91,7 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
         string rel = Normalize(relativePath);
 
         if (rel.Equals(WorkBinRelativePath, StringComparison.OrdinalIgnoreCase))
-            return _workBinBytes;
+            return _workBinBytes ?? throw new InvalidOperationException("이 PkgSourceAccessor는 라이선스 없이 열려서 work.bin을 제공할 수 없습니다.");
 
         if (!_items.TryGetValue(rel, out var item))
             throw new FileNotFoundException(relativePath);

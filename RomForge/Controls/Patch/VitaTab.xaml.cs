@@ -1,39 +1,175 @@
-﻿using RomForge.ViewModels;
+﻿using Ookii.Dialogs.Wpf;
+using RomForge.ViewModels;
+using RomForge.ViewModels.Patch;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
-namespace RomForge.Controls.Patch;
-
-public partial class VitaTab : UserControl
+namespace RomForge.Controls.Patch
 {
-    private MainViewModel ViewModel => (MainViewModel)DataContext;
-
-    public VitaTab()
+    public partial class VitaTab : UserControl
     {
-        InitializeComponent();
-    }
+        private MainViewModel? ViewModel => DataContext as MainViewModel;
 
-    private void SourceDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.VitaVM.SourcePath = files[0];
-    }
-
-    private void PatchDrop_Drop(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            ViewModel.PatchVM.VitaVM.PatchPath = files[0];
-    }
-
-    private void BtnBrowseOutput_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
+        public VitaTab()
         {
-            Description = "출력 폴더 선택",
-            UseDescriptionForTitle = true
-        };
+            InitializeComponent();
+        }
 
-        if (dlg.ShowDialog() == true)
-            ViewModel.PatchVM.VitaVM.OutputPath = dlg.SelectedPath;
+        private void LvPkg_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+        }
+
+        private void Root_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effects = DragDropEffects.Copy;
+            else
+                e.Effects = DragDropEffects.None;
+
+            e.Handled = true;
+        }
+
+        private void Root_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    if (ViewModel?.PatchVM.VitaVM != null)
+                    {
+                        foreach (var file in files)
+                            ViewModel.PatchVM.VitaVM.AddPkgFile(file);
+                    }
+                }
+            }
+            e.Handled = true;
+        }
+
+        private void LvPkg_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete)
+            {
+                if (ViewModel?.PatchVM.VitaVM?.RemoveSelectedCommand?.CanExecute(null) == true)
+                    ViewModel.PatchVM.VitaVM.RemoveSelectedCommand.Execute(null);
+            }
+        }
+
+        private void License_PreviewDragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effects = DragDropEffects.Copy;
+            else
+                e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void License_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    if (sender is TextBox tb && tb.DataContext is VitaPkgRowViewModel row)
+                        row.License = files[0];
+                }
+            }
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effects = DragDropEffects.Copy;
+            else
+                e.Effects = DragDropEffects.None;
+
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_DragLeave(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    string path = files[0];
+
+                    if (Directory.Exists(path) || path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (sender is FrameworkElement { Tag: VitaPkgRowViewModel row })
+                            row.PatchPath = path;
+                    }
+                }
+            }
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element)
+            {
+                if (element.ContextMenu != null)
+                {
+                    element.ContextMenu.PlacementTarget = element;
+                    element.ContextMenu.IsOpen = true;
+                }
+            }
+        }
+
+        private void PatchMenu_SelectFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel rowVm)
+            {
+                var dlg = new VistaFolderBrowserDialog
+                {
+                    Description = "한글 패치 폴더 선택",
+                    UseDescriptionForTitle = true
+                };
+
+                if (dlg.ShowDialog() == true)
+                    rowVm.PatchPath = dlg.SelectedPath;
+            }
+        }
+
+        private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel rowVm)
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "한글 패치 압축파일 선택",
+                    Filter = "Archive Files (*.zip;*.7z)|*.zip;*.7z|All Files (*.*)|*.*"
+                };
+
+                if (dlg.ShowDialog() == true)
+                    rowVm.PatchPath = dlg.FileName;
+            }
+        }
+
+        private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel row)
+            {
+                if (!string.IsNullOrEmpty(row.PkgPath))
+                {
+                    string? dir = File.Exists(row.PkgPath) ? Path.GetDirectoryName(row.PkgPath) : row.PkgPath;
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = dir,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+            }
+        }
     }
 }
