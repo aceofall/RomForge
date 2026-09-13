@@ -52,6 +52,7 @@
     <None Remove="Assets\Images\Version.png" />
     <None Remove="Assets\Images\WiiU.png" />
     <None Remove="Assets\Images\WorkSpace.png" />
+    <None Remove="Assets\Images\zRIF.png" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="icon.ico" />
@@ -165,6 +166,7 @@
     <Resource Include="Assets\Images\zip.png" />
     <Resource Include="Assets\Images\ZipFile.png" />
     <Resource Include="Assets\Images\ZipFolder.png" />
+    <Resource Include="Assets\Images\zRIF.png" />
   </ItemGroup>
   <ItemGroup>
     <None Update="aes_keys.txt">

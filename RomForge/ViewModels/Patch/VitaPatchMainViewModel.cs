@@ -24,7 +24,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     private bool _isPkgMode = true;
     private string? _sourcePath = string.Empty;
     private string? _patchPath = string.Empty;
-    private string? _outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output", "vita");
+    private string? _outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
     private bool _buildEmu = true;
     private bool _buildRetail;
     private bool _mergePatchIntoGame = false;

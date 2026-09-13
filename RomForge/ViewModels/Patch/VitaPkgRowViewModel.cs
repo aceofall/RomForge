@@ -1,4 +1,5 @@
 ﻿using Common.WPF.ViewModels;
+using System.Windows.Media;
 using Vita.Core.Models;
 using Vita.Core.Services;
 
@@ -10,8 +11,6 @@ public class VitaPkgRowViewModel(string pkgPath) : ViewModelBase
     private string _patchPath = string.Empty;
     private VitaContentCategory _category;
     private string? _errorMessage;
-    private string _patchDisplay;
-    private string _patchIconSource;
 
     public string PkgPath { get; } = pkgPath;
 
@@ -47,9 +46,15 @@ public class VitaPkgRowViewModel(string pkgPath) : ViewModelBase
 
     public bool IsValid => ErrorMessage is null;
 
-    public string PatchIconSource => string.IsNullOrEmpty(PatchPath)
-    ? "/Assets/Images/NoPatch.png"
-    : "/Assets/Images/Patch.png";
+    public string PatchIconSource => string.IsNullOrEmpty(PatchPath) ? "/Assets/Images/NoPatch.png" : "/Assets/Images/Patch.png";
+
+    public SolidColorBrush CategoryBadgeColor => Category switch
+    {
+        VitaContentCategory.App => new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)),
+        VitaContentCategory.Patch => new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81)),
+        VitaContentCategory.Addcont => new SolidColorBrush(Color.FromRgb(0x8B, 0x5C, 0xF6)),
+        _ => new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)),
+    };
 
     public void Probe()
     {
