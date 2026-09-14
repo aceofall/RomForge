@@ -13,4 +13,6 @@ public sealed class VitaSourceItem
     public required string SourcePath { get; init; }
 
     public IVitaSourceAccessor? Accessor { get; init; }
+
+    public string? PatchPathOverride { get; init; }
 }

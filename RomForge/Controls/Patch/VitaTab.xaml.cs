@@ -40,7 +40,7 @@ namespace RomForge.Controls.Patch
                     if (ViewModel?.PatchVM.VitaVM != null)
                     {
                         foreach (var file in files)
-                            ViewModel.PatchVM.VitaVM.AddPkgFile(file);
+                            ViewModel.PatchVM.VitaVM.AddSourceFile(file);
                     }
                 }
             }
@@ -71,7 +71,7 @@ namespace RomForge.Controls.Patch
             {
                 if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
                 {
-                    if (sender is TextBox tb && tb.DataContext is VitaPkgRowViewModel row)
+                    if (sender is TextBox tb && tb.DataContext is VitaSourceRowViewModel row)
                         row.License = files[0];
                 }
             }
@@ -103,7 +103,7 @@ namespace RomForge.Controls.Patch
 
                     if (Directory.Exists(path) || path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (sender is FrameworkElement { Tag: VitaPkgRowViewModel row })
+                        if (sender is FrameworkElement { Tag: VitaSourceRowViewModel row })
                             row.PatchPath = path;
                     }
                 }
@@ -125,7 +125,7 @@ namespace RomForge.Controls.Patch
 
         private void PatchMenu_SelectFolder_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel rowVm)
+            if (sender is MenuItem mi && mi.DataContext is VitaSourceRowViewModel rowVm)
             {
                 var dlg = new VistaFolderBrowserDialog
                 {
@@ -140,7 +140,7 @@ namespace RomForge.Controls.Patch
 
         private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel rowVm)
+            if (sender is MenuItem mi && mi.DataContext is VitaSourceRowViewModel rowVm)
             {
                 var dlg = new Microsoft.Win32.OpenFileDialog
                 {
@@ -155,11 +155,11 @@ namespace RomForge.Controls.Patch
 
         private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem mi && mi.DataContext is VitaPkgRowViewModel row)
+            if (sender is MenuItem mi && mi.DataContext is VitaSourceRowViewModel row)
             {
-                if (!string.IsNullOrEmpty(row.PkgPath))
+                if (!string.IsNullOrEmpty(row.Path))
                 {
-                    string? dir = File.Exists(row.PkgPath) ? Path.GetDirectoryName(row.PkgPath) : row.PkgPath;
+                    string? dir = File.Exists(row.Path) ? Path.GetDirectoryName(row.Path) : row.Path;
                     if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
                     {
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo

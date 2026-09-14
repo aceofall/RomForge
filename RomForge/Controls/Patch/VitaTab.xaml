@@ -23,7 +23,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid Grid.Column="0">
-                    <ListView AllowDrop="True" Background="Transparent" BorderThickness="0" ContextMenuOpening="LvPkg_ContextMenuOpening" DragEnter="Root_DragEnter" Drop="Root_Drop" ItemsSource="{Binding PatchVM.VitaVM.PkgRows}" KeyUp="LvPkg_KeyUp" Margin="5" SelectedItem="{Binding PatchVM.VitaVM.SelectedRow}">
+                    <ListView AllowDrop="True" Background="Transparent" BorderThickness="0" ContextMenuOpening="LvPkg_ContextMenuOpening" DragEnter="Root_DragEnter" Drop="Root_Drop" ItemsSource="{Binding PatchVM.VitaVM.SourceRows}" KeyUp="LvPkg_KeyUp" Margin="5" SelectedItem="{Binding PatchVM.VitaVM.SelectedRow}">
 
                         <ListView.ContextMenu>
                             <ContextMenu>
@@ -37,7 +37,7 @@
 
                         <ListView.View>
                             <GridView>
-                                
+
                                 <GridViewColumn Width="80">
                                     <GridViewColumn.Header>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -142,7 +142,7 @@
                                     </GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding PkgPath}" VerticalAlignment="Center" ToolTip="{Binding PkgPath}"/>
+                                            <TextBlock Text="{Binding Path}" VerticalAlignment="Center" ToolTip="{Binding Path}"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>

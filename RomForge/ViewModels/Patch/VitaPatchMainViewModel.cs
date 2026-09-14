@@ -21,9 +21,6 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     private readonly Stopwatch _totalSw = new();
     private CancellationTokenSource? _cts;
 
-    private bool _isPkgMode = true;
-    private string? _sourcePath = string.Empty;
-    private string? _patchPath = string.Empty;
     private string? _outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
     private bool _buildEmu = true;
     private bool _buildRetail;
@@ -34,39 +31,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
-    public ObservableCollection<VitaPkgRowViewModel> PkgRows { get; } = [];
-
-    public bool IsPkgMode
-    {
-        get => _isPkgMode;
-        set { _isPkgMode = value; OnPropertyChanged(); }
-    }
-
-    public string? SourcePath
-    {
-        get => _sourcePath;
-        set
-        {
-            if (_sourcePath != value)
-            {
-                _sourcePath = value;
-                OnPropertyChanged();
-            }
-        }
-    }
-
-    public string? PatchPath
-    {
-        get => _patchPath;
-        set
-        {
-            if (_patchPath != value)
-            {
-                _patchPath = value;
-                OnPropertyChanged();
-            }
-        }
-    }
+    public ObservableCollection<VitaSourceRowViewModel> SourceRows { get; } = [];
 
     public string? OutputPath
     {
@@ -76,7 +41,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     public Visibility OutputHintVisibility => string.IsNullOrWhiteSpace(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility EntriesHintVisibility => PkgRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility EntriesHintVisibility => SourceRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public bool BuildEmu
     {
@@ -108,14 +73,16 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         set { _mergePatchIntoGame = value; OnPropertyChanged(); }
     }
 
+    public string? SourcePath => SourceRows.FirstOrDefault()?.Path;
+
     public ICommand RunCommand { get; }
     public ICommand RemoveRowCommand { get; }
     public ICommand RemoveSelectedCommand { get; }
     public ICommand RemoveAllCommand { get; }
     public ICommand BrowseOutputCommand { get; }
 
-    private VitaPkgRowViewModel? _selectedRow;
-    public VitaPkgRowViewModel? SelectedRow
+    private VitaSourceRowViewModel? _selectedRow;
+    public VitaSourceRowViewModel? SelectedRow
     {
         get => _selectedRow;
         set { _selectedRow = value; OnPropertyChanged(); }
@@ -124,60 +91,60 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public VitaPatchMainViewModel()
     {
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && CanRun());
-        RemoveRowCommand = new RelayCommand(o => RemovePkgRow(o as VitaPkgRowViewModel ?? SelectedRow));
-        RemoveSelectedCommand = new RelayCommand(_ => { if (SelectedRow != null) RemovePkgRow(SelectedRow); }, _ => SelectedRow != null);
-        RemoveAllCommand = new RelayCommand(_ => PkgRows.Clear(), _ => PkgRows.Count > 0);
+        RemoveRowCommand = new RelayCommand(o => RemoveRow(o as VitaSourceRowViewModel ?? SelectedRow));
+        RemoveSelectedCommand = new RelayCommand(_ => { if (SelectedRow != null) RemoveRow(SelectedRow); }, _ => SelectedRow != null);
+        RemoveAllCommand = new RelayCommand(_ => SourceRows.Clear(), _ => SourceRows.Count > 0);
         BrowseOutputCommand = new RelayCommand(_ => BrowseOutput());
         CancelCommand = new RelayCommand(_ => Cancel());
 
-        PkgRows.CollectionChanged += PkgRows_CollectionChanged;
+        SourceRows.CollectionChanged += SourceRows_CollectionChanged;
     }
 
-    private void PkgRows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void SourceRows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.NewItems != null)
         {
-            foreach (VitaPkgRowViewModel row in e.NewItems)
+            foreach (VitaSourceRowViewModel row in e.NewItems)
                 row.PropertyChanged += Row_PropertyChanged;
         }
 
         if (e.OldItems != null)
         {
-            foreach (VitaPkgRowViewModel row in e.OldItems)
+            foreach (VitaSourceRowViewModel row in e.OldItems)
                 row.PropertyChanged -= Row_PropertyChanged;
         }
+
+        OnPropertyChanged(nameof(EntriesHintVisibility));
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_isSyncing) 
+        if (_isSyncing)
             return;
 
-        if (sender is not VitaPkgRowViewModel changedRow)
+        if (sender is not VitaSourceRowViewModel changedRow)
             return;
 
         _isSyncing = true;
+
         try
         {
-            if (e.PropertyName == nameof(VitaPkgRowViewModel.PatchPath))
+            if (e.PropertyName == nameof(VitaSourceRowViewModel.PatchPath))
             {
-                foreach (var row in PkgRows)
+                foreach (var row in SourceRows)
                 {
                     if (row != changedRow && !string.Equals(row.PatchPath, changedRow.PatchPath))
                         row.PatchPath = changedRow.PatchPath;
                 }
             }
-            else if (e.PropertyName == nameof(VitaPkgRowViewModel.License))
+            else if (e.PropertyName == nameof(VitaSourceRowViewModel.License))
             {
                 if (changedRow.Category != VitaContentCategory.Addcont)
                 {
-                    foreach (var row in PkgRows)
+                    foreach (var row in SourceRows)
                     {
-                        if (row.Category != VitaContentCategory.Addcont && row != changedRow)
-                        {
-                            if (!string.Equals(row.License, changedRow.License))
-                                row.License = changedRow.License;
-                        }
+                        if (row.IsPkg && row.Category != VitaContentCategory.Addcont && row != changedRow && !string.Equals(row.License, changedRow.License))
+                            row.License = changedRow.License;
                     }
                 }
             }
@@ -205,15 +172,19 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         if (string.IsNullOrWhiteSpace(OutputPath) || (!BuildEmu && !BuildRetail))
             return false;
 
-        if (IsPkgMode)
-            return PkgRows.Count > 0;
+        if (SourceRows.Count == 0)
+            return false;
 
-        return !string.IsNullOrWhiteSpace(SourcePath);
+        bool everyTitleHasApp = SourceRows
+            .GroupBy(r => r.TitleId, StringComparer.OrdinalIgnoreCase)
+            .All(g => g.Any(r => r.Category == VitaContentCategory.App));
+
+        return everyTitleHasApp;
     }
 
-    public void AddPkgFile(string path)
+    public void AddSourceFile(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) 
+        if (string.IsNullOrWhiteSpace(path))
             return;
 
         bool isDirectory = Directory.Exists(path);
@@ -223,59 +194,147 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         if (!isDirectory && !isPkg && !isZip)
             return;
 
-        if (PkgRows.Any(r => string.Equals(r.PkgPath, path, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        var row = new VitaPkgRowViewModel(path);
-
-        row.Probe();
-
-        string? dir = Path.GetDirectoryName(path);
-
-        if (!string.IsNullOrEmpty(dir) && isPkg)
+        if (isPkg)
         {
-            string txtPath = Path.Combine(dir, Path.GetFileNameWithoutExtension(path) + ".txt");
+            VitaSourceRowViewModel row;
 
-            if (File.Exists(txtPath))
+            try
             {
-                try
-                {
-                    string txtContent = File.ReadAllText(txtPath).Trim();
+                row = VitaSourceRowViewModel.FromPkg(path);
+            }
+            catch (Exception ex)
+            {
+                Log($"{Path.GetFileName(path)}: 분석 실패 - {ex.Message}", LogLevel.Error);
+                return;
+            }
 
-                    if (!string.IsNullOrEmpty(txtContent))
-                        row.License = txtContent;
-                }
-                catch
+            ApplyDefaultsAndLog(row, path);
+            AddOrReplaceRow(row);
+        }
+        else
+        {
+            List<VitaSourceRowViewModel> discoveredRows;
+
+            try
+            {
+                discoveredRows = VitaSourceRowViewModel.DiscoverFromContainer(path);
+            }
+            catch (Exception ex)
+            {
+                Log($"{Path.GetFileName(path)}: 분석 실패 - {ex.Message}", LogLevel.Error);
+                return;
+            }
+
+            foreach (var row in discoveredRows)
+            {
+                ApplyDefaultsAndLog(row, null);
+                AddOrReplaceRow(row);
+            }
+        }
+    }
+
+    private void ApplyDefaultsAndLog(VitaSourceRowViewModel row, string? pkgPathForLicenseTxt)
+    {
+        if (row.IsPkg && pkgPathForLicenseTxt != null)
+        {
+            string? dir = Path.GetDirectoryName(pkgPathForLicenseTxt);
+
+            if (!string.IsNullOrEmpty(dir))
+            {
+                string txtPath = Path.Combine(dir, Path.GetFileNameWithoutExtension(pkgPathForLicenseTxt) + ".txt");
+
+                if (File.Exists(txtPath))
                 {
+                    try
+                    {
+                        string txtContent = File.ReadAllText(txtPath).Trim();
+
+                        if (!string.IsNullOrEmpty(txtContent))
+                            row.License = txtContent;
+                    }
+                    catch
+                    {
+                    }
                 }
+            }
+
+            if (row.Category != VitaContentCategory.Addcont)
+            {
+                var existingAppOrPatch = SourceRows.FirstOrDefault(r => r.IsPkg && r.Category != VitaContentCategory.Addcont && !string.IsNullOrEmpty(r.License));
+
+                if (existingAppOrPatch != null && string.IsNullOrEmpty(row.License))
+                    row.License = existingAppOrPatch.License;
             }
         }
 
-        var existingAny = PkgRows.FirstOrDefault();
+        var existingAny = SourceRows.FirstOrDefault();
 
         if (existingAny != null && !string.IsNullOrEmpty(existingAny.PatchPath))
             row.PatchPath = existingAny.PatchPath;
 
-        if (row.Category != VitaContentCategory.Addcont)
-        {
-            var existingAppOrPatch = PkgRows.FirstOrDefault(r => r.Category != VitaContentCategory.Addcont && !string.IsNullOrEmpty(r.License));
-
-            if (existingAppOrPatch != null && string.IsNullOrEmpty(row.License))
-                row.License = existingAppOrPatch.License;
-        }
-
-        PkgRows.Add(row);
-        OnPropertyChanged(nameof(EntriesHintVisibility));
+        if (row.ErrorMessage != null)
+            Log($"{row.FileName}: 분석 실패 - {row.ErrorMessage}", LogLevel.Error);
+        else
+            Log($"{row.FileName}: {row.Category} / {row.TitleId}{(row.ContentIdSuffix != null ? "/" + row.ContentIdSuffix : "")}");
     }
 
-    public void RemovePkgRow(VitaPkgRowViewModel row)
+    private void AddOrReplaceRow(VitaSourceRowViewModel newRow)
+    {
+        if (newRow.Category is VitaContentCategory.App or VitaContentCategory.Patch)
+        {
+            var existing = SourceRows.FirstOrDefault(r => r.Category == newRow.Category && string.Equals(r.TitleId, newRow.TitleId, StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null)
+            {
+                Log($"{existing.FileName} -> {newRow.FileName}(으)로 대체됨 (같은 타이틀의 {newRow.Category})");
+                SourceRows.Remove(existing);
+            }
+        }
+        else
+        {
+            var duplicate = SourceRows.FirstOrDefault(r => r.Category == VitaContentCategory.Addcont
+                && string.Equals(r.TitleId, newRow.TitleId, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(r.ContentIdSuffix, newRow.ContentIdSuffix, StringComparison.OrdinalIgnoreCase));
+
+            if (duplicate != null)
+            {
+                Log($"{duplicate.FileName} -> {newRow.FileName}(으)로 대체됨 (같은 DLC)");
+                SourceRows.Remove(duplicate);
+            }
+        }
+
+        SourceRows.Insert(ComputeInsertIndex(newRow.TitleId, newRow.Category), newRow);
+    }
+
+    private int ComputeInsertIndex(string titleId, VitaContentCategory category)
+    {
+        var group = SourceRows
+            .Select((row, index) => (row, index))
+            .Where(t => string.Equals(t.row.TitleId, titleId, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (group.Count == 0)
+            return SourceRows.Count;
+
+        if (category == VitaContentCategory.App)
+            return group[0].index;
+
+        if (category == VitaContentCategory.Patch)
+        {
+            var (row, index) = group.FirstOrDefault(t => t.row.Category == VitaContentCategory.App);
+
+            return row != null ? index + 1 : group[0].index;
+        }
+
+        return group[^1].index + 1;
+    }
+
+    public void RemoveRow(VitaSourceRowViewModel? row)
     {
         if (row != null)
         {
             row.PropertyChanged -= Row_PropertyChanged;
-
-            PkgRows.Remove(row);
-            OnPropertyChanged(nameof(EntriesHintVisibility));
+            SourceRows.Remove(row);
         }
     }
 
@@ -289,34 +348,18 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             {
                 _cts = new CancellationTokenSource();
 
-                if (IsPkgMode)
-                {
-                    var missingApp = PkgRows
-                        .GroupBy(r => r.TitleId, StringComparer.OrdinalIgnoreCase)
-                        .Where(g => g.All(r => r.Category != VitaContentCategory.App) && g.Any(r => r.Category is VitaContentCategory.Patch or VitaContentCategory.Addcont))
-                        .Select(g => g.Key);
-
-                    foreach (var titleId in missingApp)
-                        Log($"{titleId}: app 없이 patch/dlc만 존재함 - 결과물이 불완전할 수 있습니다.", LogLevel.Error);
-                }
-
-                string baseName = IsPkgMode
-                    ? (PkgRows.FirstOrDefault(r => r.Category == VitaContentCategory.App)?.TitleId ?? PkgRows.FirstOrDefault()?.TitleId ?? "vita")
-                    : Path.GetFileNameWithoutExtension(SourcePath!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-
+                string baseName = SourceRows.First(r => r.Category == VitaContentCategory.App).TitleId;
+                string defaultPatchPath = SourceRows.FirstOrDefault(r => !string.IsNullOrEmpty(r.PatchPath))?.PatchPath ?? string.Empty;
+                var entries = SourceRows.Select(r => r.ToBatchEntry()).ToList();
                 var progress = new Progress<double>(p => ProgressPct = (int)(p * 100));
-
-                string currentPatchPath = IsPkgMode ? (PkgRows.FirstOrDefault()?.PatchPath ?? PatchPath ?? string.Empty) : (PatchPath ?? string.Empty);
 
                 if (BuildEmu)
                 {
                     Log("에뮬용 패치 생성 중...");
 
-                    string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_emu.zip", currentPatchPath);
+                    string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_emu.zip", defaultPatchPath);
                     string emuZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, emuFileName));
-                    var result = IsPkgMode
-                        ? await VitaPatchOnlyBuilder.BuildFromPkgBatchAsync([.. PkgRows.Select(r => r.ToBatchEntry())], currentPatchPath, emuZip, VitaOutputTarget.Emu, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token)
-                        : await VitaPatchOnlyBuilder.BuildAsync(SourcePath!, currentPatchPath, emuZip, VitaOutputTarget.Emu, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
+                    var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
 
                     Log($"에뮬용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {emuZip}", LogLevel.Ok);
                 }
@@ -325,11 +368,9 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 {
                     Log("실기용 패치 생성 중...");
 
-                    string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_retail.zip", currentPatchPath);
+                    string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_retail.zip", defaultPatchPath);
                     string retailZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, retailFileName));
-                    var result = IsPkgMode
-                        ? await VitaPatchOnlyBuilder.BuildFromPkgBatchAsync([.. PkgRows.Select(r => r.ToBatchEntry())], currentPatchPath, retailZip, VitaOutputTarget.Retail, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token)
-                        : await VitaPatchOnlyBuilder.BuildAsync(SourcePath!, currentPatchPath, retailZip, VitaOutputTarget.Retail, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
+                    var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
 
                     Log($"실기용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {retailZip}", LogLevel.Ok);
                 }
@@ -360,10 +401,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     {
         _cts?.Cancel();
 
-        SourcePath = null;
-        PatchPath = null;
-        PkgRows.Clear();
-        OnPropertyChanged(nameof(EntriesHintVisibility));
+        SourceRows.Clear();
 
         ProgressPct = 0;
         ProgressLabel = string.Empty;
