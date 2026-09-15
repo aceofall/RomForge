@@ -1,6 +1,7 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using NSW.WPF.Services;
+using RomForge.Core;
 using RomForge.Core.Models;
 using RomForge.Core.Services.Patch;
 using RomForge.Core.UI.Command;
@@ -36,7 +37,15 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public string? OutputPath
     {
         get => _outputPath;
-        set { _outputPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(OutputHintVisibility)); }
+        set
+        {
+            _outputPath = value;
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(OutputHintVisibility));
+
+            AppConfig.Instance.OutputFolders.VitaOutputPath = value;
+        }
     }
 
     public Visibility OutputHintVisibility => string.IsNullOrWhiteSpace(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
@@ -90,6 +99,8 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     public VitaPatchMainViewModel()
     {
+        OutputPath = string.IsNullOrWhiteSpace(AppConfig.Instance.OutputFolders.VitaOutputPath) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output") : AppConfig.Instance.OutputFolders.VitaOutputPath;
+
         RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && CanRun());
         RemoveRowCommand = new RelayCommand(o => RemoveRow(o as VitaSourceRowViewModel ?? SelectedRow));
         RemoveSelectedCommand = new RelayCommand(_ => { if (SelectedRow != null) RemoveRow(SelectedRow); }, _ => SelectedRow != null);

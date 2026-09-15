@@ -134,6 +134,9 @@ public class OutputFoldersConfig : ViewModelBase
 
     private string? _threeDsRepackOutputPath;
     public string? ThreeDsRepackOutputPath { get => _threeDsRepackOutputPath; set => SetProperty(ref _threeDsRepackOutputPath, value); }
+
+    private string? _vitaOutputPath;
+    public string? VitaOutputPath { get => _vitaOutputPath; set => SetProperty(ref _vitaOutputPath, value); }
 }
 
 public class AppConfig : ViewModelBase
