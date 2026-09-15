@@ -58,7 +58,7 @@ public static class VitaPatchOnlyBuilder
 
                     items.Add(new VitaSourceItem
                     {
-                        Category = entry.Probe.Category,
+                        Category = entry.Probe.Category,                        
                         TitleId = entry.Probe.TitleId,
                         ContentIdSuffix = entry.Probe.ContentIdSuffix,
                         SourcePath = string.Empty,
@@ -114,6 +114,7 @@ public static class VitaPatchOnlyBuilder
     private static async Task<VitaPatchOnlyResult> BuildCoreAsync(List<VitaSourceItem> items, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress, CancellationToken ct)
     {
         var patchContexts = new Dictionary<string, PatchContext>(StringComparer.OrdinalIgnoreCase);
+        var writtenEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         int matched = 0;
         int success = 0;
 
@@ -152,7 +153,7 @@ public static class VitaPatchOnlyBuilder
                     }
 
                     var patchCtx = GetPatchContext(patchContexts, patchItem.PatchPathOverride ?? defaultPatchPath, log);
-                    var r = await ProcessItemAsync(patchItem, patchCtx, target, zip, null, appWorkBinRel, log, ct, progress);
+                    var r = await ProcessItemAsync(patchItem, patchCtx, target, zip, writtenEntries, null, appWorkBinRel, log, ct, progress);
 
                     matched += r.matched;
                     success += r.success;
@@ -161,7 +162,7 @@ public static class VitaPatchOnlyBuilder
                 if (appByTitle.TryGetValue(titleId, out var appItem))
                 {
                     var appCtx = GetPatchContext(patchContexts, appItem.PatchPathOverride ?? defaultPatchPath, log);
-                    var r = await ProcessItemAsync(appItem, appCtx, target, zip, patchOwnedRelativePaths, null, log, ct, progress);
+                    var r = await ProcessItemAsync(appItem, appCtx, target, zip, writtenEntries, patchOwnedRelativePaths, null, log, ct, progress);
 
                     matched += r.matched;
                     success += r.success;
@@ -173,7 +174,7 @@ public static class VitaPatchOnlyBuilder
                 ct.ThrowIfCancellationRequested();
 
                 var dlcCtx = GetPatchContext(patchContexts, addcontItem.PatchPathOverride ?? defaultPatchPath, log);
-                var r = await ProcessItemAsync(addcontItem, dlcCtx, target, zip, null, null, log, ct, progress);
+                var r = await ProcessItemAsync(addcontItem, dlcCtx, target, zip, writtenEntries, null, null, log, ct, progress);
 
                 matched += r.matched;
                 success += r.success;
@@ -258,8 +259,18 @@ public static class VitaPatchOnlyBuilder
         return set;
     }
 
+    private static string NormalizeZipPath(string path)
+    {
+        string normalized = path.Replace('\\', '/');
+
+        while (normalized.Contains("//"))
+            normalized = normalized.Replace("//", "/");
+
+        return normalized.Trim('/');
+    }
+
     private static async Task<(int matched, int success)> ProcessItemAsync(VitaSourceItem item, PatchContext patchCtx, VitaOutputTarget target,
-        ZipArchive zip, HashSet<string>? skipRelativePaths, string? fallbackWorkBinRel, Action<string> log, CancellationToken ct, IProgress<double>? progress)
+        ZipArchive zip, HashSet<string> writtenEntries, HashSet<string>? skipRelativePaths, string? fallbackWorkBinRel, Action<string> log, CancellationToken ct, IProgress<double>? progress)
     {
         var source = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
         var patch = patchCtx.Accessor;
@@ -314,6 +325,17 @@ public static class VitaPatchOnlyBuilder
 
             try
             {
+                string prefix = GetPrefix(item.Category, target);
+                string entryPath = item.Category == VitaContentCategory.Addcont
+                    ? NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}")
+                    : NormalizeZipPath($"{prefix}/{item.TitleId}/{relativePath}");
+
+                if (!writtenEntries.Add(entryPath))
+                {
+                    log($"[{item.Category}] {relativePath}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)");
+                    continue;
+                }
+
                 byte[] sourceBytes = VitaNoNpDrmDecryptor.DecryptEntry(source, item.SourcePath, license.Klicensee, entry, table.UnicvEntries[i], table.FilesSalt, out string? warning);
 
                 if (warning != null)
@@ -321,9 +343,7 @@ public static class VitaPatchOnlyBuilder
 
                 byte[] patchBytes = patch.ReadAllBytes(patchFileRel);
                 byte[] patchedBytes = await UniversalPatcher.ApplyPatchAsync(sourceBytes, patchBytes, ct: ct);
-                string prefix = GetPrefix(item.Category, target);
-                string entryPath = item.Category == VitaContentCategory.Addcont ? $"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}" : $"{prefix}/{item.TitleId}/{relativePath}";
-                var zipEntry = zip.CreateEntry(entryPath.Replace('\\', '/'), CompressionLevel.Optimal);
+                var zipEntry = zip.CreateEntry(entryPath, CompressionLevel.Optimal);
 
                 using (var entryStream = zipEntry.Open())
                     await entryStream.WriteAsync(patchedBytes, ct);
@@ -340,51 +360,68 @@ public static class VitaPatchOnlyBuilder
             progress?.Report(matched == 0 ? 0 : (double)success / matched);
         }
 
-        foreach (var rawRel in rawOverwriteFiles)
+        if (item.Category != VitaContentCategory.Addcont)
         {
-            ct.ThrowIfCancellationRequested();
-
-            string normalizedRawRel = rawRel.Replace('\\', '/');
-
-            if (skipRelativePaths != null && skipRelativePaths.Contains(normalizedRawRel))
-                continue;
-
-            string srcRel = $"{item.SourcePath}/{normalizedRawRel}";
-
-            if (!source.FileExists(srcRel))
-                continue;
-
-            matched++;
-
-            try
+            foreach (var rawRel in rawOverwriteFiles)
             {
-                byte[] rawBytes = patch.ReadAllBytes(rawRel);
-                string prefix = GetPrefix(item.Category, target);
-                string entryPath = item.Category == VitaContentCategory.Addcont ? $"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}" : $"{prefix}/{item.TitleId}/{normalizedRawRel}";
-                var zipEntry = zip.CreateEntry(entryPath.Replace('\\', '/'), CompressionLevel.Optimal);
+                ct.ThrowIfCancellationRequested();
 
-                using (var entryStream = zipEntry.Open())
-                    await entryStream.WriteAsync(rawBytes, ct);
+                string normalizedRawRel = rawRel.Replace('\\', '/');
 
-                success++;
+                if (skipRelativePaths != null && skipRelativePaths.Contains(normalizedRawRel))
+                    continue;
 
-                log($"[{item.Category}] {normalizedRawRel}: 원본 대체 파일로 그대로 복사됨");
+                string srcRel = $"{item.SourcePath}/{normalizedRawRel}";
+
+                if (!source.FileExists(srcRel))
+                    continue;
+
+                matched++;
+
+                try
+                {
+                    string prefix = GetPrefix(item.Category, target);
+                    string entryPath = item.Category == VitaContentCategory.Addcont
+                        ? NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}")
+                        : NormalizeZipPath($"{prefix}/{item.TitleId}/{normalizedRawRel}");
+
+                    if (!writtenEntries.Add(entryPath))
+                    {
+                        log($"[{item.Category}] {normalizedRawRel}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)");
+                        continue;
+                    }
+
+                    byte[] rawBytes = patch.ReadAllBytes(rawRel);
+                    var zipEntry = zip.CreateEntry(entryPath, CompressionLevel.Optimal);
+
+                    using (var entryStream = zipEntry.Open())
+                        await entryStream.WriteAsync(rawBytes, ct);
+
+                    success++;
+
+                    log($"[{item.Category}] {normalizedRawRel}: 원본 대체 파일로 그대로 복사됨");
+                }
+                catch (Exception ex)
+                {
+                    log($"[{item.Category}] {normalizedRawRel}: 복사 실패 - {ex.Message}");
+                }
+
+                progress?.Report(matched == 0 ? 0 : (double)success / matched);
             }
-            catch (Exception ex)
-            {
-                log($"[{item.Category}] {normalizedRawRel}: 복사 실패 - {ex.Message}");
-            }
-
-            progress?.Report(matched == 0 ? 0 : (double)success / matched);
         }
 
         if (target == VitaOutputTarget.Emu && WorkBinReader.TryGetTitleIdFromContentId(license.ContentId, out string licenseTitleId))
         {
-            var licenseEntry = zip.CreateEntry($"license/{licenseTitleId}/{license.ContentId}.rif", CompressionLevel.Optimal);
-            byte[] workBinBytes = source.ReadAllBytes(workBinRel);
-            using var es = licenseEntry.Open();
+            string licenseEntryPath = NormalizeZipPath($"license/{licenseTitleId}/{license.ContentId}.rif");
 
-            await es.WriteAsync(workBinBytes, ct);
+            if (writtenEntries.Add(licenseEntryPath))
+            {
+                var licenseEntry = zip.CreateEntry(licenseEntryPath, CompressionLevel.Optimal);
+                byte[] workBinBytes = source.ReadAllBytes(workBinRel);
+                using var es = licenseEntry.Open();
+
+                await es.WriteAsync(workBinBytes, ct);
+            }
         }
 
         return (matched, success);
