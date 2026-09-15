@@ -15,6 +15,16 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
     public VitaPkgHeader Header { get; }
 
     public PkgSourceAccessor(string pkgPath, string? license = null)
+        : this(pkgPath, license, null)
+    {
+    }
+
+    public PkgSourceAccessor(string pkgPath, byte[] klicensee)
+        : this(pkgPath, null, klicensee)
+    {
+    }
+
+    private PkgSourceAccessor(string pkgPath, string? license, byte[]? klicensee)
     {
         _stream = new FileStream(pkgPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         Header = VitaPkgDecryptor.ReadHeader(_stream);
@@ -27,12 +37,10 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
             .GroupBy(i => i.Name.Trim('/'), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        if (license != null)
-        {
-            byte[] klicensee = VitaPkgLicenseResolver.ResolveKlicensee(license, Header.ContentId);
+        byte[]? resolvedKlicensee = klicensee ?? (license != null ? VitaPkgLicenseResolver.ResolveKlicensee(license, Header.ContentId) : null);
 
-            _workBinBytes = VitaPkgLicenseResolver.BuildWorkBin(Header.ContentId, klicensee);
-        }
+        if (resolvedKlicensee != null)
+            _workBinBytes = VitaPkgLicenseResolver.BuildWorkBin(Header.ContentId, resolvedKlicensee);
     }
 
     public bool DirectoryExists(string relativePath)
@@ -97,6 +105,16 @@ public sealed class PkgSourceAccessor : IVitaSourceAccessor
             throw new FileNotFoundException(relativePath);
 
         return VitaPkgDecryptor.DecryptItemData(_stream, Header, _ctr, item);
+    }
+
+    public long GetFileSize(string relativePath)
+    {
+        string rel = Normalize(relativePath);
+
+        if (rel.Equals(WorkBinRelativePath, StringComparison.OrdinalIgnoreCase))
+            return _workBinBytes?.Length ?? 0;
+
+        return ReadAllBytes(relativePath).Length;
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/').Trim('/');

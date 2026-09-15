@@ -14,6 +14,8 @@ public sealed class FolderSourceAccessor(string root) : IVitaSourceAccessor
 
     public byte[] ReadAllBytes(string relativePath) => File.ReadAllBytes(Full(relativePath));
 
+    public long GetFileSize(string relativePath) => new FileInfo(Full(relativePath)).Length;
+
     public void Dispose()
     {
     }

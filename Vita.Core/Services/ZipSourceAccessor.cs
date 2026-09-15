@@ -71,6 +71,14 @@ public sealed class ZipSourceAccessor : IVitaSourceAccessor
         return ms.ToArray();
     }
 
+    public long GetFileSize(string relativePath)
+    {
+        if (!_entries.TryGetValue(Normalize(relativePath), out var entry))
+            throw new FileNotFoundException(relativePath);
+
+        return entry.Length;
+    }
+
     public void Dispose()
     {
         _zip.Dispose();

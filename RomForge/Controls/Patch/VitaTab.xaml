@@ -54,7 +54,7 @@
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
 
-                                <GridViewColumn Width="220">
+                                <GridViewColumn Width="260">
                                     <GridViewColumn.Header>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <Image Height="24" Margin="0,0,4,0" Source="/Common.WPF;component/Assets/Images/Title.png" Width="24"/>
@@ -63,9 +63,14 @@
                                     </GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Margin="4,5" VerticalAlignment="Center">
-                                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#E8E8F0" Text="{Binding FileName}" ToolTip="{Binding FileName}"/>
-                                                <TextBlock FontSize="11" Foreground="#8888A8" Margin="0,2,0,0" Text="{Binding TitleId}"/>
+                                            <StackPanel Orientation="Horizontal" Margin="4,5" VerticalAlignment="Center">
+                                                <Border Width="32" Height="32" CornerRadius="4" Background="#1E1E22" Margin="0,0,8,0">
+                                                    <Image Source="{Binding IconImageSource}" Width="32" Height="32" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#E8E8F0" Text="{Binding DisplayTitle}" ToolTip="{Binding DisplayTitle}"/>
+                                                    <TextBlock FontSize="11" Foreground="#8888A8" Margin="0,2,0,0" Text="{Binding TitleId}"/>
+                                                </StackPanel>
                                             </StackPanel>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
@@ -80,7 +85,7 @@
                                     </GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBox AllowDrop="True" Background="Transparent" BorderBrush="#30FFFFFF" Drop="License_Drop" FontSize="11" Foreground="White" PreviewDragOver="License_PreviewDragOver" Text="{Binding License, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"/>
+                                            <TextBox AllowDrop="True" Drop="License_Drop" FontSize="11" IsEnabled="{Binding IsLicenseEditable}" PreviewDragOver="License_PreviewDragOver" Text="{Binding License, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>

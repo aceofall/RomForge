@@ -44,27 +44,48 @@ public static class VitaPatchOnlyBuilder
         try
         {
             var items = new List<VitaSourceItem>();
+            var appSourceByTitle = new Dictionary<string, (IVitaSourceAccessor Accessor, string SourcePath)>(StringComparer.OrdinalIgnoreCase);
+            var orderedEntries = entries.OrderBy(GetEntrySortRank).ToList();
 
-            foreach (var entry in entries)
+            foreach (var entry in orderedEntries)
             {
                 if (entry.Kind == VitaSourceKind.Pkg)
                 {
                     if (entry.Probe is null)
                         throw new InvalidOperationException($"PKG 항목에 Probe 정보가 없습니다: {entry.Path}");
 
-                    var accessor = new PkgSourceAccessor(entry.Path, entry.License);
+                    IVitaSourceAccessor accessor;
+
+                    if (entry.Probe.Category == VitaContentCategory.Patch
+                        && string.IsNullOrWhiteSpace(entry.License)
+                        && appSourceByTitle.TryGetValue(entry.Probe.TitleId, out var appSource))
+                    {
+                        string appWorkBinRel = $"{appSource.SourcePath}/sce_sys/package/work.bin";
+                        var appLicense = WorkBinReader.Read(appSource.Accessor, appWorkBinRel);
+
+                        accessor = new PkgSourceAccessor(entry.Path, appLicense.Klicensee);
+
+                        log($"[patch] {entry.Probe.TitleId}: app의 라이선스를 그대로 공유해서 적용함");
+                    }
+                    else
+                    {
+                        accessor = new PkgSourceAccessor(entry.Path, entry.License);
+                    }
 
                     ownedAccessors.Add(accessor);
 
                     items.Add(new VitaSourceItem
                     {
-                        Category = entry.Probe.Category,                        
+                        Category = entry.Probe.Category,
                         TitleId = entry.Probe.TitleId,
                         ContentIdSuffix = entry.Probe.ContentIdSuffix,
                         SourcePath = string.Empty,
                         Accessor = accessor,
                         PatchPathOverride = entry.PatchPath
                     });
+
+                    if (entry.Probe.Category == VitaContentCategory.App)
+                        appSourceByTitle[entry.Probe.TitleId] = (accessor, string.Empty);
                 }
                 else
                 {
@@ -83,6 +104,9 @@ public static class VitaPatchOnlyBuilder
                             Accessor = accessor,
                             PatchPathOverride = entry.PatchPath
                         });
+
+                        if (entry.ItemCategory == VitaContentCategory.App)
+                            appSourceByTitle[entry.ItemTitleId!] = (accessor, entry.ItemSourcePath);
                     }
                     else
                     {
@@ -97,6 +121,9 @@ public static class VitaPatchOnlyBuilder
                                 Accessor = accessor,
                                 PatchPathOverride = entry.PatchPath
                             });
+
+                            if (discovered.Category == VitaContentCategory.App)
+                                appSourceByTitle[discovered.TitleId] = (accessor, discovered.SourcePath);
                         }
                     }
                 }
@@ -109,6 +136,19 @@ public static class VitaPatchOnlyBuilder
             foreach (var accessor in ownedAccessors)
                 accessor.Dispose();
         }
+    }
+
+    private static int GetEntrySortRank(VitaBatchSourceEntry entry)
+    {
+        var category = entry.Kind == VitaSourceKind.Pkg ? entry.Probe?.Category : entry.ItemCategory;
+
+        return category switch
+        {
+            VitaContentCategory.App => 0,
+            VitaContentCategory.Patch => 1,
+            VitaContentCategory.Addcont => 2,
+            _ => 3
+        };
     }
 
     private static async Task<VitaPatchOnlyResult> BuildCoreAsync(List<VitaSourceItem> items, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress, CancellationToken ct)

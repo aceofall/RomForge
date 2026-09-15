@@ -1,6 +1,9 @@
 ﻿using Common.WPF.ViewModels;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Vita.Core.Models;
 using Vita.Core.Services;
 
@@ -12,6 +15,11 @@ public class VitaSourceRowViewModel : ViewModelBase
     private string _patchPath = string.Empty;
     private VitaContentCategory _category;
     private string? _errorMessage;
+    private bool _isLicenseEditable = true;
+    private long _sizeBytes = -1;
+    private byte[]? _iconBytes;
+    private string? _gameName;
+    private CancellationTokenSource? _pkgIconLoadCts;
 
     public string Path { get; }
 
@@ -38,7 +46,14 @@ public class VitaSourceRowViewModel : ViewModelBase
     public string License
     {
         get => _license;
-        set { _license = value; OnPropertyChanged(); }
+        set
+        {
+            _license = value;
+            OnPropertyChanged();
+
+            if (Kind == VitaSourceKind.Pkg && Category == VitaContentCategory.App)
+                _ = DebounceLoadPkgIconAsync(value);
+        }
     }
 
     public string PatchPath
@@ -54,6 +69,55 @@ public class VitaSourceRowViewModel : ViewModelBase
     }
 
     public bool IsValid => ErrorMessage is null;
+
+    public bool IsLicenseEditable
+    {
+        get => _isLicenseEditable;
+        set { _isLicenseEditable = value; OnPropertyChanged(); }
+    }
+
+    public long SizeBytes
+    {
+        get => _sizeBytes;
+        set { _sizeBytes = value; OnPropertyChanged(); OnPropertyChanged(nameof(Size)); }
+    }
+
+    public string Size => SizeBytes < 0 ? "계산 중..." : FormatBytes(SizeBytes);
+
+    public byte[]? IconBytes
+    {
+        get => _iconBytes;
+        set { _iconBytes = value; OnPropertyChanged(); OnPropertyChanged(nameof(IconImageSource)); }
+    }
+
+    public ImageSource? IconImageSource
+    {
+        get
+        {
+            if (_iconBytes == null)
+                return null;
+
+            var bitmap = new BitmapImage();
+
+            using var ms = new MemoryStream(_iconBytes);
+
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = ms;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            return bitmap;
+        }
+    }
+
+    public string? GameName
+    {
+        get => _gameName;
+        set { _gameName = value; OnPropertyChanged(); OnPropertyChanged(nameof(DisplayTitle)); }
+    }
+
+    public string DisplayTitle => string.IsNullOrWhiteSpace(GameName) ? FileName : GameName!;
 
     public string PatchIconSource => string.IsNullOrEmpty(PatchPath) ? "/Assets/Images/NoPatch.png" : "/Assets/Images/Patch.png";
 
@@ -94,6 +158,152 @@ public class VitaSourceRowViewModel : ViewModelBase
             throw new InvalidDataException("app/patch/addcont 폴더를 찾을 수 없습니다.");
 
         return [.. items.Select(item => FromZipItem(containerPath, item))];
+    }
+
+    public async Task LoadMetadataAsync()
+    {
+        await RefreshSizeAsync();
+
+        if (Category == VitaContentCategory.App && Kind == VitaSourceKind.ZipOrFolder)
+            await LoadIconAndTitleFromContainerAsync();
+    }
+
+    private async Task RefreshSizeAsync()
+    {
+        try
+        {
+            long bytes = await Task.Run(() =>
+            {
+                if (Kind == VitaSourceKind.Pkg)
+                    return new FileInfo(Path).Length;
+
+                using var accessor = VitaSourceAccessorFactory.Open(Path);
+                string prefix = string.IsNullOrEmpty(ItemSourcePath) ? string.Empty : ItemSourcePath.Replace('\\', '/').Trim('/') + "/";
+                long total = 0;
+
+                foreach (var file in accessor.EnumerateAllFiles())
+                {
+                    string normalized = file.Replace('\\', '/');
+
+                    if (prefix.Length == 0 || normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        total += accessor.GetFileSize(file);
+                }
+
+                return total;
+            });
+
+            SizeBytes = bytes;
+        }
+        catch
+        {
+            SizeBytes = 0;
+        }
+    }
+
+    private async Task LoadIconAndTitleFromContainerAsync()
+    {
+        try
+        {
+            var result = await Task.Run(() =>
+            {
+                using var accessor = VitaSourceAccessorFactory.Open(Path);
+                string iconRel = $"{ItemSourcePath}/sce_sys/icon0.png";
+                string sfoRel = $"{ItemSourcePath}/sce_sys/param.sfo";
+                byte[]? icon = accessor.FileExists(iconRel) ? accessor.ReadAllBytes(iconRel) : null;
+                string? title = null;
+
+                if (accessor.FileExists(sfoRel))
+                {
+                    var sfo = VitaSfoParser.Parse(accessor.ReadAllBytes(sfoRel));
+                    title = VitaSfoParser.GetString(sfo, "TITLE");
+                }
+
+                return (icon, title);
+            });
+
+            IconBytes = result.icon;
+            GameName = result.title;
+        }
+        catch
+        {
+            IconBytes = null;
+            GameName = null;
+        }
+    }
+
+    private async Task DebounceLoadPkgIconAsync(string license)
+    {
+        _pkgIconLoadCts?.Cancel();
+
+        var cts = new CancellationTokenSource();
+
+        _pkgIconLoadCts = cts;
+
+        try
+        {
+            await Task.Delay(500, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (cts.IsCancellationRequested)
+            return;
+
+        if (string.IsNullOrWhiteSpace(license))
+        {
+            IconBytes = null;
+            GameName = null;
+            return;
+        }
+
+        try
+        {
+            var result = await Task.Run(() =>
+            {
+                using var accessor = new PkgSourceAccessor(Path, license);
+                byte[]? icon = accessor.FileExists("sce_sys/icon0.png") ? accessor.ReadAllBytes("sce_sys/icon0.png") : null;
+                string? title = null;
+
+                if (accessor.FileExists("sce_sys/param.sfo"))
+                {
+                    var sfo = VitaSfoParser.Parse(accessor.ReadAllBytes("sce_sys/param.sfo"));
+                    title = VitaSfoParser.GetString(sfo, "TITLE");
+                }
+
+                return (icon, title);
+            }, cts.Token);
+
+            if (cts.IsCancellationRequested)
+                return;
+
+            IconBytes = result.icon;
+            GameName = result.title;
+        }
+        catch
+        {
+            if (!cts.IsCancellationRequested)
+            {
+                IconBytes = null;
+                GameName = null;
+            }
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double size = bytes;
+        int unitIndex = 0;
+
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+
+        return $"{size:0.##} {units[unitIndex]}";
     }
 
     public VitaBatchSourceEntry ToBatchEntry() => Kind == VitaSourceKind.Pkg

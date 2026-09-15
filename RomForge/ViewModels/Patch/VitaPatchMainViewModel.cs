@@ -126,6 +126,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         }
 
         OnPropertyChanged(nameof(EntriesHintVisibility));
+        RecomputeLicenseEditability();
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -287,6 +288,8 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             Log($"{row.FileName}: 분석 실패 - {row.ErrorMessage}", LogLevel.Error);
         else
             Log($"{row.FileName}: {row.Category} / {row.TitleId}{(row.ContentIdSuffix != null ? "/" + row.ContentIdSuffix : "")}");
+
+        _ = row.LoadMetadataAsync();
     }
 
     private void AddOrReplaceRow(VitaSourceRowViewModel newRow)
@@ -338,6 +341,31 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         }
 
         return group[^1].index + 1;
+    }
+
+    private void RecomputeLicenseEditability()
+    {
+        foreach (var row in SourceRows)
+        {
+            if (!row.IsPkg)
+            {
+                row.IsLicenseEditable = false;
+                continue;
+            }
+
+            if (row.Category == VitaContentCategory.Addcont)
+            {
+                row.IsLicenseEditable = true;
+                continue;
+            }
+
+            var appRow = SourceRows.FirstOrDefault(r => r.Category == VitaContentCategory.App && string.Equals(r.TitleId, row.TitleId, StringComparison.OrdinalIgnoreCase));
+
+            row.IsLicenseEditable = appRow == null || appRow.IsPkg;
+
+            if (!row.IsLicenseEditable && !string.IsNullOrEmpty(row.License))
+                row.License = string.Empty;
+        }
     }
 
     public void RemoveRow(VitaSourceRowViewModel? row)

@@ -420,6 +420,12 @@
                                     <Setter Property="Foreground" Value="#656565"/>
                                     <Setter Property="BorderBrush" Value="#1A1A1A"/>
                                 </Trigger>
+
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Background" Value="#121212"/>
+                                    <Setter Property="Foreground" Value="#656565"/>
+                                    <Setter Property="BorderBrush" Value="#1A1A1A"/>
+                                </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>

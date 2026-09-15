@@ -11,4 +11,6 @@ public interface IVitaSourceAccessor : IDisposable
     bool FileExists(string relativePath);
 
     byte[] ReadAllBytes(string relativePath);
+
+    long GetFileSize(string relativePath);
 }
