@@ -7,6 +7,11 @@ public static class VitaSfoParser
 {
     private const uint Magic = 0x00505346;
 
+    static VitaSfoParser()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     public static Dictionary<string, byte[]> Parse(byte[] data)
     {
         if (data.Length < 20)
@@ -46,11 +51,38 @@ public static class VitaSfoParser
 
     public static string? GetString(Dictionary<string, byte[]> sfo, string key)
     {
-        if (!sfo.TryGetValue(key, out var value))
+        if (!sfo.TryGetValue(key, out var value) || value.Length == 0)
             return null;
 
         int nul = Array.IndexOf(value, (byte)0);
+        int length = nul < 0 ? value.Length : nul;
+        string text;
 
-        return Encoding.UTF8.GetString(value, 0, nul < 0 ? value.Length : nul);
+        try
+        {
+            text = Encoding.UTF8.GetString(value, 0, length);
+
+            if (text.Contains((char)0))
+            {
+                var shiftJis = Encoding.GetEncoding(932);
+
+                text = shiftJis.GetString(value, 0, length);
+            }
+        }
+        catch
+        {
+            try
+            {
+                var shiftJis = Encoding.GetEncoding(932);
+
+                text = shiftJis.GetString(value, 0, length);
+            }
+            catch
+            {
+                text = Encoding.ASCII.GetString(value, 0, length);
+            }
+        }
+
+        return text.TrimEnd('\0', ' ', '\r', '\n');
     }
 }

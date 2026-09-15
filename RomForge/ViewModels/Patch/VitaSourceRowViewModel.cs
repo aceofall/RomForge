@@ -1,6 +1,5 @@
 ﻿using Common.WPF.ViewModels;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -19,7 +18,6 @@ public class VitaSourceRowViewModel : ViewModelBase
     private long _sizeBytes = -1;
     private byte[]? _iconBytes;
     private string? _gameName;
-    private CancellationTokenSource? _pkgIconLoadCts;
 
     public string Path { get; }
 
@@ -46,14 +44,7 @@ public class VitaSourceRowViewModel : ViewModelBase
     public string License
     {
         get => _license;
-        set
-        {
-            _license = value;
-            OnPropertyChanged();
-
-            if (Kind == VitaSourceKind.Pkg && Category == VitaContentCategory.App)
-                _ = DebounceLoadPkgIconAsync(value);
-        }
+        set { _license = value; OnPropertyChanged(); }
     }
 
     public string PatchPath
@@ -163,9 +154,7 @@ public class VitaSourceRowViewModel : ViewModelBase
     public async Task LoadMetadataAsync()
     {
         await RefreshSizeAsync();
-
-        if (Category == VitaContentCategory.App && Kind == VitaSourceKind.ZipOrFolder)
-            await LoadIconAndTitleFromContainerAsync();
+        await LoadIconAndTitleAsync();
     }
 
     private async Task RefreshSizeAsync()
@@ -200,94 +189,77 @@ public class VitaSourceRowViewModel : ViewModelBase
         }
     }
 
-    private async Task LoadIconAndTitleFromContainerAsync()
+    private async Task LoadIconAndTitleAsync()
     {
         try
         {
             var result = await Task.Run(() =>
             {
-                using var accessor = VitaSourceAccessorFactory.Open(Path);
-                string iconRel = $"{ItemSourcePath}/sce_sys/icon0.png";
-                string sfoRel = $"{ItemSourcePath}/sce_sys/param.sfo";
-                byte[]? icon = accessor.FileExists(iconRel) ? accessor.ReadAllBytes(iconRel) : null;
-                string? title = null;
-
-                if (accessor.FileExists(sfoRel))
+                if (Kind == VitaSourceKind.Pkg)
                 {
-                    var sfo = VitaSfoParser.Parse(accessor.ReadAllBytes(sfoRel));
-                    title = VitaSfoParser.GetString(sfo, "TITLE");
+                    using var accessor = new PkgSourceAccessor(Path);
+                    byte[]? pkgIcon = Category == VitaContentCategory.App && accessor.FileExists("sce_sys/icon0.png")
+                        ? accessor.ReadAllBytes("sce_sys/icon0.png")
+                        : null;
+                    string? pkgTitle = accessor.FileExists("sce_sys/param.sfo")
+                        ? VitaSfoParser.GetString(VitaSfoParser.Parse(accessor.ReadAllBytes("sce_sys/param.sfo")), "TITLE")
+                        : null;
+
+                    return (pkgIcon, pkgTitle);
+                }
+
+                using var containerAccessor = VitaSourceAccessorFactory.Open(Path);
+                string sfoRel = $"{ItemSourcePath}/sce_sys/param.sfo";
+                string? title = containerAccessor.FileExists(sfoRel)
+                    ? VitaSfoParser.GetString(VitaSfoParser.Parse(containerAccessor.ReadAllBytes(sfoRel)), "TITLE")
+                    : null;
+
+                byte[]? icon = null;
+
+                if (Category == VitaContentCategory.App)
+                {
+                    string workBinRel = $"{ItemSourcePath}/sce_sys/package/work.bin";
+
+                    if (containerAccessor.FileExists(workBinRel))
+                    {
+                        var license = WorkBinReader.Read(containerAccessor, workBinRel);
+                        var table = VitaNoNpDrmDecryptor.ParseFileTable(containerAccessor, ItemSourcePath!);
+
+                        for (int i = 0; i < table.Entries.Count; i++)
+                        {
+                            var entry = table.Entries[i];
+
+                            if (entry.Type.IsDirectory())
+                                continue;
+
+                            string relativePath = (entry.RelativePath ?? entry.Name).Replace('\\', '/').TrimStart('/');
+
+                            if (!relativePath.Equals("sce_sys/icon0.png", StringComparison.OrdinalIgnoreCase))
+                                continue;
+
+                            try
+                            {
+                                icon = VitaNoNpDrmDecryptor.DecryptEntry(containerAccessor, ItemSourcePath!, license.Klicensee, entry, table.UnicvEntries[i], table.FilesSalt, out _);
+                            }
+                            catch
+                            {
+                            }
+
+                            break;
+                        }
+                    }
                 }
 
                 return (icon, title);
             });
 
-            IconBytes = result.icon;
-            GameName = result.title;
+            IconBytes = result.Item1;
+            GameName = result.Item2;
         }
         catch
         {
             IconBytes = null;
             GameName = null;
-        }
-    }
-
-    private async Task DebounceLoadPkgIconAsync(string license)
-    {
-        _pkgIconLoadCts?.Cancel();
-
-        var cts = new CancellationTokenSource();
-
-        _pkgIconLoadCts = cts;
-
-        try
-        {
-            await Task.Delay(500, cts.Token);
-        }
-        catch (TaskCanceledException)
-        {
-            return;
-        }
-
-        if (cts.IsCancellationRequested)
-            return;
-
-        if (string.IsNullOrWhiteSpace(license))
-        {
-            IconBytes = null;
-            GameName = null;
-            return;
-        }
-
-        try
-        {
-            var result = await Task.Run(() =>
-            {
-                using var accessor = new PkgSourceAccessor(Path, license);
-                byte[]? icon = accessor.FileExists("sce_sys/icon0.png") ? accessor.ReadAllBytes("sce_sys/icon0.png") : null;
-                string? title = null;
-
-                if (accessor.FileExists("sce_sys/param.sfo"))
-                {
-                    var sfo = VitaSfoParser.Parse(accessor.ReadAllBytes("sce_sys/param.sfo"));
-                    title = VitaSfoParser.GetString(sfo, "TITLE");
-                }
-
-                return (icon, title);
-            }, cts.Token);
-
-            if (cts.IsCancellationRequested)
-                return;
-
-            IconBytes = result.icon;
-            GameName = result.title;
-        }
-        catch
-        {
-            if (!cts.IsCancellationRequested)
-            {
-                IconBytes = null;
-                GameName = null;
-            }
         }
     }
 
