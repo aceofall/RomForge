@@ -1,8 +1,10 @@
 ﻿using NSW.WPF.UI;
 using RomForge.Core;
+using RomForge.Core.Services;
 using RomForge.Core.UI.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
@@ -19,8 +21,42 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         InitializeComponent();
         Closing += MainWindow_Closing;
+        Loaded += MainWindow_Loaded;
 
         RestoreWindowState();
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var isUpdateAvailable = await VersionHelper.IsUpdateAvailableAsync();
+
+            if (isUpdateAvailable)
+            {
+                var result = MessageBoxHelper.ShowQuestion("새 버전이 있습니다. 다운로드 페이지를 여시겠습니까?");
+
+                if (result == true)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "https://github.com/sinjunyoung/RomForge/releases/latest",
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBoxHelper.ShowError($"다운로드 페이지를 열 수 없습니다.\n\n오류 내용: {ex.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBoxHelper.ShowError($"업데이트 정보를 확인할 수 없습니다.\n\n오류 내용: {ex.Message}");
+        }
     }
 
     private void RestoreWindowState()
