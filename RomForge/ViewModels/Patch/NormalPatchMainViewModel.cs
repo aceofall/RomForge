@@ -53,6 +53,7 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             OnPropertyChanged();
             OnPropertyChanged(nameof(PatchLabel));
             OnPropertyChanged(nameof(NamingPreview));
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -398,6 +399,8 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         return sourceMainFileName;
     }
+
+    public bool CanRun() => !string.IsNullOrEmpty(SourcePath) && !string.IsNullOrEmpty(PatchPath);
 
     public void Cancel() => _runCts?.Cancel();
 

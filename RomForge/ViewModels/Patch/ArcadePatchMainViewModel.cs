@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Windows;
+using System.Windows.Input;
 
 namespace RomForge.ViewModels.Patch;
 
@@ -48,6 +49,7 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
             _sourcePath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SourceLabel));
+            CommandManager.InvalidateRequerySuggested();
 
             if (value is not null)
                 _ = AnalyzeAsync();
@@ -63,6 +65,7 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
             _patchPath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(PatchLabel));
+            CommandManager.InvalidateRequerySuggested();
 
             if (value is not null)
                 _ = AnalyzeAsync();
@@ -178,6 +181,8 @@ public class ArcadePatchMainViewModel : ToolTabViewModel, IPatchViewModel
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
         }
     }
+
+    public bool CanRun() => !string.IsNullOrEmpty(SourcePath) && !string.IsNullOrEmpty(PatchPath);
 
     public void Cancel()
     {

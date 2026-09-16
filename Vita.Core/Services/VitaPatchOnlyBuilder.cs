@@ -1,4 +1,5 @@
-﻿using Patch.Core;
+﻿using Common;
+using Patch.Core;
 using System.IO.Compression;
 using Vita.Core.Models;
 
@@ -6,16 +7,14 @@ namespace Vita.Core.Services;
 
 public static class VitaPatchOnlyBuilder
 {
-    private static readonly HashSet<string> PatchExtensions = new(StringComparer.OrdinalIgnoreCase) { ".xdelta", ".xdelta3", ".ips", ".ups", ".bps", ".ppf", ".aps" };
-
-    public static async Task<VitaPatchOnlyResult> BuildAsync(string sourcePath, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress = null, CancellationToken ct = default)
+    public static async Task<VitaPatchOnlyResult> BuildAsync(string sourcePath, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string, LogLevel> log, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var entry = new VitaBatchSourceEntry { Kind = VitaSourceKind.ZipOrFolder, Path = sourcePath };
 
         return await BuildFromEntriesAsync([entry], patchPath, outputZipPath, target, log, progress, ct);
     }
 
-    public static async Task<VitaPatchOnlyResult> BuildFromPkgAsync(string pkgPath, string license, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress = null, CancellationToken ct = default)
+    public static async Task<VitaPatchOnlyResult> BuildFromPkgAsync(string pkgPath, string license, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string, LogLevel> log, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var probe = VitaPkgProbe.Probe(pkgPath);
         var entry = new VitaBatchSourceEntry { Kind = VitaSourceKind.Pkg, Path = pkgPath, License = license, Probe = probe };
@@ -23,7 +22,7 @@ public static class VitaPatchOnlyBuilder
         return await BuildFromEntriesAsync([entry], patchPath, outputZipPath, target, log, progress, ct);
     }
 
-    public static async Task<VitaPatchOnlyResult> BuildFromPkgBatchAsync(List<VitaPkgBatchEntry> entries, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress = null, CancellationToken ct = default)
+    public static async Task<VitaPatchOnlyResult> BuildFromPkgBatchAsync(List<VitaPkgBatchEntry> entries, string patchPath, string outputZipPath, VitaOutputTarget target, Action<string, LogLevel> log, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var mapped = entries.Select(e => new VitaBatchSourceEntry
         {
@@ -37,98 +36,12 @@ public static class VitaPatchOnlyBuilder
         return await BuildFromEntriesAsync(mapped, patchPath, outputZipPath, target, log, progress, ct);
     }
 
-    public static async Task<VitaPatchOnlyResult> BuildFromEntriesAsync(List<VitaBatchSourceEntry> entries, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress = null, CancellationToken ct = default)
+    public static async Task<VitaPatchOnlyResult> BuildFromEntriesAsync(List<VitaBatchSourceEntry> entries, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string, LogLevel> log, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
-        var ownedAccessors = new List<IVitaSourceAccessor>();
+        var (items, ownedAccessors) = VitaPatchShared.LoadItems(entries, log);
 
         try
         {
-            var items = new List<VitaSourceItem>();
-            var appSourceByTitle = new Dictionary<string, (IVitaSourceAccessor Accessor, string SourcePath)>(StringComparer.OrdinalIgnoreCase);
-            var orderedEntries = entries.OrderBy(GetEntrySortRank).ToList();
-
-            foreach (var entry in orderedEntries)
-            {
-                if (entry.Kind == VitaSourceKind.Pkg)
-                {
-                    if (entry.Probe is null)
-                        throw new InvalidOperationException($"PKG 항목에 Probe 정보가 없습니다: {entry.Path}");
-
-                    IVitaSourceAccessor accessor;
-
-                    if (entry.Probe.Category == VitaContentCategory.Patch
-                        && string.IsNullOrWhiteSpace(entry.License)
-                        && appSourceByTitle.TryGetValue(entry.Probe.TitleId, out var appSource))
-                    {
-                        string appWorkBinRel = $"{appSource.SourcePath}/sce_sys/package/work.bin";
-                        var appLicense = WorkBinReader.Read(appSource.Accessor, appWorkBinRel);
-
-                        accessor = new PkgSourceAccessor(entry.Path, appLicense.Klicensee);
-
-                        log($"[patch] {entry.Probe.TitleId}: app의 라이선스를 그대로 공유해서 적용함");
-                    }
-                    else
-                    {
-                        accessor = new PkgSourceAccessor(entry.Path, entry.License);
-                    }
-
-                    ownedAccessors.Add(accessor);
-
-                    items.Add(new VitaSourceItem
-                    {
-                        Category = entry.Probe.Category,
-                        TitleId = entry.Probe.TitleId,
-                        ContentIdSuffix = entry.Probe.ContentIdSuffix,
-                        SourcePath = string.Empty,
-                        Accessor = accessor,
-                        PatchPathOverride = entry.PatchPath
-                    });
-
-                    if (entry.Probe.Category == VitaContentCategory.App)
-                        appSourceByTitle[entry.Probe.TitleId] = (accessor, string.Empty);
-                }
-                else
-                {
-                    var accessor = VitaSourceAccessorFactory.Open(entry.Path);
-
-                    ownedAccessors.Add(accessor);
-
-                    if (entry.ItemSourcePath != null)
-                    {
-                        items.Add(new VitaSourceItem
-                        {
-                            Category = entry.ItemCategory ?? throw new InvalidOperationException($"항목 카테고리가 없습니다: {entry.Path}"),
-                            TitleId = entry.ItemTitleId ?? throw new InvalidOperationException($"항목 TitleId가 없습니다: {entry.Path}"),
-                            ContentIdSuffix = entry.ItemContentIdSuffix,
-                            SourcePath = entry.ItemSourcePath,
-                            Accessor = accessor,
-                            PatchPathOverride = entry.PatchPath
-                        });
-
-                        if (entry.ItemCategory == VitaContentCategory.App)
-                            appSourceByTitle[entry.ItemTitleId!] = (accessor, entry.ItemSourcePath);
-                    }
-                    else
-                    {
-                        foreach (var discovered in VitaSourcePreparer.DiscoverItems(accessor))
-                        {
-                            items.Add(new VitaSourceItem
-                            {
-                                Category = discovered.Category,
-                                TitleId = discovered.TitleId,
-                                ContentIdSuffix = discovered.ContentIdSuffix,
-                                SourcePath = discovered.SourcePath,
-                                Accessor = accessor,
-                                PatchPathOverride = entry.PatchPath
-                            });
-
-                            if (discovered.Category == VitaContentCategory.App)
-                                appSourceByTitle[discovered.TitleId] = (accessor, discovered.SourcePath);
-                        }
-                    }
-                }
-            }
-
             return await BuildCoreAsync(items, defaultPatchPath, outputZipPath, target, log, progress, ct);
         }
         finally
@@ -138,23 +51,16 @@ public static class VitaPatchOnlyBuilder
         }
     }
 
-    private static int GetEntrySortRank(VitaBatchSourceEntry entry)
+    private static async Task<VitaPatchOnlyResult> BuildCoreAsync(List<VitaSourceItem> items, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string, LogLevel> log, IProgress<ProgressInfo>? progress, CancellationToken ct)
     {
-        var category = entry.Kind == VitaSourceKind.Pkg ? entry.Probe?.Category : entry.ItemCategory;
-
-        return category switch
-        {
-            VitaContentCategory.App => 0,
-            VitaContentCategory.Patch => 1,
-            VitaContentCategory.Addcont => 2,
-            _ => 3
-        };
-    }
-
-    private static async Task<VitaPatchOnlyResult> BuildCoreAsync(List<VitaSourceItem> items, string defaultPatchPath, string outputZipPath, VitaOutputTarget target, Action<string> log, IProgress<double>? progress, CancellationToken ct)
-    {
-        var patchContexts = new Dictionary<string, PatchContext>(StringComparer.OrdinalIgnoreCase);
+        var patchContexts = new Dictionary<string, VitaPatchShared.PatchContext>(StringComparer.OrdinalIgnoreCase);
         var writtenEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var appByTitle = items.Where(i => i.Category == VitaContentCategory.App).ToDictionary(i => i.TitleId, StringComparer.OrdinalIgnoreCase);
+        var patchByTitle = items.Where(i => i.Category == VitaContentCategory.Patch).ToDictionary(i => i.TitleId, StringComparer.OrdinalIgnoreCase);
+        var addcontItems = items.Where(i => i.Category == VitaContentCategory.Addcont).ToList();
+        var titleIds = appByTitle.Keys.Union(patchByTitle.Keys, StringComparer.OrdinalIgnoreCase).ToList();
+        long totalBytes = EstimateTotalBytes(titleIds, appByTitle, patchByTitle, addcontItems, defaultPatchPath, patchContexts, log);
+        var reporter = new ProgressReporter("패치 적용 중", string.Empty, totalBytes, progress);
         int matched = 0;
         int success = 0;
 
@@ -164,10 +70,6 @@ public static class VitaPatchOnlyBuilder
 
             using var zipStream = new FileStream(outputZipPath, FileMode.Create, FileAccess.Write);
             using var zip = new ZipArchive(zipStream, ZipArchiveMode.Create);
-            var appByTitle = items.Where(i => i.Category == VitaContentCategory.App).ToDictionary(i => i.TitleId, StringComparer.OrdinalIgnoreCase);
-            var patchByTitle = items.Where(i => i.Category == VitaContentCategory.Patch).ToDictionary(i => i.TitleId, StringComparer.OrdinalIgnoreCase);
-            var addcontItems = items.Where(i => i.Category == VitaContentCategory.Addcont);
-            var titleIds = appByTitle.Keys.Union(patchByTitle.Keys, StringComparer.OrdinalIgnoreCase);
 
             foreach (var titleId in titleIds)
             {
@@ -177,9 +79,7 @@ public static class VitaPatchOnlyBuilder
 
                 if (patchByTitle.TryGetValue(titleId, out var patchItem))
                 {
-                    patchOwnedRelativePaths = TryGetOwnedPaths(patchItem, log);
-
-                    log($"[patch] {patchItem.TitleId}: 이 소스가 소유한 파일 {patchOwnedRelativePaths.Count}개 확인됨 (app에서는 스킵)");
+                    patchOwnedRelativePaths = VitaPatchShared.TryGetOwnedPaths(patchItem, log);
 
                     string? appWorkBinRel = null;
 
@@ -192,20 +92,24 @@ public static class VitaPatchOnlyBuilder
                             appWorkBinRel = candidateWorkBin;
                     }
 
-                    var patchCtx = GetPatchContext(patchContexts, patchItem.PatchPathOverride ?? defaultPatchPath, log);
-                    var r = await ProcessItemAsync(patchItem, patchCtx, target, zip, writtenEntries, null, appWorkBinRel, log, ct, progress);
+                    var patchCtx = VitaPatchShared.GetPatchContext(patchContexts, patchItem.PatchPathOverride ?? defaultPatchPath, log);
+                    var r = await ProcessItemAsync(patchItem, patchCtx, target, zip, writtenEntries, null, appWorkBinRel, reporter, log, ct);
 
                     matched += r.matched;
                     success += r.success;
+
+                    LogItemResult(log, patchItem, r);
                 }
 
                 if (appByTitle.TryGetValue(titleId, out var appItem))
                 {
-                    var appCtx = GetPatchContext(patchContexts, appItem.PatchPathOverride ?? defaultPatchPath, log);
-                    var r = await ProcessItemAsync(appItem, appCtx, target, zip, writtenEntries, patchOwnedRelativePaths, null, log, ct, progress);
+                    var appCtx = VitaPatchShared.GetPatchContext(patchContexts, appItem.PatchPathOverride ?? defaultPatchPath, log);
+                    var r = await ProcessItemAsync(appItem, appCtx, target, zip, writtenEntries, patchOwnedRelativePaths, null, reporter, log, ct);
 
                     matched += r.matched;
                     success += r.success;
+
+                    LogItemResult(log, appItem, r);
                 }
             }
 
@@ -213,12 +117,16 @@ public static class VitaPatchOnlyBuilder
             {
                 ct.ThrowIfCancellationRequested();
 
-                var dlcCtx = GetPatchContext(patchContexts, addcontItem.PatchPathOverride ?? defaultPatchPath, log);
-                var r = await ProcessItemAsync(addcontItem, dlcCtx, target, zip, writtenEntries, null, null, log, ct, progress);
+                var dlcCtx = VitaPatchShared.GetPatchContext(patchContexts, addcontItem.PatchPathOverride ?? defaultPatchPath, log);
+                var r = await ProcessItemAsync(addcontItem, dlcCtx, target, zip, writtenEntries, null, null, reporter, log, ct);
 
                 matched += r.matched;
                 success += r.success;
+
+                LogItemResult(log, addcontItem, r);
             }
+
+            reporter.ForceReport();
 
             return new VitaPatchOnlyResult { MatchedCandidates = matched, PatchedSuccessfully = success };
         }
@@ -229,104 +137,129 @@ public static class VitaPatchOnlyBuilder
         }
     }
 
-    private sealed class PatchContext
+    private static long EstimateTotalBytes(List<string> titleIds, Dictionary<string, VitaSourceItem> appByTitle, Dictionary<string, VitaSourceItem> patchByTitle,
+        List<VitaSourceItem> addcontItems, string defaultPatchPath, Dictionary<string, VitaPatchShared.PatchContext> patchContexts, Action<string, LogLevel> log)
     {
-        public required IVitaSourceAccessor Accessor { get; init; }
+        long total = 0;
 
-        public required Dictionary<string, string> PatchFiles { get; init; }
-
-        public required List<string> RawOverwriteFiles { get; init; }
-    }
-
-    private static PatchContext GetPatchContext(Dictionary<string, PatchContext> cache, string patchPath, Action<string> log)
-    {
-        if (cache.TryGetValue(patchPath, out var existing))
-            return existing;
-
-        var accessor = VitaSourceAccessorFactory.Open(patchPath);
-        var allPatchFiles = accessor.EnumerateAllFiles().ToList();
-        var patchFiles = BuildPatchFileMap(allPatchFiles, log);
-        var rawOverwriteFiles = allPatchFiles
-            .Where(f => !PatchExtensions.Contains(Path.GetExtension(f)))
-            .ToList();
-        var ctx = new PatchContext { Accessor = accessor, PatchFiles = patchFiles, RawOverwriteFiles = rawOverwriteFiles };
-
-        cache[patchPath] = ctx;
-
-        return ctx;
-    }
-
-    private static Dictionary<string, string> BuildPatchFileMap(List<string> allPatchFiles, Action<string> log)
-    {
-        var groups = allPatchFiles
-            .Where(f => PatchExtensions.Contains(Path.GetExtension(f)))
-            .GroupBy(f => Path.GetFileNameWithoutExtension(f)!, StringComparer.OrdinalIgnoreCase);
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var group in groups)
+        foreach (var titleId in titleIds)
         {
-            var list = group.ToList();
+            var patchOwnedRelativePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            if (list.Count > 1)
-                log($"패치 대상 '{group.Key}'에 대한 패치 파일이 {list.Count}개 중복됨: {string.Join(", ", list)} - 첫 번째({list[0]})만 사용함");
+            if (patchByTitle.TryGetValue(titleId, out var patchItem))
+            {
+                patchOwnedRelativePaths = VitaPatchShared.TryGetOwnedPaths(patchItem, log);
 
-            map[group.Key] = list[0];
+                string? appWorkBinRel = null;
+
+                if (appByTitle.TryGetValue(titleId, out var appItemForWorkBin) && appItemForWorkBin.Accessor!.FileExists($"{appItemForWorkBin.SourcePath}/sce_sys/package/work.bin"))
+                    appWorkBinRel = $"{appItemForWorkBin.SourcePath}/sce_sys/package/work.bin";
+
+                var patchCtx = VitaPatchShared.GetPatchContext(patchContexts, patchItem.PatchPathOverride ?? defaultPatchPath, log);
+
+                total += EstimateItemBytes(patchItem, patchCtx, null, appWorkBinRel);
+            }
+
+            if (appByTitle.TryGetValue(titleId, out var appItem))
+            {
+                var appCtx = VitaPatchShared.GetPatchContext(patchContexts, appItem.PatchPathOverride ?? defaultPatchPath, log);
+
+                total += EstimateItemBytes(appItem, appCtx, patchOwnedRelativePaths, null);
+            }
         }
 
-        return map;
+        foreach (var addcontItem in addcontItems)
+        {
+            var dlcCtx = VitaPatchShared.GetPatchContext(patchContexts, addcontItem.PatchPathOverride ?? defaultPatchPath, log);
+
+            total += EstimateItemBytes(addcontItem, dlcCtx, null, null);
+        }
+
+        return total;
     }
 
-    private static HashSet<string> TryGetOwnedPaths(VitaSourceItem item, Action<string> log)
+    private static long EstimateItemBytes(VitaSourceItem item, VitaPatchShared.PatchContext patchCtx, HashSet<string>? skipRelativePaths, string? fallbackWorkBinRel)
     {
-        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var accessor = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
+        var source = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
+
+        if (VitaPatchShared.ResolveWorkBinRel(source, item, fallbackWorkBinRel) is null)
+            return 0;
+
+        long total = 0;
 
         try
         {
-            var table = VitaNoNpDrmDecryptor.ParseFileTable(accessor, item.SourcePath);
+            var table = VitaNoNpDrmDecryptor.ParseFileTable(source, item.SourcePath);
 
             foreach (var entry in table.Entries)
             {
-                if (!entry.Type.IsDirectory())
-                    set.Add(entry.RelativePath ?? entry.Name);
+                if (entry.Type.IsDirectory())
+                    continue;
+
+                string relativePath = entry.RelativePath ?? entry.Name;
+
+                if (skipRelativePaths != null && skipRelativePaths.Contains(relativePath))
+                    continue;
+
+                if (!patchCtx.PatchFiles.ContainsKey(Path.GetFileName(relativePath)))
+                    continue;
+
+                string srcRel = $"{item.SourcePath}/{relativePath.Replace('\\', '/')}";
+
+                if (source.FileExists(srcRel))
+                    total += entry.Size;
             }
         }
-        catch (Exception ex)
+        catch
         {
-            log($"{item.Category} {item.TitleId}: 파일 목록 확인 실패 - {ex.Message}");
+            return total;
         }
 
-        return set;
+        if (item.Category != VitaContentCategory.Addcont)
+        {
+            foreach (var rawRel in patchCtx.RawOverwriteFiles)
+            {
+                string normalizedRawRel = rawRel.Replace('\\', '/');
+
+                if (skipRelativePaths != null && skipRelativePaths.Contains(normalizedRawRel))
+                    continue;
+
+                string srcRel = $"{item.SourcePath}/{normalizedRawRel}";
+
+                if (source.FileExists(srcRel))
+                    total += patchCtx.Accessor.GetFileSize(rawRel);
+            }
+        }
+
+        return total;
     }
 
-    private static string NormalizeZipPath(string path)
+    private static void LogItemResult(Action<string, LogLevel> log, VitaSourceItem item, (int matched, int success) r)
     {
-        string normalized = path.Replace('\\', '/');
+        if (r.matched == 0)
+            return;
 
-        while (normalized.Contains("//"))
-            normalized = normalized.Replace("//", "/");
+        string name = item.Category == VitaContentCategory.Addcont ? $"{item.TitleId}/{item.ContentIdSuffix}" : item.TitleId;
 
-        return normalized.Trim('/');
+        if (r.success == r.matched)
+            log($"[{item.Category}] {name}: {r.matched}개 중 {r.success}개 패치 완료", LogLevel.Ok);
+        else
+            log($"[{item.Category}] {name}: {r.matched}개 중 {r.success}개만 패치 성공 ({r.matched - r.success}개 실패)", LogLevel.Error);
     }
 
-    private static async Task<(int matched, int success)> ProcessItemAsync(VitaSourceItem item, PatchContext patchCtx, VitaOutputTarget target,
-        ZipArchive zip, HashSet<string> writtenEntries, HashSet<string>? skipRelativePaths, string? fallbackWorkBinRel, Action<string> log, CancellationToken ct, IProgress<double>? progress)
+    private static async Task<(int matched, int success)> ProcessItemAsync(VitaSourceItem item, VitaPatchShared.PatchContext patchCtx, VitaOutputTarget target,
+        ZipArchive zip, HashSet<string> writtenEntries, HashSet<string>? skipRelativePaths, string? fallbackWorkBinRel, ProgressReporter reporter, Action<string, LogLevel> log, CancellationToken ct)
     {
         var source = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
         var patch = patchCtx.Accessor;
         var patchFiles = patchCtx.PatchFiles;
         var rawOverwriteFiles = patchCtx.RawOverwriteFiles;
-        string workBinRel = $"{item.SourcePath}/sce_sys/package/work.bin";
+        string? workBinRel = VitaPatchShared.ResolveWorkBinRel(source, item, fallbackWorkBinRel);
 
-        if (!source.FileExists(workBinRel))
+        if (workBinRel is null)
         {
-            if (fallbackWorkBinRel != null && source.FileExists(fallbackWorkBinRel))
-                workBinRel = fallbackWorkBinRel;
-            else
-            {
-                log($"{item.Category} {item.TitleId}: work.bin 없음, 건너뜀");
-                return (0, 0);
-            }
+            log($"{item.Category} {item.TitleId}: work.bin 없음, 건너뜀", LogLevel.Error);
+            return (0, 0);
         }
 
         var license = WorkBinReader.Read(source, workBinRel);
@@ -353,33 +286,34 @@ public static class VitaPatchOnlyBuilder
             if (!patchFiles.TryGetValue(baseName, out var patchFileRel))
                 continue;
 
-            matched++;
-
             string srcRel = $"{item.SourcePath}/{relativePath.Replace('\\', '/')}";
 
             if (!source.FileExists(srcRel))
             {
-                log($"[{item.Category}] {relativePath}: 원본 파일 없음");
+                log($"[{item.Category}] {relativePath}: 원본 파일 없음", LogLevel.Error);
                 continue;
             }
 
+            matched++;
+
             try
             {
-                string prefix = GetPrefix(item.Category, target);
+                string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
                 string entryPath = item.Category == VitaContentCategory.Addcont
-                    ? NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}")
-                    : NormalizeZipPath($"{prefix}/{item.TitleId}/{relativePath}");
+                    ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}")
+                    : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{relativePath}");
 
                 if (!writtenEntries.Add(entryPath))
                 {
-                    log($"[{item.Category}] {relativePath}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)");
+                    log($"[{item.Category}] {relativePath}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)", LogLevel.Highlight);
+                    reporter.AddProgress(entry.Size);
                     continue;
                 }
 
                 byte[] sourceBytes = VitaNoNpDrmDecryptor.DecryptEntry(source, item.SourcePath, license.Klicensee, entry, table.UnicvEntries[i], table.FilesSalt, out string? warning);
 
                 if (warning != null)
-                    log($"[{item.Category}] {warning}");
+                    log($"[{item.Category}] {warning}", LogLevel.Highlight);
 
                 byte[] patchBytes = patch.ReadAllBytes(patchFileRel);
                 byte[] patchedBytes = await UniversalPatcher.ApplyPatchAsync(sourceBytes, patchBytes, ct: ct);
@@ -389,15 +323,13 @@ public static class VitaPatchOnlyBuilder
                     await entryStream.WriteAsync(patchedBytes, ct);
 
                 success++;
-
-                log($"[{item.Category}] {relativePath}: 패치 성공");
+                reporter.AddProgress(entry.Size);
             }
             catch (Exception ex)
             {
-                log($"[{item.Category}] {relativePath}: 패치 실패 - {ex.Message}");
+                log($"[{item.Category}] {relativePath}: 패치 실패 - {ex.Message}", LogLevel.Error);
+                reporter.AddProgress(entry.Size);
             }
-
-            progress?.Report(matched == 0 ? 0 : (double)success / matched);
         }
 
         if (item.Category != VitaContentCategory.Addcont)
@@ -416,18 +348,21 @@ public static class VitaPatchOnlyBuilder
                 if (!source.FileExists(srcRel))
                     continue;
 
+                long rawSize = patch.GetFileSize(rawRel);
+
                 matched++;
 
                 try
                 {
-                    string prefix = GetPrefix(item.Category, target);
+                    string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
                     string entryPath = item.Category == VitaContentCategory.Addcont
-                        ? NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}")
-                        : NormalizeZipPath($"{prefix}/{item.TitleId}/{normalizedRawRel}");
+                        ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}")
+                        : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{normalizedRawRel}");
 
                     if (!writtenEntries.Add(entryPath))
                     {
-                        log($"[{item.Category}] {normalizedRawRel}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)");
+                        log($"[{item.Category}] {normalizedRawRel}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)", LogLevel.Highlight);
+                        reporter.AddProgress(rawSize);
                         continue;
                     }
 
@@ -438,21 +373,19 @@ public static class VitaPatchOnlyBuilder
                         await entryStream.WriteAsync(rawBytes, ct);
 
                     success++;
-
-                    log($"[{item.Category}] {normalizedRawRel}: 원본 대체 파일로 그대로 복사됨");
+                    reporter.AddProgress(rawSize);
                 }
                 catch (Exception ex)
                 {
-                    log($"[{item.Category}] {normalizedRawRel}: 복사 실패 - {ex.Message}");
+                    log($"[{item.Category}] {normalizedRawRel}: 복사 실패 - {ex.Message}", LogLevel.Error);
+                    reporter.AddProgress(rawSize);
                 }
-
-                progress?.Report(matched == 0 ? 0 : (double)success / matched);
             }
         }
 
         if (target == VitaOutputTarget.Emu && WorkBinReader.TryGetTitleIdFromContentId(license.ContentId, out string licenseTitleId))
         {
-            string licenseEntryPath = NormalizeZipPath($"license/{licenseTitleId}/{license.ContentId}.rif");
+            string licenseEntryPath = VitaPatchShared.NormalizeZipPath($"license/{licenseTitleId}/{license.ContentId}.rif");
 
             if (writtenEntries.Add(licenseEntryPath))
             {
@@ -466,15 +399,4 @@ public static class VitaPatchOnlyBuilder
 
         return (matched, success);
     }
-
-    private static string GetPrefix(VitaContentCategory category, VitaOutputTarget target) => (category, target) switch
-    {
-        (VitaContentCategory.App, VitaOutputTarget.Emu) => "app",
-        (VitaContentCategory.Patch, VitaOutputTarget.Emu) => "app",
-        (VitaContentCategory.Addcont, VitaOutputTarget.Emu) => "addcont",
-        (VitaContentCategory.App, VitaOutputTarget.Retail) => "rePatch",
-        (VitaContentCategory.Patch, VitaOutputTarget.Retail) => "rePatch",
-        (VitaContentCategory.Addcont, VitaOutputTarget.Retail) => "reAddcont",
-        _ => throw new NotSupportedException()
-    };
 }

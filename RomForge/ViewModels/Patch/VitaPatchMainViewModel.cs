@@ -28,6 +28,9 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     private bool _mergePatchIntoGame = false;
     private int _progressPct;
     private string _progressLabel = string.Empty;
+    private string _progressPercent = string.Empty;
+    private string _progressTime = string.Empty;
+    private string _progressSpeed = string.Empty;
     private bool _isSyncing;
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
@@ -55,13 +58,13 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     public bool BuildEmu
     {
         get => _buildEmu;
-        set { _buildEmu = value; OnPropertyChanged(); }
+        set { _buildEmu = value; OnPropertyChanged(); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public bool BuildRetail
     {
         get => _buildRetail;
-        set { _buildRetail = value; OnPropertyChanged(); }
+        set { _buildRetail = value; OnPropertyChanged(); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public int ProgressPct
@@ -74,6 +77,24 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     {
         get => _progressLabel;
         set { _progressLabel = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressPercent
+    {
+        get => _progressPercent;
+        set { _progressPercent = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressTime
+    {
+        get => _progressTime;
+        set { _progressTime = value; OnPropertyChanged(); }
+    }
+
+    public string ProgressSpeed
+    {
+        get => _progressSpeed;
+        set { _progressSpeed = value; OnPropertyChanged(); }
     }
 
     public bool MergePatchIntoGame
@@ -101,7 +122,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     {
         OutputPath = string.IsNullOrWhiteSpace(AppConfig.Instance.OutputFolders.VitaOutputPath) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output") : AppConfig.Instance.OutputFolders.VitaOutputPath;
 
-        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && CanRun());
+        RunCommand = new RelayCommand(async _ => await RunAsync(), _ => !IsLocked && CanRun());        
         RemoveRowCommand = new RelayCommand(o => RemoveRow(o as VitaSourceRowViewModel ?? SelectedRow));
         RemoveSelectedCommand = new RelayCommand(_ => { if (SelectedRow != null) RemoveRow(SelectedRow); }, _ => SelectedRow != null);
         RemoveAllCommand = new RelayCommand(_ => SourceRows.Clear(), _ => SourceRows.Count > 0);
@@ -179,12 +200,12 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             OutputPath = dlg.SelectedPath;
     }
 
-    private bool CanRun()
+    public bool CanRun()
     {
         if (string.IsNullOrWhiteSpace(OutputPath) || (!BuildEmu && !BuildRetail))
             return false;
 
-        if (SourceRows.Count == 0)
+        if (SourceRows.Count == 0 || SourceRows.Any(r => string.IsNullOrWhiteSpace(r.PatchPath)))
             return false;
 
         bool everyTitleHasApp = SourceRows
@@ -284,11 +305,6 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         if (existingAny != null && !string.IsNullOrEmpty(existingAny.PatchPath))
             row.PatchPath = existingAny.PatchPath;
 
-        if (row.ErrorMessage != null)
-            Log($"{row.FileName}: 분석 실패 - {row.ErrorMessage}", LogLevel.Error);
-        else
-            Log($"{row.FileName}: {row.Category} / {row.TitleId}{(row.ContentIdSuffix != null ? "/" + row.ContentIdSuffix : "")}");
-
         _ = row.LoadMetadataAsync();
     }
 
@@ -306,9 +322,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         }
         else
         {
-            var duplicate = SourceRows.FirstOrDefault(r => r.Category == VitaContentCategory.Addcont
-                && string.Equals(r.TitleId, newRow.TitleId, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(r.ContentIdSuffix, newRow.ContentIdSuffix, StringComparison.OrdinalIgnoreCase));
+            var duplicate = SourceRows.FirstOrDefault(r => r.Category == VitaContentCategory.Addcont && string.Equals(r.TitleId, newRow.TitleId, StringComparison.OrdinalIgnoreCase) && string.Equals(r.ContentIdSuffix, newRow.ContentIdSuffix, StringComparison.OrdinalIgnoreCase));
 
             if (duplicate != null)
             {
@@ -391,28 +405,53 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 string baseName = SourceRows.First(r => r.Category == VitaContentCategory.App).TitleId;
                 string defaultPatchPath = SourceRows.FirstOrDefault(r => !string.IsNullOrEmpty(r.PatchPath))?.PatchPath ?? string.Empty;
                 var entries = SourceRows.Select(r => r.ToBatchEntry()).ToList();
-                var progress = new Progress<double>(p => ProgressPct = (int)(p * 100));
 
                 if (BuildEmu)
                 {
-                    Log("에뮬용 패치 생성 중...");
-
-                    string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_emu.zip", defaultPatchPath);
+                    string suffix = MergePatchIntoGame ? "_emu_merged.zip" : "_emu.zip";
+                    string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}{suffix}", defaultPatchPath);
                     string emuZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, emuFileName));
-                    var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
 
-                    Log($"에뮬용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {emuZip}", LogLevel.Ok);
+                    if (MergePatchIntoGame)
+                    {
+                        Log("에뮬용 게임+패치 병합 중...", LogLevel.Highlight);
+
+                        var result = await VitaPatchOutputBuilder.BuildMergedFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, Log, BuildProgressReporter(), _cts.Token);
+
+                        Log($"에뮬용 완료: 총 {result.TotalFiles}개 파일 (패치 {result.PatchedSuccessfully}/{result.PatchCandidates}개 적용) -> {emuZip}", LogLevel.Ok);
+                    }
+                    else
+                    {
+                        Log("에뮬용 패치 생성 중...", LogLevel.Highlight);
+
+                        var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, Log, BuildProgressReporter(), _cts.Token);
+
+                        Log($"에뮬용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {emuZip}", LogLevel.Ok);
+                    }
                 }
 
                 if (BuildRetail)
                 {
-                    Log("실기용 패치 생성 중...");
-
-                    string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}_retail.zip", defaultPatchPath);
+                    string suffix = MergePatchIntoGame ? "_retail_merged.zip" : "_retail.zip";
+                    string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}{suffix}", defaultPatchPath);
                     string retailZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, retailFileName));
-                    var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, msg => { Log(msg); ProgressLabel = msg; }, progress, _cts.Token);
 
-                    Log($"실기용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {retailZip}", LogLevel.Ok);
+                    if (MergePatchIntoGame)
+                    {
+                        Log("실기용 게임+패치 병합 중...", LogLevel.Highlight);
+
+                        var result = await VitaPatchOutputBuilder.BuildMergedFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, Log, BuildProgressReporter(), _cts.Token);
+
+                        Log($"실기용 완료: 총 {result.TotalFiles}개 파일 (패치 {result.PatchedSuccessfully}/{result.PatchCandidates}개 적용) -> {retailZip}", LogLevel.Ok);
+                    }
+                    else
+                    {
+                        Log("실기용 패치 생성 중...", LogLevel.Highlight);
+
+                        var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, Log, BuildProgressReporter(), _cts.Token);
+
+                        Log($"실기용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {retailZip}", LogLevel.Ok);
+                    }
                 }
 
                 Log($"전체 완료 ({_totalSw.Elapsed:mm\\:ss})", LogLevel.Ok);
@@ -431,10 +470,28 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             {
                 _cts?.Dispose();
                 _cts = null;
-                ProgressPct = 0;
-                ProgressLabel = string.Empty;
+                CleanupProgress();
             }
         }
+    }
+
+    private Progress<ProgressInfo> BuildProgressReporter() =>
+        new(info =>
+        {
+            ProgressPct = info.Percent;
+            ProgressLabel = info.Label;
+            ProgressPercent = $"{info.Percent}%";
+            ProgressTime = info.TimeInfo;
+            ProgressSpeed = info.Speed;
+        });
+
+    private void CleanupProgress()
+    {
+        ProgressPct = 0;
+        ProgressLabel = string.Empty;
+        ProgressPercent = string.Empty;
+        ProgressTime = string.Empty;
+        ProgressSpeed = string.Empty;
     }
 
     public void Clear()
@@ -443,8 +500,7 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         SourceRows.Clear();
 
-        ProgressPct = 0;
-        ProgressLabel = string.Empty;
+        CleanupProgress();
 
         LogEntries.Clear();
     }

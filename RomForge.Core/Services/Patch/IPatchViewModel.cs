@@ -6,6 +6,8 @@ public interface IPatchViewModel
 
     Task RunAsync();
 
+    bool CanRun();
+
     void Cancel();
 
     void Clear();

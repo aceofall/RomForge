@@ -42,6 +42,7 @@ public class Pc98PatchMainViewModel : ToolTabViewModel, IPatchViewModel
             _patchPath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(PatchLabel));
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -120,6 +121,9 @@ public class Pc98PatchMainViewModel : ToolTabViewModel, IPatchViewModel
             ProgressPercent = "0%";
         }
     }
+
+    public bool CanRun() => !string.IsNullOrEmpty(SourcePath) && !string.IsNullOrEmpty(PatchPath);
+
 
     public void Cancel() => _runCts?.Cancel();
 

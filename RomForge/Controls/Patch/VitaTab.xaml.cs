@@ -1,4 +1,6 @@
-﻿using Ookii.Dialogs.Wpf;
+﻿using NSW.WPF.Services;
+using NSW.WPF.ViewModels;
+using Ookii.Dialogs.Wpf;
 using RomForge.ViewModels;
 using RomForge.ViewModels.Patch;
 using System.IO;
@@ -19,6 +21,10 @@ namespace RomForge.Controls.Patch
 
         private void LvPkg_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
+            var selected = ViewModel?.PatchVM.VitaVM.SelectedRow;
+
+            if (selected == null)
+                e.Handled = true;
         }
 
         private void Root_DragEnter(object sender, DragEventArgs e)
@@ -155,21 +161,18 @@ namespace RomForge.Controls.Patch
 
         private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem mi && mi.DataContext is VitaSourceRowViewModel row)
-            {
-                if (!string.IsNullOrEmpty(row.Path))
-                {
-                    string? dir = File.Exists(row.Path) ? Path.GetDirectoryName(row.Path) : row.Path;
-                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = dir,
-                            UseShellExecute = true
-                        });
-                    }
-                }
-            }
+            var selected = ViewModel?.PatchVM.VitaVM.SelectedRow;
+            string? dir = Path.GetDirectoryName(selected?.Path);
+
+            dir?.OpenFolder();
+        }
+
+        private void MenuItem_RemovePatch_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.PatchVM.VitaVM.SelectedRow;
+
+            if(selected != null)
+                selected.PatchPath = string.Empty;
         }
     }
 }

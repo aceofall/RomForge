@@ -1,7 +1,6 @@
 ﻿using Common.WPF.ViewModels;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Vita.Core.Models;
@@ -12,6 +11,7 @@ namespace RomForge.ViewModels.Patch;
 public class VitaSourceRowViewModel : ViewModelBase
 {
     private string _license = string.Empty;
+    private string _path = string.Empty;
     private string _patchPath = string.Empty;
     private VitaContentCategory _category;
     private string? _errorMessage;
@@ -21,15 +21,11 @@ public class VitaSourceRowViewModel : ViewModelBase
     private string? _gameName;
     private CancellationTokenSource? _iconReloadCts;
 
-    public string Path { get; }
-
     public VitaSourceKind Kind { get; }
 
     public string? ItemSourcePath { get; }
 
-    public string FileName => Kind == VitaSourceKind.Pkg
-        ? System.IO.Path.GetFileName(Path)
-        : $"{System.IO.Path.GetFileName(Path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))} :: {ItemSourcePath}";
+    public string FileName => Kind == VitaSourceKind.Pkg ? System.IO.Path.GetFileName(Path) : $"{System.IO.Path.GetFileName(Path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))} :: {ItemSourcePath}";
 
     public bool IsPkg => Kind == VitaSourceKind.Pkg;
 
@@ -50,16 +46,23 @@ public class VitaSourceRowViewModel : ViewModelBase
         {
             _license = value;
             OnPropertyChanged();
+            CommandManager.InvalidateRequerySuggested();
 
             if (Kind == VitaSourceKind.Pkg && Category == VitaContentCategory.App)
                 _ = DebounceReloadIconAsync();
         }
     }
 
+    public string Path
+    {
+        get => _path;
+        set { _path = value; OnPropertyChanged(); CommandManager.InvalidateRequerySuggested(); }
+    }
+
     public string PatchPath
     {
         get => _patchPath;
-        set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchIconSource)); }
+        set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchIconSource)); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public string? ErrorMessage
@@ -146,8 +149,7 @@ public class VitaSourceRowViewModel : ViewModelBase
         return new VitaSourceRowViewModel(pkgPath, VitaSourceKind.Pkg, null, result.TitleId, result.Category, result.ContentIdSuffix);
     }
 
-    public static VitaSourceRowViewModel FromZipItem(string containerPath, VitaSourceItem item) =>
-        new(containerPath, VitaSourceKind.ZipOrFolder, item.SourcePath, item.TitleId, item.Category, item.ContentIdSuffix);
+    public static VitaSourceRowViewModel FromZipItem(string containerPath, VitaSourceItem item) => new(containerPath, VitaSourceKind.ZipOrFolder, item.SourcePath, item.TitleId, item.Category, item.ContentIdSuffix);
 
     public static List<VitaSourceRowViewModel> DiscoverFromContainer(string containerPath)
     {
@@ -246,10 +248,7 @@ public class VitaSourceRowViewModel : ViewModelBase
 
                 using var containerAccessor = VitaSourceAccessorFactory.Open(Path);
                 string sfoRel = $"{ItemSourcePath}/sce_sys/param.sfo";
-                string? title = containerAccessor.FileExists(sfoRel)
-                    ? VitaSfoParser.GetString(VitaSfoParser.Parse(containerAccessor.ReadAllBytes(sfoRel)), "TITLE")
-                    : null;
-
+                string? title = containerAccessor.FileExists(sfoRel) ? VitaSfoParser.GetString(VitaSfoParser.Parse(containerAccessor.ReadAllBytes(sfoRel)), "TITLE") : null;
                 byte[]? icon = null;
 
                 if (Category == VitaContentCategory.App)
@@ -277,9 +276,7 @@ public class VitaSourceRowViewModel : ViewModelBase
                             {
                                 icon = VitaNoNpDrmDecryptor.DecryptEntry(containerAccessor, ItemSourcePath!, license.Klicensee, entry, table.UnicvEntries[i], table.FilesSalt, out _);
                             }
-                            catch
-                            {
-                            }
+                            catch { }
 
                             break;
                         }
