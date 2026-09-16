@@ -1,5 +1,6 @@
 ﻿using Common.WPF.ViewModels;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -18,6 +19,7 @@ public class VitaSourceRowViewModel : ViewModelBase
     private long _sizeBytes = -1;
     private byte[]? _iconBytes;
     private string? _gameName;
+    private CancellationTokenSource? _iconReloadCts;
 
     public string Path { get; }
 
@@ -44,7 +46,14 @@ public class VitaSourceRowViewModel : ViewModelBase
     public string License
     {
         get => _license;
-        set { _license = value; OnPropertyChanged(); }
+        set
+        {
+            _license = value;
+            OnPropertyChanged();
+
+            if (Kind == VitaSourceKind.Pkg && Category == VitaContentCategory.App)
+                _ = DebounceReloadIconAsync();
+        }
     }
 
     public string PatchPath
@@ -198,12 +207,39 @@ public class VitaSourceRowViewModel : ViewModelBase
                 if (Kind == VitaSourceKind.Pkg)
                 {
                     using var accessor = new PkgSourceAccessor(Path);
-                    byte[]? pkgIcon = Category == VitaContentCategory.App && accessor.FileExists("sce_sys/icon0.png")
-                        ? accessor.ReadAllBytes("sce_sys/icon0.png")
-                        : null;
                     string? pkgTitle = accessor.FileExists("sce_sys/param.sfo")
                         ? VitaSfoParser.GetString(VitaSfoParser.Parse(accessor.ReadAllBytes("sce_sys/param.sfo")), "TITLE")
                         : null;
+
+                    byte[]? pkgIcon = null;
+
+                    if (Category == VitaContentCategory.App && !string.IsNullOrWhiteSpace(License))
+                    {
+                        try
+                        {
+                            byte[] klicensee = VitaPkgLicenseResolver.ResolveKlicensee(License, accessor.Header.ContentId);
+                            var pkgTable = VitaNoNpDrmDecryptor.ParseFileTable(accessor, string.Empty);
+
+                            for (int i = 0; i < pkgTable.Entries.Count; i++)
+                            {
+                                var entry = pkgTable.Entries[i];
+
+                                if (entry.Type.IsDirectory())
+                                    continue;
+
+                                string relativePath = (entry.RelativePath ?? entry.Name).Replace('\\', '/').TrimStart('/');
+
+                                if (!relativePath.Equals("sce_sys/icon0.png", StringComparison.OrdinalIgnoreCase))
+                                    continue;
+
+                                pkgIcon = VitaNoNpDrmDecryptor.DecryptEntry(accessor, string.Empty, klicensee, entry, pkgTable.UnicvEntries[i], pkgTable.FilesSalt, out _);
+                                break;
+                            }
+                        }
+                        catch
+                        {
+                        }
+                    }
 
                     return (pkgIcon, pkgTitle);
                 }
@@ -261,6 +297,29 @@ public class VitaSourceRowViewModel : ViewModelBase
             IconBytes = null;
             GameName = null;
         }
+    }
+
+    private async Task DebounceReloadIconAsync()
+    {
+        _iconReloadCts?.Cancel();
+
+        var cts = new CancellationTokenSource();
+
+        _iconReloadCts = cts;
+
+        try
+        {
+            await Task.Delay(500, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (cts.IsCancellationRequested)
+            return;
+
+        await LoadIconAndTitleAsync();
     }
 
     private static string FormatBytes(long bytes)

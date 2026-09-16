@@ -296,11 +296,11 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
     {
         if (newRow.Category is VitaContentCategory.App or VitaContentCategory.Patch)
         {
-            var existing = SourceRows.FirstOrDefault(r => r.Category == newRow.Category && string.Equals(r.TitleId, newRow.TitleId, StringComparison.OrdinalIgnoreCase));
+            var existing = SourceRows.FirstOrDefault(r => r.Category == newRow.Category);
 
             if (existing != null)
             {
-                Log($"{existing.FileName} -> {newRow.FileName}(으)로 대체됨 (같은 타이틀의 {newRow.Category})");
+                Log($"{existing.FileName} -> {newRow.FileName}(으)로 대체됨 (기존 {newRow.Category})");
                 SourceRows.Remove(existing);
             }
         }
@@ -317,30 +317,31 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             }
         }
 
-        SourceRows.Insert(ComputeInsertIndex(newRow.TitleId, newRow.Category), newRow);
+        SourceRows.Insert(ComputeInsertIndex(newRow.Category, newRow.ContentIdSuffix), newRow);
     }
 
-    private int ComputeInsertIndex(string titleId, VitaContentCategory category)
+    private int ComputeInsertIndex(VitaContentCategory category, string? contentIdSuffix)
     {
-        var group = SourceRows
-            .Select((row, index) => (row, index))
-            .Where(t => string.Equals(t.row.TitleId, titleId, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (group.Count == 0)
-            return SourceRows.Count;
-
         if (category == VitaContentCategory.App)
-            return group[0].index;
+            return 0;
 
         if (category == VitaContentCategory.Patch)
-        {
-            var (row, index) = group.FirstOrDefault(t => t.row.Category == VitaContentCategory.App);
+            return SourceRows.Any(r => r.Category == VitaContentCategory.App) ? 1 : 0;
 
-            return row != null ? index + 1 : group[0].index;
+        int index = SourceRows.Count(r => r.Category is VitaContentCategory.App or VitaContentCategory.Patch);
+
+        foreach (var row in SourceRows)
+        {
+            if (row.Category != VitaContentCategory.Addcont)
+                continue;
+
+            if (string.Compare(contentIdSuffix, row.ContentIdSuffix, StringComparison.OrdinalIgnoreCase) < 0)
+                break;
+
+            index++;
         }
 
-        return group[^1].index + 1;
+        return index;
     }
 
     private void RecomputeLicenseEditability()
