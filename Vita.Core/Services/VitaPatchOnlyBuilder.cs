@@ -294,22 +294,21 @@ public static class VitaPatchOnlyBuilder
                 continue;
             }
 
+            string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
+            string entryPath = item.Category == VitaContentCategory.Addcont
+                ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}")
+                : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{relativePath}");
+
+            if (!writtenEntries.Add(entryPath))
+            {
+                reporter.AddProgress(entry.Size);
+                continue;
+            }
+
             matched++;
 
             try
             {
-                string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
-                string entryPath = item.Category == VitaContentCategory.Addcont
-                    ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{relativePath}")
-                    : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{relativePath}");
-
-                if (!writtenEntries.Add(entryPath))
-                {
-                    log($"[{item.Category}] {relativePath}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)", LogLevel.Highlight);
-                    reporter.AddProgress(entry.Size);
-                    continue;
-                }
-
                 byte[] sourceBytes = VitaNoNpDrmDecryptor.DecryptEntry(source, item.SourcePath, license.Klicensee, entry, table.UnicvEntries[i], table.FilesSalt, out string? warning);
 
                 if (warning != null)
@@ -350,22 +349,21 @@ public static class VitaPatchOnlyBuilder
 
                 long rawSize = patch.GetFileSize(rawRel);
 
+                string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
+                string entryPath = item.Category == VitaContentCategory.Addcont
+                    ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}")
+                    : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{normalizedRawRel}");
+
+                if (!writtenEntries.Add(entryPath))
+                {
+                    reporter.AddProgress(rawSize);
+                    continue;
+                }
+
                 matched++;
 
                 try
                 {
-                    string prefix = VitaPatchShared.GetPatchedPrefix(item.Category, target);
-                    string entryPath = item.Category == VitaContentCategory.Addcont
-                        ? VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{item.ContentIdSuffix}/{normalizedRawRel}")
-                        : VitaPatchShared.NormalizeZipPath($"{prefix}/{item.TitleId}/{normalizedRawRel}");
-
-                    if (!writtenEntries.Add(entryPath))
-                    {
-                        log($"[{item.Category}] {normalizedRawRel}: 이미 같은 경로로 추가된 항목이라 건너뜀 (중복)", LogLevel.Highlight);
-                        reporter.AddProgress(rawSize);
-                        continue;
-                    }
-
                     byte[] rawBytes = patch.ReadAllBytes(rawRel);
                     var zipEntry = zip.CreateEntry(entryPath, CompressionLevel.Optimal);
 
