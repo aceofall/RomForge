@@ -1,10 +1,12 @@
 ﻿using Common;
+using System.IO.Compression;
 using Vita.Core.Models;
 
 namespace Vita.Core.Services;
 
 internal static class VitaPatchShared
 {
+    private const int ProgressChunkSize = 4 * 1024 * 1024;
     public static readonly HashSet<string> PatchExtensions = new(StringComparer.OrdinalIgnoreCase) { ".xdelta", ".xdelta3", ".ips", ".ups", ".bps", ".ppf", ".aps" };
 
     public sealed class PatchContext
@@ -194,6 +196,28 @@ internal static class VitaPatchShared
             normalized = normalized.Replace("//", "/");
 
         return normalized.Trim('/');
+    }
+
+    public static async Task WriteEntryWithProgressAsync(ZipArchiveEntry zipEntry, byte[] data, ProgressReporter reporter, CancellationToken ct)
+    {
+        using var entryStream = zipEntry.Open();
+
+        if (data.Length == 0)
+        {
+            reporter.AddProgress(0);
+            return;
+        }
+
+        int offset = 0;
+
+        while (offset < data.Length)
+        {
+            int size = Math.Min(ProgressChunkSize, data.Length - offset);
+
+            await entryStream.WriteAsync(data.AsMemory(offset, size), ct);
+            reporter.AddProgress(size);
+            offset += size;
+        }
     }
 
     public static string GetPatchedPrefix(VitaContentCategory category, VitaOutputTarget target) => (category, target) switch

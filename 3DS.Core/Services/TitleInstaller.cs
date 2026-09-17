@@ -259,6 +259,28 @@ public class TitleInstaller(KeyStore keyStore, SdCrypto sdCrypto, SdTitleScanner
     {
         string dbPath = Path.Combine(_id1Path, "dbs", "title.db");
         string dbSdPath = "/dbs/title.db";
+        string dbsDir = Path.Combine(_id1Path, "dbs");
+
+        if (File.Exists(dbPath))
+        {
+            var existingBackups = Directory.GetFiles(dbsDir, "title.db.*.bak")
+                                       .OrderBy(File.GetCreationTime)
+                                       .ToList();
+
+            while (existingBackups.Count >= 20)
+            {
+                try { File.Delete(existingBackups[0]); } catch { }
+
+                existingBackups.RemoveAt(0);
+            }
+
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string backupPath = $"{dbPath}.{timestamp}.bak";
+
+            Log($"title.db 백업 생성 중: {backupPath}");
+            File.Copy(dbPath, backupPath, overwrite: false);
+        }
+
         byte[] encrypted = await File.ReadAllBytesAsync(dbPath, ct);
         byte[] decrypted = sdCrypto.Decrypt(dbSdPath, encrypted);
         var memFile = new MemoryFile(decrypted);

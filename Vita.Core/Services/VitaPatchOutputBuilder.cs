@@ -316,10 +316,10 @@ public static class VitaPatchOutputBuilder
 
             var zipEntry = zip.CreateEntry(entryPath, CompressionLevel.Optimal);
 
-            using (var entryStream = zipEntry.Open())
-                await entryStream.WriteAsync(outputBytes, ct);
+            await VitaPatchShared.WriteEntryWithProgressAsync(zipEntry, outputBytes, reporter, ct);
 
             total++;
+
             reporter.AddProgress(entry.Size);
         }
 
@@ -358,11 +358,11 @@ public static class VitaPatchOutputBuilder
                     byte[] rawBytes = patch.ReadAllBytes(rawRel);
                     var zipEntry = zip.CreateEntry(entryPath, CompressionLevel.Optimal);
 
-                    using (var entryStream = zipEntry.Open())
-                        await entryStream.WriteAsync(rawBytes, ct);
+                    await VitaPatchShared.WriteEntryWithProgressAsync(zipEntry, rawBytes, reporter, ct);
 
                     total++;
                     patchedSuccess++;
+
                     reporter.AddProgress(rawSize);
                 }
                 catch (Exception ex)
