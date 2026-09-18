@@ -29,9 +29,10 @@ public static class VitaPkgLicenseResolver
 
     public static byte[] BuildWorkBin(string contentId, byte[] klicensee)
     {
-        var buf = new byte[WorkBinLicense.MinSize];
+        var buf = new byte[WorkBinLicense.WriteSize];
         var contentIdBytes = Encoding.ASCII.GetBytes(contentId);
 
+        WorkBinLicense.FixedHeader.CopyTo(buf, 0);
         contentIdBytes.CopyTo(buf, WorkBinLicense.ContentIdOffset);
         klicensee.CopyTo(buf, WorkBinLicense.KlicenseeOffset);
 

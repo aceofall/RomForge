@@ -10,7 +10,7 @@ internal static class VitaPatchShared
     private const int ProgressChunkSize = 4 * 1024 * 1024;
 
     public static readonly HashSet<string> PatchExtensions = new(StringComparer.OrdinalIgnoreCase) { ".xdelta", ".xdelta3", ".ips", ".ups", ".bps", ".ppf", ".aps" };
-    
+
     public static (List<VitaSourceItem> Items, List<IVitaSourceAccessor> OwnedAccessors) LoadItems(List<VitaBatchSourceEntry> entries, Action<string, LogLevel> log)
     {
         var ownedAccessors = new List<IVitaSourceAccessor>();
@@ -200,6 +200,41 @@ internal static class VitaPatchShared
             log($"{item.Category} {item.TitleId}: 파일 목록 확인 실패 - {ex.Message}", LogLevel.Error);
             return null;
         }
+    }
+
+    public static List<(string RelativePath, long Size)> GetAllOwnedFiles(OwnerContext owner)
+    {
+        var sizeByPath = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in owner.Table.Entries)
+        {
+            if (entry.Type.IsDirectory())
+                continue;
+
+            string relativePath = NormalizePath(entry.RelativePath ?? entry.Name);
+
+            sizeByPath[relativePath] = entry.Size;
+        }
+
+        string prefix = string.IsNullOrEmpty(owner.Item.SourcePath) ? string.Empty : NormalizePath(owner.Item.SourcePath).TrimEnd('/') + "/";
+
+        foreach (var rawPath in owner.Item.Accessor!.EnumerateAllFiles())
+        {
+            string normalized = NormalizePath(rawPath);
+
+            if (prefix.Length > 0)
+            {
+                if (!normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                normalized = normalized[prefix.Length..];
+            }
+
+            if (!sizeByPath.ContainsKey(normalized))
+                sizeByPath[normalized] = owner.Item.Accessor!.GetFileSize(rawPath);
+        }
+
+        return [.. sizeByPath.Select(kv => (kv.Key, kv.Value))];
     }
 
     public static Dictionary<string, PatchAppEntry> BuildPatchAppIndex(OwnerContext? appOwner, OwnerContext? patchOwner)

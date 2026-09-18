@@ -1,4 +1,5 @@
 using Common;
+using Patch.Core;
 using System.IO.Compression;
 using Vita.Core.Models;
 
@@ -126,11 +127,8 @@ public static class VitaPatchOutputBuilder
                 {
                     foreach (var owner in group.Owners)
                     {
-                        foreach (var entry in owner.Table.Entries)
-                        {
-                            if (!entry.Type.IsDirectory())
-                                zipTotal += entry.Size;
-                        }
+                        foreach (var (_, size) in VitaPatchShared.GetAllOwnedFiles(owner))
+                            zipTotal += size;
                     }
 
                     foreach (var t in group.Targets)
@@ -189,16 +187,10 @@ public static class VitaPatchOutputBuilder
                     {
                         foreach (var owner in group.Owners)
                         {
-                            for (int i = 0; i < owner.Table.Entries.Count; i++)
+                            foreach (var (relativePath, size) in VitaPatchShared.GetAllOwnedFiles(owner))
                             {
                                 ct.ThrowIfCancellationRequested();
 
-                                var entry = owner.Table.Entries[i];
-
-                                if (entry.Type.IsDirectory())
-                                    continue;
-
-                                string relativePath = VitaPatchShared.NormalizePath(entry.RelativePath ?? entry.Name);
                                 string srcRel = $"{owner.Item.SourcePath}/{relativePath}";
                                 byte[] rawBytes;
 
@@ -214,7 +206,7 @@ public static class VitaPatchOutputBuilder
 
                                 string baseEntryPath = BuildEntryPath(VitaPatchShared.GetRetailBaseFolder(owner.Item.Category), group, relativePath);
 
-                                await WriteZipEntryAsync(zip, writtenEntries, baseEntryPath, rawBytes, entry.Size, zipReporter, log, owner.Item.Category, relativePath, ct);
+                                await WriteZipEntryAsync(zip, writtenEntries, baseEntryPath, rawBytes, size, zipReporter, log, owner.Item.Category, relativePath, ct);
 
                                 bool isEffectiveOwner = group.Index.TryGetValue(relativePath, out var winner) && winner.Owner == owner;
 
