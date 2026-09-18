@@ -54,7 +54,12 @@ public sealed class ZipSourceAccessor : IVitaSourceAccessor
         return names;
     }
 
-    public IEnumerable<string> EnumerateAllFiles() => _entries.Keys;
+    public IEnumerable<string> EnumerateAllFiles()
+    {
+        return _entries.Values
+            .Where(e => !e.FullName.EndsWith('/') && !e.FullName.EndsWith('\\'))
+            .Select(e => Normalize(e.FullName));
+    }
 
     public bool FileExists(string relativePath) => _entries.ContainsKey(Normalize(relativePath));
 
