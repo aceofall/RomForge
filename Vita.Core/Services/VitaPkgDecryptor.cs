@@ -150,6 +150,7 @@ public sealed class VitaPkgDecryptor
             ct.ThrowIfCancellationRequested();
 
             var item = items[i];
+
             string outPath = Path.Combine(outputDir, item.Name.Replace('/', Path.DirectorySeparatorChar));
 
             if (IsDirectory(item))

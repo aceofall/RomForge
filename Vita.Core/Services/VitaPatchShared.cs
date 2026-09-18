@@ -1,4 +1,5 @@
-﻿using Common;
+using Common;
+using Patch.Core;
 using System.IO.Compression;
 using Vita.Core.Models;
 
@@ -7,17 +8,9 @@ namespace Vita.Core.Services;
 internal static class VitaPatchShared
 {
     private const int ProgressChunkSize = 4 * 1024 * 1024;
+
     public static readonly HashSet<string> PatchExtensions = new(StringComparer.OrdinalIgnoreCase) { ".xdelta", ".xdelta3", ".ips", ".ups", ".bps", ".ppf", ".aps" };
-
-    public sealed class PatchContext
-    {
-        public required IVitaSourceAccessor Accessor { get; init; }
-
-        public required Dictionary<string, string> PatchFiles { get; init; }
-
-        public required List<string> RawOverwriteFiles { get; init; }
-    }
-
+    
     public static (List<VitaSourceItem> Items, List<IVitaSourceAccessor> OwnedAccessors) LoadItems(List<VitaBatchSourceEntry> entries, Action<string, LogLevel> log)
     {
         var ownedAccessors = new List<IVitaSourceAccessor>();
@@ -40,9 +33,13 @@ internal static class VitaPatchShared
                     var appLicense = WorkBinReader.Read(appSource.Accessor, appWorkBinRel);
 
                     accessor = new PkgSourceAccessor(entry.Path, appLicense.Klicensee);
+
+                    log($"[patch] {entry.Probe.TitleId}: app의 라이선스를 그대로 공유해서 적용함", LogLevel.Info);
                 }
                 else
+                {
                     accessor = new PkgSourceAccessor(entry.Path, entry.License);
+                }
 
                 ownedAccessors.Add(accessor);
 
@@ -146,33 +143,13 @@ internal static class VitaPatchShared
         {
             var list = group.ToList();
 
+            if (list.Count > 1)
+                log($"패치 대상 '{group.Key}'에 대한 패치 파일이 {list.Count}개 중복됨: {string.Join(", ", list)} - 첫 번째({list[0]})만 사용함", LogLevel.Highlight);
+
             map[group.Key] = list[0];
         }
 
         return map;
-    }
-
-    public static HashSet<string> TryGetOwnedPaths(VitaSourceItem item, Action<string, LogLevel> log)
-    {
-        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var accessor = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
-
-        try
-        {
-            var table = VitaNoNpDrmDecryptor.ParseFileTable(accessor, item.SourcePath);
-
-            foreach (var entry in table.Entries)
-            {
-                if (!entry.Type.IsDirectory())
-                    set.Add(entry.RelativePath ?? entry.Name);
-            }
-        }
-        catch (Exception ex)
-        {
-            log($"{item.Category} {item.TitleId}: 파일 목록 확인 실패 - {ex.Message}", LogLevel.Error);
-        }
-
-        return set;
     }
 
     public static string? ResolveWorkBinRel(IVitaSourceAccessor source, VitaSourceItem item, string? fallbackWorkBinRel)
@@ -188,9 +165,11 @@ internal static class VitaPatchShared
         return null;
     }
 
+    public static string NormalizePath(string path) => path.Replace('\\', '/');
+
     public static string NormalizeZipPath(string path)
     {
-        string normalized = path.Replace('\\', '/');
+        string normalized = NormalizePath(path);
 
         while (normalized.Contains("//"))
             normalized = normalized.Replace("//", "/");
@@ -198,26 +177,174 @@ internal static class VitaPatchShared
         return normalized.Trim('/');
     }
 
-    public static async Task WriteEntryWithProgressAsync(ZipArchiveEntry zipEntry, byte[] data, ProgressReporter reporter, CancellationToken ct)
+    public static OwnerContext? BuildOwnerContext(VitaSourceItem item, string? fallbackWorkBinRel, Action<string, LogLevel> log)
+    {
+        var accessor = item.Accessor ?? throw new InvalidOperationException("소스 accessor가 없습니다.");
+        string? workBinRel = ResolveWorkBinRel(accessor, item, fallbackWorkBinRel);
+
+        if (workBinRel is null)
+        {
+            log($"{item.Category} {item.TitleId}: work.bin 없음, 건너뜀", LogLevel.Error);
+            return null;
+        }
+
+        try
+        {
+            var license = WorkBinReader.Read(accessor, workBinRel);
+            var table = VitaNoNpDrmDecryptor.ParseFileTable(accessor, item.SourcePath);
+
+            return new OwnerContext { Item = item, Table = table, License = license, WorkBinRelativePath = workBinRel };
+        }
+        catch (Exception ex)
+        {
+            log($"{item.Category} {item.TitleId}: 파일 목록 확인 실패 - {ex.Message}", LogLevel.Error);
+            return null;
+        }
+    }
+
+    public static Dictionary<string, PatchAppEntry> BuildPatchAppIndex(OwnerContext? appOwner, OwnerContext? patchOwner)
+    {
+        var index = new Dictionary<string, PatchAppEntry>(StringComparer.OrdinalIgnoreCase);
+
+        if (appOwner != null)
+            AddOwnerToIndex(index, appOwner);
+
+        if (patchOwner != null)
+            AddOwnerToIndex(index, patchOwner);
+
+        return index;
+    }
+
+    private static void AddOwnerToIndex(Dictionary<string, PatchAppEntry> index, OwnerContext owner)
+    {
+        for (int i = 0; i < owner.Table.Entries.Count; i++)
+        {
+            var entry = owner.Table.Entries[i];
+
+            if (entry.Type.IsDirectory())
+                continue;
+
+            string relativePath = NormalizePath(entry.RelativePath ?? entry.Name);
+
+            index[relativePath] = new PatchAppEntry { Owner = owner, EntryIndex = i };
+        }
+    }
+
+    public static List<PatchTarget> BuildTargets(Dictionary<string, PatchAppEntry> patchAppIndex, PatchContext patchCtx)
+    {
+        var targets = new List<PatchTarget>();
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (relativePath, appEntry) in patchAppIndex)
+        {
+            string baseName = Path.GetFileName(relativePath);
+
+            if (!patchCtx.PatchFiles.TryGetValue(baseName, out var patchFileRel))
+                continue;
+
+            targets.Add(new PatchTarget
+            {
+                RelativePath = relativePath,
+                Kind = PatchTargetKind.Xdelta,
+                Source = appEntry,
+                PatchFileRel = patchFileRel,
+                EstimatedSize = appEntry.FileEntry.Size
+            });
+
+            claimed.Add(relativePath);
+        }
+
+        foreach (var rawRel in patchCtx.RawOverwriteFiles)
+        {
+            string normalizedRawRel = NormalizePath(rawRel);
+
+            if (claimed.Contains(normalizedRawRel))
+                continue;
+
+            if (!patchAppIndex.TryGetValue(normalizedRawRel, out var appEntry))
+                continue;
+
+            if (appEntry.Owner.Item.Category == VitaContentCategory.Addcont)
+                continue;
+
+            targets.Add(new PatchTarget
+            {
+                RelativePath = normalizedRawRel,
+                Kind = PatchTargetKind.Raw,
+                Source = appEntry,
+                PatchFileRel = rawRel,
+                EstimatedSize = patchCtx.Accessor.GetFileSize(rawRel)
+            });
+
+            claimed.Add(normalizedRawRel);
+        }
+
+        return targets;
+    }
+
+    public static async Task<byte[]> ResolveTargetBytesAsync(PatchTarget target, PatchContext patchCtx, Action<string, LogLevel> log, CancellationToken ct)
+    {
+        if (target.Kind == PatchTargetKind.Raw)
+            return patchCtx.Accessor.ReadAllBytes(target.PatchFileRel);
+
+        var appEntry = target.Source ?? throw new InvalidOperationException("xdelta 대상에 원본 정보가 없습니다.");
+        var owner = appEntry.Owner;
+        var entry = appEntry.FileEntry;
+        byte[] sourceBytes = VitaNoNpDrmDecryptor.DecryptEntry(owner.Item.Accessor!, owner.Item.SourcePath, owner.License.Klicensee, entry, owner.Table.UnicvEntries[appEntry.EntryIndex], owner.Table.FilesSalt, out string? warning);
+
+        if (warning != null)
+            log($"{target.RelativePath}: {warning}", LogLevel.Highlight);
+
+        byte[] patchBytes = patchCtx.Accessor.ReadAllBytes(target.PatchFileRel);
+
+        return await UniversalPatcher.ApplyPatchAsync(sourceBytes, patchBytes, ct: ct);
+    }
+
+    public static async Task WriteEntryWithProgressAsync(ZipArchiveEntry zipEntry, byte[] data, long estimatedSize, ProgressReporter reporter, CancellationToken ct)
     {
         using var entryStream = zipEntry.Open();
 
         if (data.Length == 0)
         {
-            reporter.AddProgress(0);
+            reporter.AddProgress(estimatedSize);
             return;
         }
 
         int offset = 0;
+        long reported = 0;
 
         while (offset < data.Length)
         {
             int size = Math.Min(ProgressChunkSize, data.Length - offset);
 
             await entryStream.WriteAsync(data.AsMemory(offset, size), ct);
-            reporter.AddProgress(size);
+
             offset += size;
+
+            long target = (long)((double)offset / data.Length * estimatedSize);
+
+            if (target != reported)
+                reporter.AddProgress(target - reported);
+
+            reported = target;
         }
+    }
+
+    public static void WriteLicenseEntry(ZipArchive zip, HashSet<string> writtenEntries, OwnerContext owner)
+    {
+        if (!WorkBinReader.TryGetTitleIdFromContentId(owner.License.ContentId, out string licenseTitleId))
+            return;
+
+        string licenseEntryPath = NormalizeZipPath($"license/{licenseTitleId}/{owner.License.ContentId}.rif");
+
+        if (!writtenEntries.Add(licenseEntryPath))
+            return;
+
+        byte[] workBinBytes = owner.Item.Accessor!.ReadAllBytes(owner.WorkBinRelativePath);
+        var licenseEntry = zip.CreateEntry(licenseEntryPath, CompressionLevel.NoCompression);
+        using var es = licenseEntry.Open();
+
+        es.Write(workBinBytes);
     }
 
     public static string GetPatchedPrefix(VitaContentCategory category, VitaOutputTarget target) => (category, target) switch
@@ -232,4 +359,12 @@ internal static class VitaPatchShared
     };
 
     public static string GetBasePrefix(VitaContentCategory category) => category == VitaContentCategory.Addcont ? "addcont" : "app";
+
+    public static string GetRetailBaseFolder(VitaContentCategory category) => category switch
+    {
+        VitaContentCategory.App => "app",
+        VitaContentCategory.Patch => "patch",
+        VitaContentCategory.Addcont => "addcont",
+        _ => throw new NotSupportedException()
+    };
 }

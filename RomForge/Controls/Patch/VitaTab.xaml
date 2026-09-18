@@ -181,6 +181,7 @@
                             <Image Height="28" Margin="0,0,0,8" Source="/Assets/Images/drag.png" Width="28"/>
                             <TextBlock FontSize="14" FontWeight="Bold" Foreground="LightGray" HorizontalAlignment="Center" Text="PS Vita 파일(pkg, zip)/폴더를 여기에 드래그&amp;드롭하세요"/>
                             <TextBlock FontSize="12" Foreground="#D4AF37" HorizontalAlignment="Center" Margin="0,6,0,0" Text="App/Patch/AddCont는 자동으로 분류됩니다"/>
+                            <TextBlock FontSize="12" Foreground="#D4AF37" HorizontalAlignment="Center" Margin="0,6,0,0" Text="pkg의 경우 키(work.bin, *.rif / zRIF 문자열)가 필요합니다"/>                            
                         </StackPanel>
                     </Border>
                 </Grid>

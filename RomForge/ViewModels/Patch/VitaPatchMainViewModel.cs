@@ -394,6 +394,8 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
     public async Task RunAsync()
     {
+        string? zipFileName = null;
+
         _totalSw.Restart();
 
         using (BeginWork())
@@ -405,66 +407,55 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 string baseName = SourceRows.First(r => r.Category == VitaContentCategory.App).TitleId;
                 string defaultPatchPath = SourceRows.FirstOrDefault(r => !string.IsNullOrEmpty(r.PatchPath))?.PatchPath ?? string.Empty;
                 var entries = SourceRows.Select(r => r.ToBatchEntry()).ToList();
+                VitaOutputTarget target;
+                string label;
 
                 if (BuildEmu)
                 {
-                    string suffix = MergePatchIntoGame ? "_emu_merged.zip" : "_emu.zip";
-                    string emuFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}{suffix}", defaultPatchPath);
-                    string emuZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, emuFileName));
-
-                    if (MergePatchIntoGame)
-                    {
-                        Log("에뮬용 게임+패치 병합 중...", LogLevel.Highlight);
-
-                        var result = await VitaPatchOutputBuilder.BuildMergedFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, Log, BuildProgressReporter(), _cts.Token);
-
-                        Log($"에뮬용 완료: 총 {result.TotalFiles}개 파일 (패치 {result.PatchedSuccessfully}/{result.PatchCandidates}개 적용) -> {emuZip}", LogLevel.Ok);
-                    }
-                    else
-                    {
-                        Log("에뮬용 패치 생성 중...", LogLevel.Highlight);
-
-                        var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, emuZip, VitaOutputTarget.Emu, Log, BuildProgressReporter(), _cts.Token);
-
-                        Log($"에뮬용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {emuZip}", LogLevel.Ok);
-                    }
+                    target = VitaOutputTarget.Emu;
+                    label = "에뮬";
                 }
-
-                if (BuildRetail)
+                else if (BuildRetail)
                 {
-                    string suffix = MergePatchIntoGame ? "_retail_merged.zip" : "_retail.zip";
-                    string retailFileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}{suffix}", defaultPatchPath);
-                    string retailZip = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, retailFileName));
+                    target = VitaOutputTarget.Retail;
+                    label = "실기";
+                }
+                else
+                    return;
 
-                    if (MergePatchIntoGame)
-                    {
-                        Log("실기용 게임+패치 병합 중...", LogLevel.Highlight);
+                string suffix = MergePatchIntoGame ? $"_{label.ToLower()}_merged.zip" : $"_{label.ToLower()}.zip";
+                string fileName = PatchVersionInfoExtractor.ApplySuffix($"{baseName}{suffix}", defaultPatchPath);
+                zipFileName = Utils.GetUniqueFilePath(Path.Combine(OutputPath!, fileName));
 
-                        var result = await VitaPatchOutputBuilder.BuildMergedFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, Log, BuildProgressReporter(), _cts.Token);
+                if (MergePatchIntoGame)
+                {
+                    Log($"{label}용 게임+패치 병합 중...", LogLevel.Highlight);
 
-                        Log($"실기용 완료: 총 {result.TotalFiles}개 파일 (패치 {result.PatchedSuccessfully}/{result.PatchCandidates}개 적용) -> {retailZip}", LogLevel.Ok);
-                    }
-                    else
-                    {
-                        Log("실기용 패치 생성 중...", LogLevel.Highlight);
+                    var result = await VitaPatchOutputBuilder.BuildMergedFromEntriesAsync(entries, defaultPatchPath, zipFileName, target, Log, BuildProgressReporter(), _cts.Token);
 
-                        var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, retailZip, VitaOutputTarget.Retail, Log, BuildProgressReporter(), _cts.Token);
+                    Log($"{label}용 완료: 총 {result.TotalFiles}개 파일 (패치 {result.PatchedSuccessfully}/{result.PatchCandidates}개 적용) -> {zipFileName}", LogLevel.Ok);
+                }
+                else
+                {
+                    Log($"{label}용 패치 생성 중...", LogLevel.Highlight);
 
-                        Log($"실기용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {retailZip}", LogLevel.Ok);
-                    }
+                    var result = await VitaPatchOnlyBuilder.BuildFromEntriesAsync(entries, defaultPatchPath, zipFileName, target, Log, BuildProgressReporter(), _cts.Token);
+
+                    Log($"{label}용 완료: 매칭 {result.MatchedCandidates}개 중 {result.PatchedSuccessfully}개 성공 -> {zipFileName}", LogLevel.Ok);
                 }
 
                 Log($"전체 완료 ({_totalSw.Elapsed:mm\\:ss})", LogLevel.Ok);
-
                 OutputPath?.OpenFolder();
             }
             catch (OperationCanceledException)
             {
                 Log("작업이 취소되었습니다.", LogLevel.Error);
+                SafeDeleteFile(zipFileName);
             }
             catch (Exception ex)
             {
                 Log($"오류: {ex.Message}", LogLevel.Error);
+                SafeDeleteFile(zipFileName);
             }
             finally
             {
@@ -473,6 +464,16 @@ public class VitaPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 CleanupProgress();
             }
         }
+    }
+
+    private static void SafeDeleteFile(string? path)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                File.Delete(path);
+        }
+        catch { }
     }
 
     private Progress<ProgressInfo> BuildProgressReporter() =>
