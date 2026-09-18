@@ -1,9 +1,5 @@
 ﻿namespace Vita.Core.Cryptography;
 
-internal sealed class PuffOutOfInputException : Exception
-{
-}
-
 internal sealed class VitaPuffInflate
 {
     private const int MaxBits = 15;

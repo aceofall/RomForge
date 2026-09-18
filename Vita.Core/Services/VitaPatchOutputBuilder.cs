@@ -1,5 +1,4 @@
 using Common;
-using Patch.Core;
 using System.IO.Compression;
 using Vita.Core.Models;
 
@@ -208,9 +207,7 @@ public static class VitaPatchOutputBuilder
 
                                 await WriteZipEntryAsync(zip, writtenEntries, baseEntryPath, rawBytes, size, zipReporter, log, owner.Item.Category, relativePath, ct);
 
-                                bool isEffectiveOwner = group.Index.TryGetValue(relativePath, out var winner) && winner.Owner == owner;
-
-                                if (isEffectiveOwner && resolved.TryGetValue((group, relativePath), out var resolvedTarget))
+                                if (resolved.TryGetValue((group, relativePath), out var resolvedTarget))
                                 {
                                     string patchedEntryPath = BuildEntryPath(VitaPatchShared.GetPatchedPrefix(group.Category, target), group, relativePath);
 
