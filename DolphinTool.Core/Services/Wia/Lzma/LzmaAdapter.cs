@@ -4,37 +4,36 @@ namespace DolphinTool.Core.Services.Wia.Lzma;
 
 internal sealed class LzmaRvzDecompressor : RvzDecompressor
 {
-    private readonly byte[] _properties;
+    private readonly SevenZip.Compression.LZMA.Decoder _decoder = new();
+    private byte[] _inputBuffer = [];
+    private byte[] _outputBuffer = [];
 
     public LzmaRvzDecompressor(ReadOnlySpan<byte> compressorData)
     {
         if (compressorData.Length != 5)
             throw new InvalidDataException("LZMA1 속성 데이터 크기가 올바르지 않습니다.");
 
-        _properties = compressorData.ToArray();
+        _decoder.SetDecoderProperties(compressorData.ToArray());
     }
 
     public override int Decompress(ReadOnlySpan<byte> source, Span<byte> destination)
     {
-        var decoder = new SevenZip.Compression.LZMA.Decoder();
-        decoder.SetDecoderProperties(_properties);
+        if (_inputBuffer.Length < source.Length)
+            _inputBuffer = new byte[source.Length];
 
-        using var input = new MemoryStream(source.ToArray(), false);
-        using var output = new MemoryStream(destination.Length);
+        source.CopyTo(_inputBuffer);
 
-        decoder.Code(input, output, source.Length, destination.Length, null);
+        if (_outputBuffer.Length < destination.Length)
+            _outputBuffer = new byte[destination.Length];
 
-        output.Position = 0;
-        int total = 0;
+        using var input = new MemoryStream(_inputBuffer, 0, source.Length, false);
+        using var output = new MemoryStream(_outputBuffer, 0, destination.Length, true, true);
 
-        while (total < output.Length)
-        {
-            int read = output.Read(destination[total..(int)output.Length]);
-            if (read <= 0)
-                break;
+        _decoder.Code(input, output, source.Length, destination.Length, null);
 
-            total += read;
-        }
+        int total = (int)output.Position;
+
+        _outputBuffer.AsSpan(0, total).CopyTo(destination);
 
         return total;
     }

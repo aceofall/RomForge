@@ -1,12 +1,15 @@
 ﻿using DolphinTool.Core.Models;
 using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
+using System.Collections.Concurrent;
 
 namespace DolphinTool.Core.Services.Wia;
 
 internal sealed class WiaSource : IRvzInputSource
 {
     private readonly record struct Region(long Start, long End, int RawIndex, int PartitionIndex, int DataIndex);
+
+    private sealed record CachedChunkData(byte[] Data, int Length, List<HashException>[] ExceptionLists);
 
     private sealed class Context(RvzCompressionType compression, byte[] compressorData) : IDisposable
     {
@@ -23,10 +26,6 @@ internal sealed class WiaSource : IRvzInputSource
         public byte[] Input = [];
 
         public byte[] Output = [];
-
-        public long CachedGroupIndex = -1;
-
-        public DecodedChunk? CachedChunk;
 
         public int CachedPartitionIndex = -1;
 
@@ -51,11 +50,16 @@ internal sealed class WiaSource : IRvzInputSource
         }
     }
 
+    private const long ChunkCacheByteBudget = 256L * 1024 * 1024;
+
     private readonly SafeFileHandle _handle;
     private readonly RvzFile _file;
     private readonly Region[] _regions;
     private readonly long _headerLength;
     private readonly ThreadLocal<Context> _contexts;
+    private readonly ConcurrentDictionary<long, Lazy<CachedChunkData>> _chunkCache = new();
+    private readonly ConcurrentQueue<long> _chunkCacheOrder = new();
+    private long _chunkCacheBytes;
 
     private WiaSource(SafeFileHandle handle, RvzFile file)
     {
@@ -246,10 +250,35 @@ internal sealed class WiaSource : IRvzInputSource
         long chunkSize = (long)_file.ChunkSize * WiiLayout.BlockDataSize / WiiLayout.BlockTotalSize;
         int exceptionLists = (int)Math.Max(1, chunkSize / WiiLayout.GroupDataSize);
 
-        foreach (var entry in partition.DataEntries)
+        var entries = partition.DataEntries;
+
+        // 이분 탐색을 통해 시작 위치(startIndex)를 빠르게 찾음 (O(N) 선형 탐색 방지)
+        int low = 0;
+        int high = entries.Length - 1;
+        int startIndex = entries.Length;
+
+        while (low <= high)
+        {
+            int mid = low + (high - low) / 2;
+            long entryEndOffset = ((long)entries[mid].FirstSector - partition.FirstSector) * WiiLayout.BlockDataSize + ((long)entries[mid].SectorCount * WiiLayout.BlockDataSize);
+
+            if (entryEndOffset > offset)
+            {
+                startIndex = mid;
+                high = mid - 1;
+            }
+            else
+            {
+                low = mid + 1;
+            }
+        }
+
+        for (int i = startIndex; i < entries.Length; i++)
         {
             if (remaining == 0)
                 break;
+
+            var entry = entries[i];
 
             if (entry.SectorCount == 0)
                 continue;
@@ -331,13 +360,17 @@ internal sealed class WiaSource : IRvzInputSource
         }
     }
 
-    private DecodedChunk GetChunk(Context context, long totalGroupIndex, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
+    private CachedChunkData GetChunk(Context context, long totalGroupIndex, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
     {
-        if (context.CachedGroupIndex == totalGroupIndex && context.CachedChunk != null)
-            return context.CachedChunk;
+        var lazy = _chunkCache.GetOrAdd(totalGroupIndex, _ => new Lazy<CachedChunkData>(
+            () => DecodeAndCache(context, totalGroupIndex, group, dataSize, exceptionLists, junkOffset),
+            LazyThreadSafetyMode.ExecutionAndPublication));
 
-        context.CachedGroupIndex = -1;
+        return lazy.Value;
+    }
 
+    private CachedChunkData DecodeAndCache(Context context, long totalGroupIndex, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
+    {
         long fileOffset = group.FileOffset;
         int compressedSize = group.DataSize;
 
@@ -347,12 +380,23 @@ internal sealed class WiaSource : IRvzInputSource
         context.EnsureInput(compressedSize);
         RvzIo.ReadExactly(_handle, context.Input.AsSpan(0, compressedSize), fileOffset);
 
-        var chunk = context.Decoder.Decode(context.Input.AsSpan(0, compressedSize), _file.Compression != RvzCompressionType.None, exceptionLists, dataSize, 0, junkOffset); 
+        var decoded = context.Decoder.Decode(context.Input.AsSpan(0, compressedSize), _file.Compression != RvzCompressionType.None, exceptionLists, dataSize, 0, junkOffset);
+        var cached = new CachedChunkData(decoded.Data.AsSpan(0, decoded.Length).ToArray(), decoded.Length, decoded.ExceptionLists);
 
-        context.CachedChunk = chunk;
-        context.CachedGroupIndex = totalGroupIndex;
+        _chunkCacheOrder.Enqueue(totalGroupIndex);
+        Interlocked.Add(ref _chunkCacheBytes, cached.Length);
+        TrimChunkCache();
 
-        return chunk;
+        return cached;
+    }
+
+    private void TrimChunkCache()
+    {
+        while (Interlocked.Read(ref _chunkCacheBytes) > ChunkCacheByteBudget && _chunkCacheOrder.TryDequeue(out var oldKey))
+        {
+            if (_chunkCache.TryRemove(oldKey, out var removed) && removed.IsValueCreated)
+                Interlocked.Add(ref _chunkCacheBytes, -removed.Value.Length);
+        }
     }
 
     public void Dispose()
