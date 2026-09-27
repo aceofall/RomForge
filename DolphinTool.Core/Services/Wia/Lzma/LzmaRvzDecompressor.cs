@@ -4,7 +4,7 @@ namespace DolphinTool.Core.Services.Wia.Lzma;
 
 internal sealed class LzmaRvzDecompressor : RvzDecompressor
 {
-    private readonly SevenZip.Compression.LZMA.Decoder _decoder = new();
+    private readonly LzmaDecoder _decoder = new();
     private byte[] _inputBuffer = [];
     private byte[] _outputBuffer = [];
 
@@ -26,10 +26,9 @@ internal sealed class LzmaRvzDecompressor : RvzDecompressor
         if (_outputBuffer.Length < destination.Length)
             _outputBuffer = new byte[destination.Length];
 
-        using var input = new MemoryStream(_inputBuffer, 0, source.Length, false);
         using var output = new MemoryStream(_outputBuffer, 0, destination.Length, true, true);
 
-        _decoder.Code(input, output, source.Length, destination.Length, null);
+        _decoder.Code(_inputBuffer, 0, output, destination.Length);
 
         int total = (int)output.Position;
 
