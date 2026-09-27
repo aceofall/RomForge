@@ -235,25 +235,34 @@
         <Setter Property="Background" Value="#2D2D30"/>
         <Setter Property="BorderBrush" Value="#434346"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <BulletDecorator Background="Transparent" Cursor="Hand">
-                        <BulletDecorator.Bullet>
-                            <Grid Width="16" Height="16" VerticalAlignment="Center">
-                                <Ellipse x:Name="BorderCircle" 
-                                             Fill="{TemplateBinding Background}" 
-                                             Stroke="{TemplateBinding BorderBrush}" 
-                                             StrokeThickness="{TemplateBinding BorderThickness}"/>
-                                <Ellipse x:Name="CheckDot" 
-                                             Fill="#007ACC" 
-                                             Margin="4" 
-                                             Visibility="Collapsed"/>
-                            </Grid>
-                        </BulletDecorator.Bullet>
-                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
-                    </BulletDecorator>
+                    
+                    <Grid Background="Transparent" Cursor="Hand" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center">
+                            <Ellipse x:Name="BorderCircle" 
+                                 Fill="{TemplateBinding Background}" 
+                                 Stroke="{TemplateBinding BorderBrush}" 
+                                 StrokeThickness="{TemplateBinding BorderThickness}"/>
+                            <Ellipse x:Name="CheckDot" 
+                                 Fill="#007ACC" 
+                                 Margin="4" 
+                                 Visibility="Collapsed"/>
+                        </Grid>
+
+                        <ContentPresenter Grid.Column="1" 
+                                      Margin="6,0,0,0" 
+                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Left"/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="CheckDot" Property="Visibility" Value="Visible"/>
