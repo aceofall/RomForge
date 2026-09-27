@@ -241,7 +241,7 @@ public sealed class RepackService()
 
             if (overwriteFiles.TryGetValue(relPath, out var overwriteRef))
             {
-                log?.Invoke($"  교체: {overwriteRef.DisplayName} → {relPath}", LogLevel.Ok);
+                log?.Invoke($"교체: {overwriteRef.DisplayName} → {relPath}", LogLevel.Ok);
 
                 result.Add(new WupFileEntry(relPath, overwriteRef.OpenRead, overwriteRef.Length));
                 continue;
@@ -262,7 +262,7 @@ public sealed class RepackService()
                 byte[] patchData = patchRef.ReadSmallFileBytes();
                 byte[] patchedData = UniversalPatcher.ApplyPatchAsync(originalData, patchData, null).GetAwaiter().GetResult();
 
-                log?.Invoke($"  패치 완료: {patchRef.DisplayName} → {relPath}", LogLevel.Info);
+                log?.Invoke($"패치 완료: {patchRef.DisplayName} → {relPath}", LogLevel.Info);
 
                 result.Add(new WupFileEntry(relPath, () => new MemoryStream(patchedData), patchedData.Length));
                 continue;

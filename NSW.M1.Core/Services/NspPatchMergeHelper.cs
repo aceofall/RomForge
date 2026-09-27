@@ -16,7 +16,7 @@ public static class NspPatchMergeHelper
             return 0;
 
         progress.Report((-1, $"{label} 병합 중..."));
-        log($"  {label} 병합(압축파일): {prefix}", LogLevel.Info);
+        log($"{label} 병합(압축파일): {prefix}", LogLevel.Info);
 
         int count = 0;
 
@@ -43,13 +43,13 @@ public static class NspPatchMergeHelper
             using var dst = File.Create(dest);
 
             src.CopyTo(dst);
-            log($"  {label} 교체: {rel}", LogLevel.Info);
+            log($"{label} 교체: {rel}", LogLevel.Info);
 
             count++;
         }
 
         if (count > 0)
-            log($"  {label} 교체 완료: {count}개 파일", LogLevel.Ok);
+            log($"{label} 교체 완료: {count}개 파일", LogLevel.Ok);
 
         return count;
     }
@@ -70,13 +70,13 @@ public static class NspPatchMergeHelper
 
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(file, dest, overwrite: true);
-            log?.Invoke($"  교체: {rel}", LogLevel.Ok);
+            log?.Invoke($"교체: {rel}", LogLevel.Ok);
 
             count++;
         }
 
         if (count > 0)
-            log?.Invoke($"  교체 완료: {count}개 파일 ({srcDir})", LogLevel.Ok);
+            log?.Invoke($"교체 완료: {count}개 파일 ({srcDir})", LogLevel.Ok);
 
         return count;
     }

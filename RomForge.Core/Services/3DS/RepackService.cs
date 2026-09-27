@@ -157,7 +157,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 exHeader = await exHeaderPatchFile.ReadSmallFileBytesAsync(ct);
                 exefsPatchedCount++;
 
-                log("  exheader 교체: exheader.bin", LogLevel.Ok);
+                log("exheader 교체: exheader.bin", LogLevel.Ok);
             }
 
             string exefsDir = Path.Combine(partDir, "exefs");
@@ -287,7 +287,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
                 exefsPatchedCount++;
 
-                log("  exheader 교체: exheader.bin", LogLevel.Ok);
+                log("exheader 교체: exheader.bin", LogLevel.Ok);
             }
 
             if (unpack.ExeFs != null)

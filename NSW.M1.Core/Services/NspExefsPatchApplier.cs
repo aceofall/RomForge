@@ -52,7 +52,7 @@ public static class NspExefsPatchApplier
                 }
                 catch (Exception ex)
                 {
-                    log($"  ⚠️ 압축파일을 열 수 없음(암호 걸림/손상 등): {Path.GetFileName(archivePath)} — {ex.Message}", LogLevel.Info);
+                    log($"⚠️ 압축파일을 열 수 없음(암호 걸림/손상 등): {Path.GetFileName(archivePath)} — {ex.Message}", LogLevel.Info);
                     continue;
                 }
 
@@ -65,7 +65,7 @@ public static class NspExefsPatchApplier
             if (items.Count == 0)
                 return 0;
 
-            log($"  exefs_patches용 .ips 발견: {items.Count}개", LogLevel.Info);
+            log($"exefs_patches용 .ips 발견: {items.Count}개", LogLevel.Info);
 
             return ApplyExefsPatchesCore(items, exefsDir, progress, log);
         }
@@ -111,13 +111,13 @@ public static class NspExefsPatchApplier
         {
             if (!processedBuildIds.Add(buildId))
             {
-                log($"  ⚠️ 중복 IPS 패치로 건너뜀: {buildId}.ips", LogLevel.Error);
+                log($"⚠️ 중복 IPS 패치로 건너뜀: {buildId}.ips", LogLevel.Error);
                 continue;
             }
 
             if (!buildIdMap.TryGetValue(buildId, out var targetNso))
             {
-                log($"  ⚠️ exefs_patches 대상 NSO를 찾을 수 없음 (build id 불일치): {buildId}", LogLevel.Info);
+                log($"⚠️ exefs_patches 대상 NSO를 찾을 수 없음 (build id 불일치): {buildId}", LogLevel.Info);
                 continue;
             }
 
@@ -132,7 +132,7 @@ public static class NspExefsPatchApplier
 
             File.WriteAllBytes(targetNso, final);
 
-            log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId} (재압축: {wasCompressed})", LogLevel.Ok);
+            log($"exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId} (재압축: {wasCompressed})", LogLevel.Ok);
 
             count++;
         }

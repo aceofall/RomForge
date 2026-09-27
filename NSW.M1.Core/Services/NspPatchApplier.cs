@@ -29,13 +29,13 @@ public static class NspPatchApplier
             if (patchExefs != null)
             {
                 progress.Report((-1, "한글패치 ExeFS 병합 중..."));
-                log($"  한글패치 ExeFS 병합: {patchExefs}", LogLevel.Info);
+                log($"한글패치 ExeFS 병합: {patchExefs}", LogLevel.Info);
                 matchedCount += NspPatchMergeHelper.MergeDirectory(patchExefs, exefsDir, log);
             }
             if (patchRomfs != null)
             {
                 progress.Report((-1, "한글패치 RomFS 병합 중..."));
-                log($"  한글패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
+                log($"한글패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
                 matchedCount += NspPatchMergeHelper.MergeDirectory(patchRomfs, romfsDir, log);
             }
 
@@ -47,7 +47,7 @@ public static class NspPatchApplier
         }
 
         if (matchedCount == 0)
-            log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+            log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
     public static void ApplyDlcPatch(string patchPath, string titleIdStr, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string? patchPassword = null)
@@ -71,7 +71,7 @@ public static class NspPatchApplier
             if (patchRomfs != null)
             {
                 progress.Report((-1, $"DLC 패치 RomFS 병합 중... ({titleIdStr})"));
-                log($"  DLC 패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
+                log($"DLC 패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
                 matchedCount += NspPatchMergeHelper.MergeDirectory(patchRomfs, romfsDir, log);
             }
 
@@ -79,6 +79,6 @@ public static class NspPatchApplier
         }
 
         if (matchedCount == 0)
-            log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+            log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 }

@@ -141,7 +141,7 @@ public sealed class WiiURepackService
     {
         if (overwriteFiles.TryGetValue(path, out var overwriteRef))
         {
-            log?.Invoke($"  교체: {overwriteRef.DisplayName} → {path}", LogLevel.Info);
+            log?.Invoke($"교체: {overwriteRef.DisplayName} → {path}", LogLevel.Info);
 
             return overwriteRef.OpenRead();
         }
@@ -160,7 +160,7 @@ public sealed class WiiURepackService
             byte[] patchData = patchRef.ReadSmallFileBytes();
             byte[] patchedData = UniversalPatcher.ApplyPatchAsync(originalData, patchData, null, ct).GetAwaiter().GetResult();
 
-            log?.Invoke($"  패치 완료: {patchRef.DisplayName} → {path}", LogLevel.Info);
+            log?.Invoke($"패치 완료: {patchRef.DisplayName} → {path}", LogLevel.Info);
 
             return new MemoryStream(patchedData);
         }

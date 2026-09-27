@@ -41,7 +41,7 @@ public static class DlcNspBuilder
 
             bool hasRomfs = Directory.Exists(romfsPath) && Directory.EnumerateFileSystemEntries(romfsPath).Any();
 
-            log($"  DLC 빌드 시도: {titleIdStr}", LogLevel.Info);
+            log($"DLC 빌드 시도: {titleIdStr}", LogLevel.Info);
 
             var dlcSettings = new NcaGenerationOptions
             {
@@ -68,12 +68,12 @@ public static class DlcNspBuilder
 
                 NcaGenerator.GenerateMetaNca([dlcSettings], progress, ct);
 
-                log($"  DLC 완료: {titleIdStr}", LogLevel.Ok);
+                log($"DLC 완료: {titleIdStr}", LogLevel.Ok);
                 dlcCount++;
             }
             catch (Exception ex)
             {
-                log($"  DLC 실패: {titleIdStr} - {ex.Message}", LogLevel.Error);
+                log($"DLC 실패: {titleIdStr} - {ex.Message}", LogLevel.Error);
             }
             finally
             {
@@ -82,6 +82,6 @@ public static class DlcNspBuilder
             }
         }
 
-        log($"  총 ({dlcCount})개의 DLC 빌드 완료 : ({sw.Elapsed.TotalSeconds:F2}s)", LogLevel.Ok);
+        log($"총 ({dlcCount})개의 DLC 빌드 완료 : ({sw.Elapsed.TotalSeconds:F2}s)", LogLevel.Ok);
     }
 }

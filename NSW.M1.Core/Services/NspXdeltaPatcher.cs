@@ -52,7 +52,7 @@ public static class NspXdeltaPatcher
 
             if (targetFiles.Count == 0)
             {
-                log($"  ⚠️ {label} 대상 원본 파일을 찾을 수 없음: {candidate.TargetFileName}", LogLevel.Info);
+                log($"⚠️ {label} 대상 원본 파일을 찾을 수 없음: {candidate.TargetFileName}", LogLevel.Info);
                 continue;
             }
 
@@ -68,7 +68,7 @@ public static class NspXdeltaPatcher
         }
 
         if (count > 0)
-            log($"  {label} 패치 완료 수: {successCount}개 / {count}개", LogLevel.Ok);
+            log($"{label} 패치 완료 수: {successCount}개 / {count}개", LogLevel.Ok);
 
         return count;
     }
@@ -83,7 +83,7 @@ public static class NspXdeltaPatcher
             return 0;
 
         progress.Report((-1, "xdelta 바이너리 패치 적용 중..."));
-        log($"  발견된 xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
+        log($"발견된 xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
 
         string unpackedRoot = Path.GetDirectoryName(exefsDir)!;
         var candidates = new List<XdeltaCandidate>();
@@ -111,7 +111,7 @@ public static class NspXdeltaPatcher
             return 0;
 
         progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
-        log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
+        log($"발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
 
         var candidates = xdeltaFiles
             .Select(xdeltaPath => new XdeltaCandidate(
@@ -143,7 +143,7 @@ public static class NspXdeltaPatcher
             return 0;
 
         progress.Report((-1, "xdelta 바이너리 패치 적용 중..."));
-        log($"  발견된 xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
+        log($"발견된 xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
         string unpackedRoot = Path.GetDirectoryName(exefsDir) is { Length: > 0 } d ? d : Path.GetDirectoryName(romfsDir) ?? string.Empty;
         var candidates = new List<XdeltaCandidate>();
@@ -177,7 +177,7 @@ public static class NspXdeltaPatcher
             return 0;
 
         progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
-        log($"  발견된 DLC xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
+        log($"발견된 DLC xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
         var candidates = new List<XdeltaCandidate>();
 
@@ -201,7 +201,7 @@ public static class NspXdeltaPatcher
         string prefix = isDlc ? "DLC xdelta" : "xdelta";
         string shownName = displayName ?? Path.GetFileName(xdeltaPath);
 
-        log($"  {prefix} 패치 적용: {shownName} ➡️ {displayPath}", LogLevel.Info);
+        log($"{prefix} 패치 적용: {shownName} ➡️ {displayPath}", LogLevel.Info);
 
         string tempOutPath = targetPath + ".patched";
 
@@ -219,7 +219,7 @@ public static class NspXdeltaPatcher
 
             if (!File.Exists(tempOutPath))
             {
-                log($"  ❌ {prefix} 패치 실패 ({shownName}): 출력 파일이 생성되지 않았습니다.", LogLevel.Error);
+                log($"❌ {prefix} 패치 실패 ({shownName}): 출력 파일이 생성되지 않았습니다.", LogLevel.Error);
                 return false;
             }
 
@@ -229,7 +229,7 @@ public static class NspXdeltaPatcher
         }
         catch (Exception ex)
         {
-            log($"  ❌ {prefix} 패치 실패 ({shownName}): {ex.Message}", LogLevel.Error);
+            log($"❌ {prefix} 패치 실패 ({shownName}): {ex.Message}", LogLevel.Error);
 
             if (File.Exists(tempOutPath))
                 File.Delete(tempOutPath);
