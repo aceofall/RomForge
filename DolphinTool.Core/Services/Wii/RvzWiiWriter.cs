@@ -302,60 +302,79 @@ internal sealed class RvzWiiWriter
 
     private (uint, GroupResult)[] ProcessPartitionHashGroup(Context context, ZstdSharp.Compressor compressor, WiiPartitionSpec spec, long readOffset, long hashGroupBlockStart, int blocksInThisGroup, long totalBlocks, uint groupIndex, uint groupCount)
     {
-        if (context.Raw.Length < WiiLayout.GroupTotalSize)
-            context.Raw = new byte[WiiLayout.GroupTotalSize];
-
         if (context.Decrypted.Length < WiiLayout.GroupDataSize)
             context.Decrypted = new byte[WiiLayout.GroupDataSize];
 
-        if (context.Hashes.Length < WiiLayout.GroupHeaderSize)
-            context.Hashes = new byte[WiiLayout.GroupHeaderSize];
-
-        if (context.Fresh.Length < WiiLayout.GroupHeaderSize)
-            context.Fresh = new byte[WiiLayout.GroupHeaderSize];
-
-        int rawLength = blocksInThisGroup * WiiLayout.BlockTotalSize;
-
-        _input.Read(readOffset, context.Raw.AsSpan(0, rawLength));
-
-        using var aes = Aes.Create();
-        aes.Key = spec.Key;
-        Span<byte> zeroIv = stackalloc byte[16];
-
-        Array.Clear(context.Decrypted, 0, WiiLayout.GroupDataSize);
-
-        for (int j = 0; j < blocksInThisGroup; j++)
-        {
-            var block = context.Raw.AsSpan(j * WiiLayout.BlockTotalSize, WiiLayout.BlockTotalSize);
-            var iv = block.Slice(0x3D0, 16);
-
-            aes.DecryptCbc(block[WiiLayout.BlockHeaderSize..], iv, context.Decrypted.AsSpan(j * WiiLayout.BlockDataSize, WiiLayout.BlockDataSize), System.Security.Cryptography.PaddingMode.None);
-            aes.DecryptCbc(block[..WiiLayout.BlockHeaderSize], zeroIv, context.Hashes.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize), System.Security.Cryptography.PaddingMode.None);
-        }
-
-        WiiHashTree.ComputeHashes(context.Decrypted, context.Fresh);
-
         var exceptionsPerChunk = new List<HashException>[_chunksPerHashGroup];
 
-        for (int j = 0; j < blocksInThisGroup; j++)
+        if (_input is IWiiPartitionSource fastSource && fastSource.TryReadDecryptedHashGroup(readOffset, blocksInThisGroup, context.Decrypted, context.Exceptions))
         {
-            int chunkLocal = j / _blocksPerChunk;
-            int blockInChunk = j % _blocksPerChunk;
-            var desired = context.Hashes.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize);
-            var computed = context.Fresh.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize);
-
-            foreach (int slot in WiiHashTree.CompareSlots())
+            foreach (var exception in context.Exceptions)
             {
-                var a = desired.Slice(slot, WiiLayout.HashSize);
-                var b = computed.Slice(slot, WiiLayout.HashSize);
-
-                if (a.SequenceEqual(b))
-                    continue;
-
+                int globalBlock = exception.Offset / WiiLayout.BlockHeaderSize;
+                int slot = exception.Offset - globalBlock * WiiLayout.BlockHeaderSize;
+                int chunkLocal = globalBlock / _blocksPerChunk;
+                int blockInChunk = globalBlock % _blocksPerChunk;
                 var list = exceptionsPerChunk[chunkLocal] ??= [];
-                int offset = blockInChunk * WiiLayout.BlockHeaderSize + slot;
 
-                list.Add(new HashException((ushort)offset, a.ToArray()));
+                list.Add(new HashException((ushort)(blockInChunk * WiiLayout.BlockHeaderSize + slot), exception.Hash));
+            }
+
+            for (int c = 0; c < _chunksPerHashGroup; c++)
+                exceptionsPerChunk[c]?.Sort((a, b) => a.Offset.CompareTo(b.Offset));
+        }
+        else
+        {
+            if (context.Raw.Length < WiiLayout.GroupTotalSize)
+                context.Raw = new byte[WiiLayout.GroupTotalSize];
+
+            if (context.Hashes.Length < WiiLayout.GroupHeaderSize)
+                context.Hashes = new byte[WiiLayout.GroupHeaderSize];
+
+            if (context.Fresh.Length < WiiLayout.GroupHeaderSize)
+                context.Fresh = new byte[WiiLayout.GroupHeaderSize];
+
+            int rawLength = blocksInThisGroup * WiiLayout.BlockTotalSize;
+
+            _input.Read(readOffset, context.Raw.AsSpan(0, rawLength));
+
+            using var aes = Aes.Create();
+            aes.Key = spec.Key;
+            Span<byte> zeroIv = stackalloc byte[16];
+
+            Array.Clear(context.Decrypted, 0, WiiLayout.GroupDataSize);
+
+            for (int j = 0; j < blocksInThisGroup; j++)
+            {
+                var block = context.Raw.AsSpan(j * WiiLayout.BlockTotalSize, WiiLayout.BlockTotalSize);
+                var iv = block.Slice(0x3D0, 16);
+
+                aes.DecryptCbc(block[WiiLayout.BlockHeaderSize..], iv, context.Decrypted.AsSpan(j * WiiLayout.BlockDataSize, WiiLayout.BlockDataSize), System.Security.Cryptography.PaddingMode.None);
+                aes.DecryptCbc(block[..WiiLayout.BlockHeaderSize], zeroIv, context.Hashes.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize), System.Security.Cryptography.PaddingMode.None);
+            }
+
+            WiiHashTree.ComputeHashes(context.Decrypted, context.Fresh);
+
+            for (int j = 0; j < blocksInThisGroup; j++)
+            {
+                int chunkLocal = j / _blocksPerChunk;
+                int blockInChunk = j % _blocksPerChunk;
+                var desired = context.Hashes.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize);
+                var computed = context.Fresh.AsSpan(j * WiiLayout.BlockHeaderSize, WiiLayout.BlockHeaderSize);
+
+                foreach (int slot in WiiHashTree.CompareSlots())
+                {
+                    var a = desired.Slice(slot, WiiLayout.HashSize);
+                    var b = computed.Slice(slot, WiiLayout.HashSize);
+
+                    if (a.SequenceEqual(b))
+                        continue;
+
+                    var list = exceptionsPerChunk[chunkLocal] ??= [];
+                    int offset = blockInChunk * WiiLayout.BlockHeaderSize + slot;
+
+                    list.Add(new HashException((ushort)offset, a.ToArray()));
+                }
             }
         }
 

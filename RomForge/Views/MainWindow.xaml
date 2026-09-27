@@ -19,7 +19,7 @@
         AllowDrop="True"
         FontFamily="Segoe UI">
 
-    <Grid>
+    <Grid Cursor="">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" MinHeight="340"/>
             <RowDefinition Height="5"/>
