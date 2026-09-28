@@ -2,6 +2,7 @@
 using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace DolphinTool.Core.Services.Wia;
 
@@ -46,6 +47,13 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
     }
 
     private const long ChunkCacheByteBudget = 256L * 1024 * 1024;
+
+    private static long _readTicks;
+    private static long _decodeTicks;
+    private static long _copyTicks;
+    private static long _sharedHits;
+    private static long _sharedMisses;
+    private static long _privateDecodes;
 
     private readonly SafeFileHandle _handle;
     private readonly RvzFile _file;
@@ -414,26 +422,35 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         if (context.HasCachedChunk && context.CachedChunkIndex == totalGroupIndex)
             return context.CachedChunk;
 
-        if (_chunkCache.TryGetValue(totalGroupIndex, out var lazy))
+        CachedChunkData result;
+
+        if (exceptionLists > 0 && dataSize <= WiiLayout.GroupDataSize)
         {
-            var cached = lazy.Value;
-            context.CachedChunkIndex = totalGroupIndex;
-            context.CachedChunk = cached;
-            context.HasCachedChunk = true;
-            return cached;
+            var decoded = DecodeChunk(context, group, dataSize, exceptionLists, junkOffset);
+            result = new CachedChunkData(decoded.Data, decoded.Length, decoded.ExceptionLists);
+            Interlocked.Increment(ref _privateDecodes);
+        }
+        else
+        {
+            if (_chunkCache.TryGetValue(totalGroupIndex, out var lazy))
+                Interlocked.Increment(ref _sharedHits);
+            else
+            {
+                Interlocked.Increment(ref _sharedMisses);
+                var newLazy = new Lazy<CachedChunkData>(() => DecodeAndCache(context, totalGroupIndex, group, dataSize, exceptionLists, junkOffset), LazyThreadSafetyMode.ExecutionAndPublication);
+                lazy = _chunkCache.GetOrAdd(totalGroupIndex, newLazy);
+            }
+
+            result = lazy.Value;
         }
 
-        var newLazy = new Lazy<CachedChunkData>(() => DecodeAndCache(context, group, dataSize, exceptionLists, junkOffset), LazyThreadSafetyMode.ExecutionAndPublication);
-        lazy = _chunkCache.GetOrAdd(totalGroupIndex, newLazy);
-
-        var result = lazy.Value;
         context.CachedChunkIndex = totalGroupIndex;
         context.CachedChunk = result;
         context.HasCachedChunk = true;
         return result;
     }
 
-    private CachedChunkData DecodeAndCache(Context context, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
+    private DecodedChunk DecodeChunk(Context context, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
     {
         long fileOffset = group.FileOffset;
         int compressedSize = group.DataSize;
@@ -442,12 +459,27 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             throw new InvalidDataException("WIA 그룹 위치가 파일 범위를 벗어났습니다.");
 
         context.EnsureInput(compressedSize);
+
+        long t0 = Stopwatch.GetTimestamp();
         RvzIo.ReadExactly(_handle, context.Input.AsSpan(0, compressedSize), fileOffset);
+        Interlocked.Add(ref _readTicks, Stopwatch.GetTimestamp() - t0);
 
+        t0 = Stopwatch.GetTimestamp();
         var decoded = context.Decoder.Decode(context.Input.AsSpan(0, compressedSize), _file.Compression != RvzCompressionType.None, exceptionLists, dataSize, 0, junkOffset);
-        var cached = new CachedChunkData(decoded.Data.AsSpan(0, decoded.Length).ToArray(), decoded.Length, decoded.ExceptionLists);
+        Interlocked.Add(ref _decodeTicks, Stopwatch.GetTimestamp() - t0);
 
-        _chunkCacheOrder.Enqueue(group.FileOffset);
+        return decoded;
+    }
+
+    private CachedChunkData DecodeAndCache(Context context, long totalGroupIndex, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
+    {
+        var decoded = DecodeChunk(context, group, dataSize, exceptionLists, junkOffset);
+
+        long t0 = Stopwatch.GetTimestamp();
+        var cached = new CachedChunkData(decoded.Data.AsSpan(0, decoded.Length).ToArray(), decoded.Length, decoded.ExceptionLists);
+        Interlocked.Add(ref _copyTicks, Stopwatch.GetTimestamp() - t0);
+
+        _chunkCacheOrder.Enqueue(totalGroupIndex);
         Interlocked.Add(ref _chunkCacheBytes, cached.Length);
         TrimChunkCache();
 
@@ -465,6 +497,9 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
 
     public void Dispose()
     {
+        double f = Stopwatch.Frequency;
+        Console.WriteLine($"wia: file-read={_readTicks / f:F2}s  lzma-decode={_decodeTicks / f:F2}s  cache-copy={_copyTicks / f:F2}s  private-decodes={_privateDecodes}  shared-hits={_sharedHits}  shared-misses={_sharedMisses}  cache-mb={_chunkCacheBytes / 1048576}");
+
         foreach (var context in _contexts.Values)
             context.Dispose();
 

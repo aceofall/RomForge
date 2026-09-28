@@ -1,5 +1,5 @@
 using DolphinTool.Core.Models;
-using DolphinTool.Core.Services.Wia.Lzma;
+using DolphinTool.Core.Services.Wia;
 
 namespace DolphinTool.Core.Rvz;
 
