@@ -2,7 +2,6 @@
 using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace DolphinTool.Core.Services.Wia;
 
@@ -19,24 +18,19 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         public byte[] Decrypted { get; } = new byte[WiiLayout.GroupDataSize];
         public byte[] Encrypted { get; } = new byte[WiiLayout.GroupTotalSize];
         public byte[] Input = [];
-        public byte[] Output = [];
-        public long CachedChunkIndex = -1;
         public CachedChunkData CachedChunk;
         public bool HasCachedChunk;
+        public long CachedChunkIndex = -1;
         public int CachedPartitionIndex = -1;
         public long CachedHashGroupStart = -1;
+        public int CachedDataPartitionIndex = -1;
         public int CachedDataEntryIndex = -1;
+        public int CachedRegionIndex = -1;
 
         public void EnsureInput(int size)
         {
             if (Input.Length < size)
                 Input = new byte[size];
-        }
-
-        public void EnsureOutput(int size)
-        {
-            if (Output.Length < size)
-                Output = new byte[size];
         }
 
         public void Dispose()
@@ -47,13 +41,6 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
     }
 
     private const long ChunkCacheByteBudget = 256L * 1024 * 1024;
-
-    private static long _readTicks;
-    private static long _decodeTicks;
-    private static long _copyTicks;
-    private static long _sharedHits;
-    private static long _sharedMisses;
-    private static long _privateDecodes;
 
     private readonly SafeFileHandle _handle;
     private readonly RvzFile _file;
@@ -113,6 +100,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         for (int i = 0; i < _file.RawEntries.Length; i++)
         {
             var entry = _file.RawEntries[i];
+
             if (entry.DataSize != 0)
                 regions.Add(new Region(entry.DataOffset, entry.DataOffset + entry.DataSize, i, -1, -1));
         }
@@ -120,6 +108,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         for (int p = 0; p < _file.Partitions.Length; p++)
         {
             var entries = _file.Partitions[p].DataEntries;
+
             for (int d = 0; d < entries.Length; d++)
             {
                 if (entries[d].SectorCount == 0)
@@ -153,15 +142,16 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             if (current < _headerLength)
             {
                 int length = (int)Math.Min(_headerLength - current, destination.Length - written);
-                _file.DiscHeader.AsSpan((int)current, length).CopyTo(destination[written..]);
+                Copy(_file.DiscHeader.AsSpan((int)current, length), destination.Slice(written, length));
                 written += length;
                 continue;
             }
 
-            var region = FindRegion(current);
+            Region region = FindRegion(context, current);
+
             int lengthRead = region.PartitionIndex < 0
-                ? ReadRaw(context, region, current, destination[written..])
-                : ReadPartition(context, region, current, destination[written..]);
+                ? ReadRaw(context, region, current, destination.Slice(written))
+                : ReadPartition(context, region, current, destination.Slice(written));
 
             if (lengthRead <= 0)
                 throw new InvalidDataException("WIA 읽기 진행에 실패했습니다.");
@@ -170,8 +160,41 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         }
     }
 
-    private Region FindRegion(long offset)
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static unsafe void Copy(ReadOnlySpan<byte> source, Span<byte> destination)
     {
+        if (source.Length == 0)
+            return;
+
+        fixed (byte* src = source)
+        fixed (byte* dst = destination)
+            Buffer.MemoryCopy(src, dst, destination.Length, source.Length);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private Region FindRegion(Context context, long offset)
+    {
+        int cached = context.CachedRegionIndex;
+
+        if ((uint)cached < (uint)_regions.Length)
+        {
+            var region = _regions[cached];
+
+            if (offset >= region.Start && offset < region.End)
+                return region;
+
+            if (offset >= region.End && cached + 1 < _regions.Length)
+            {
+                var next = _regions[cached + 1];
+
+                if (offset >= next.Start && offset < next.End)
+                {
+                    context.CachedRegionIndex = cached + 1;
+                    return next;
+                }
+            }
+        }
+
         int lo = 0;
         int hi = _regions.Length - 1;
         int found = -1;
@@ -179,6 +202,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         while (lo <= hi)
         {
             int mid = lo + ((hi - lo) >> 1);
+
             if (_regions[mid].Start <= offset)
             {
                 found = mid;
@@ -193,6 +217,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         if (found < 0 || offset >= _regions[found].End)
             throw new InvalidDataException("WIA 데이터 영역 사이에 빈 구간이 있습니다.");
 
+        context.CachedRegionIndex = found;
         return _regions[found];
     }
 
@@ -200,18 +225,18 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
     {
         var entry = _file.RawEntries[region.RawIndex];
         int length = (int)Math.Min(region.End - offset, destination.Length);
-        context.EnsureOutput(length);
 
         long readOffset = offset;
         long remaining = length;
         int position = 0;
 
-        ReadFromGroups(context, ref readOffset, ref remaining, context.Output, ref position, _file.ChunkSize, WiiLayout.BlockTotalSize, entry.DataOffset, entry.DataSize, entry.GroupIndex, entry.GroupCount, 0, null);
+        ReadFromGroups(context, ref readOffset, ref remaining, destination.Slice(0, length), ref position,
+            _file.ChunkSize, WiiLayout.BlockTotalSize, entry.DataOffset, entry.DataSize,
+            entry.GroupIndex, entry.GroupCount, 0, null);
 
         if (remaining != 0)
             throw new InvalidDataException("WIA 원본 데이터 그룹이 부족합니다.");
 
-        context.Output.AsSpan(0, length).CopyTo(destination);
         return length;
     }
 
@@ -230,16 +255,18 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
 
         if (context.CachedPartitionIndex != region.PartitionIndex || context.CachedHashGroupStart != hashGroupStart)
         {
-            ReadDecryptedGroup(context, partition, groupStartSector, validSectors);
+            ReadDecryptedGroup(context, region.PartitionIndex, partition, groupStartSector, validSectors, region.DataIndex);
             context.Encryptor.Encrypt(partition.Key, context.Decrypted, context.Exceptions, context.Encrypted);
             context.CachedPartitionIndex = region.PartitionIndex;
             context.CachedHashGroupStart = hashGroupStart;
         }
 
-        int offsetInGroup = (int)(offset - (partitionStart + hashGroupStart));
-        int length = (int)Math.Min(WiiLayout.GroupTotalSize - offsetInGroup, Math.Min(region.End - offset, destination.Length));
+        int offsetInGroup = (int)(offset - partitionStart - hashGroupStart);
+        int length = (int)Math.Min(
+            WiiLayout.GroupTotalSize - offsetInGroup,
+            Math.Min(region.End - offset, destination.Length));
 
-        context.Encrypted.AsSpan(offsetInGroup, length).CopyTo(destination);
+        Copy(context.Encrypted.AsSpan(offsetInGroup, length), destination.Slice(0, length));
         return length;
     }
 
@@ -248,10 +275,13 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         if (readOffset < _headerLength)
             return false;
 
+        var context = _contexts.Value!;
+
         Region region;
+
         try
         {
-            region = FindRegion(readOffset);
+            region = FindRegion(context, readOffset);
         }
         catch (InvalidDataException)
         {
@@ -274,15 +304,15 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         if (validSectors != blocksInThisGroup || decrypted.Length < WiiLayout.GroupDataSize)
             return false;
 
-        var context = _contexts.Value!;
-        ReadDecryptedGroup(context, partition, groupStartSector, validSectors);
-        context.Decrypted.AsSpan(0, WiiLayout.GroupDataSize).CopyTo(decrypted);
+        ReadDecryptedGroup(context, region.PartitionIndex, partition, groupStartSector, validSectors, region.DataIndex);
+        Copy(context.Decrypted.AsSpan(0, WiiLayout.GroupDataSize), decrypted);
+
         exceptions.Clear();
         exceptions.AddRange(context.Exceptions);
         return true;
     }
 
-    private void ReadDecryptedGroup(Context context, PartitionEntry partition, long groupStartSector, int validSectors)
+    private void ReadDecryptedGroup(Context context, int partitionIndex, PartitionEntry partition, long groupStartSector, int validSectors, int entryHint)
     {
         context.Exceptions.Clear();
 
@@ -290,16 +320,29 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         long remaining = (long)validSectors * WiiLayout.BlockDataSize;
         int position = 0;
 
-        int startEntry = context.CachedPartitionIndex == partition.GetHashCode() && context.CachedDataEntryIndex >= 0
-            ? Math.Min(context.CachedDataEntryIndex, partition.DataEntries.Length - 1)
-            : FindPartitionDataEntry(partition, groupStartSector);
+        int startEntry;
+
+        if (context.CachedDataPartitionIndex == partitionIndex && context.CachedDataEntryIndex >= 0)
+        {
+            startEntry = context.CachedDataEntryIndex;
+
+            if (startEntry >= partition.DataEntries.Length)
+                startEntry = partition.DataEntries.Length - 1;
+        }
+        else
+        {
+            startEntry = FindPartitionDataEntry(partition, groupStartSector, entryHint);
+        }
 
         if (startEntry < 0)
             throw new InvalidDataException("WIA 파티션 데이터 엔트리를 찾을 수 없습니다.");
 
-        for (int i = startEntry; i < partition.DataEntries.Length && remaining > 0; i++)
+        var entries = partition.DataEntries;
+
+        for (int i = startEntry; i < entries.Length && remaining > 0; i++)
         {
-            var entry = partition.DataEntries[i];
+            var entry = entries[i];
+
             if (entry.SectorCount == 0)
                 continue;
 
@@ -312,7 +355,11 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             if (dataOffset > offset)
                 throw new InvalidDataException("WIA 데이터 영역 사이에 빈 구간이 있습니다.");
 
-            ReadFromGroups(context, ref offset, ref remaining, context.Decrypted, ref position, _partitionChunkSize, WiiLayout.BlockDataSize, dataOffset, dataSize, entry.GroupIndex, entry.GroupCount, _partitionExceptionLists, context.Exceptions);
+            ReadFromGroups(context, ref offset, ref remaining, context.Decrypted, ref position,
+                _partitionChunkSize, WiiLayout.BlockDataSize, dataOffset, dataSize,
+                entry.GroupIndex, entry.GroupCount, _partitionExceptionLists, context.Exceptions);
+
+            context.CachedDataPartitionIndex = partitionIndex;
             context.CachedDataEntryIndex = i;
         }
 
@@ -320,12 +367,47 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             throw new InvalidDataException("WIA 파티션 데이터 그룹이 부족합니다.");
 
         if (position < context.Decrypted.Length)
-            Array.Clear(context.Decrypted, position, context.Decrypted.Length - position);
+            context.Decrypted.AsSpan(position).Clear();
     }
 
-    private static int FindPartitionDataEntry(PartitionEntry partition, long groupStartSector)
+    private static int FindPartitionDataEntry(PartitionEntry partition, long groupStartSector, int hint)
     {
         var entries = partition.DataEntries;
+
+        if ((uint)hint < (uint)entries.Length)
+        {
+            var entry = entries[hint];
+
+            if (entry.SectorCount != 0)
+            {
+                long start = entry.FirstSector - partition.FirstSector;
+                long end = start + entry.SectorCount;
+
+                if (groupStartSector >= start && groupStartSector < end)
+                    return hint;
+
+                if (groupStartSector >= end)
+                {
+                    for (int i = hint + 1; i < entries.Length; i++)
+                    {
+                        entry = entries[i];
+
+                        if (entry.SectorCount == 0)
+                            continue;
+
+                        start = entry.FirstSector - partition.FirstSector;
+                        end = start + entry.SectorCount;
+
+                        if (groupStartSector < start)
+                            break;
+
+                        if (groupStartSector < end)
+                            return i;
+                    }
+                }
+            }
+        }
+
         long targetSector = partition.FirstSector + groupStartSector;
         int lo = 0;
         int hi = entries.Length - 1;
@@ -353,7 +435,20 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         return found;
     }
 
-    private void ReadFromGroups(Context context, ref long offset, ref long size, byte[] destination, ref int destinationPosition, long chunkSize, int sectorSize, long dataOffset, long dataSize, uint groupIndex, uint groupCount, int exceptionLists, List<HashException>? exceptions)
+    private void ReadFromGroups(
+        Context context,
+        ref long offset,
+        ref long size,
+        Span<byte> destination,
+        ref int destinationPosition,
+        long chunkSize,
+        int sectorSize,
+        long dataOffset,
+        long dataSize,
+        uint groupIndex,
+        uint groupCount,
+        int exceptionLists,
+        List<HashException>? exceptions)
     {
         if (dataOffset + dataSize <= offset)
             return;
@@ -383,14 +478,20 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             if (offsetInGroup < 0 || bytesToRead <= 0)
                 throw new InvalidDataException("WIA 그룹 오프셋이 올바르지 않습니다.");
 
+            int bytes = (int)bytesToRead;
+            int destinationOffset = destinationPosition;
+
             if (group.DataSize == 0)
             {
-                Array.Clear(destination, destinationPosition, (int)bytesToRead);
+                destination.Slice(destinationOffset, bytes).Clear();
             }
             else
             {
                 var chunk = GetChunk(context, totalGroupIndex, group, (int)thisChunkSize, exceptionLists, groupOffsetInData);
-                chunk.Data.AsSpan((int)offsetInGroup, (int)bytesToRead).CopyTo(destination.AsSpan(destinationPosition, (int)bytesToRead));
+
+                Copy(
+                    chunk.Data.AsSpan((int)offsetInGroup, bytes),
+                    destination.Slice(destinationOffset, bytes));
 
                 if (exceptions != null && exceptionLists > 0)
                 {
@@ -403,6 +504,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
                     foreach (var exception in chunk.ExceptionLists[listIndex])
                     {
                         int adjusted = exception.Offset + additional;
+
                         if ((uint)adjusted > ushort.MaxValue)
                             throw new InvalidDataException("WIA 해시 예외 오프셋이 올바르지 않습니다.");
 
@@ -413,7 +515,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
 
             offset += bytesToRead;
             size -= bytesToRead;
-            destinationPosition += (int)bytesToRead;
+            destinationPosition += bytes;
         }
     }
 
@@ -428,20 +530,22 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
         {
             var decoded = DecodeChunk(context, group, dataSize, exceptionLists, junkOffset);
             result = new CachedChunkData(decoded.Data, decoded.Length, decoded.ExceptionLists);
-            Interlocked.Increment(ref _privateDecodes);
         }
         else
         {
             if (_chunkCache.TryGetValue(totalGroupIndex, out var lazy))
-                Interlocked.Increment(ref _sharedHits);
+            {
+                result = lazy.Value;
+            }
             else
             {
-                Interlocked.Increment(ref _sharedMisses);
-                var newLazy = new Lazy<CachedChunkData>(() => DecodeAndCache(context, totalGroupIndex, group, dataSize, exceptionLists, junkOffset), LazyThreadSafetyMode.ExecutionAndPublication);
-                lazy = _chunkCache.GetOrAdd(totalGroupIndex, newLazy);
-            }
+                var newLazy = new Lazy<CachedChunkData>(
+                    () => DecodeAndCache(context, totalGroupIndex, group, dataSize, exceptionLists, junkOffset),
+                    LazyThreadSafetyMode.ExecutionAndPublication);
 
-            result = lazy.Value;
+                lazy = _chunkCache.GetOrAdd(totalGroupIndex, newLazy);
+                result = lazy.Value;
+            }
         }
 
         context.CachedChunkIndex = totalGroupIndex;
@@ -459,25 +563,25 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
             throw new InvalidDataException("WIA 그룹 위치가 파일 범위를 벗어났습니다.");
 
         context.EnsureInput(compressedSize);
-
-        long t0 = Stopwatch.GetTimestamp();
         RvzIo.ReadExactly(_handle, context.Input.AsSpan(0, compressedSize), fileOffset);
-        Interlocked.Add(ref _readTicks, Stopwatch.GetTimestamp() - t0);
 
-        t0 = Stopwatch.GetTimestamp();
-        var decoded = context.Decoder.Decode(context.Input.AsSpan(0, compressedSize), _file.Compression != RvzCompressionType.None, exceptionLists, dataSize, 0, junkOffset);
-        Interlocked.Add(ref _decodeTicks, Stopwatch.GetTimestamp() - t0);
-
-        return decoded;
+        return context.Decoder.Decode(
+            context.Input.AsSpan(0, compressedSize),
+            _file.Compression != RvzCompressionType.None,
+            exceptionLists,
+            dataSize,
+            0,
+            junkOffset);
     }
 
     private CachedChunkData DecodeAndCache(Context context, long totalGroupIndex, GroupEntry group, int dataSize, int exceptionLists, long junkOffset)
     {
         var decoded = DecodeChunk(context, group, dataSize, exceptionLists, junkOffset);
 
-        long t0 = Stopwatch.GetTimestamp();
-        var cached = new CachedChunkData(decoded.Data.AsSpan(0, decoded.Length).ToArray(), decoded.Length, decoded.ExceptionLists);
-        Interlocked.Add(ref _copyTicks, Stopwatch.GetTimestamp() - t0);
+        var cachedData = GC.AllocateUninitializedArray<byte>(decoded.Length);
+        Copy(decoded.Data.AsSpan(0, decoded.Length), cachedData);
+
+        var cached = new CachedChunkData(cachedData, decoded.Length, decoded.ExceptionLists);
 
         _chunkCacheOrder.Enqueue(totalGroupIndex);
         Interlocked.Add(ref _chunkCacheBytes, cached.Length);
@@ -488,7 +592,7 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
 
     private void TrimChunkCache()
     {
-        while (Interlocked.Read(ref _chunkCacheBytes) > ChunkCacheByteBudget && _chunkCacheOrder.TryDequeue(out var oldKey))
+        while (Volatile.Read(ref _chunkCacheBytes) > ChunkCacheByteBudget && _chunkCacheOrder.TryDequeue(out var oldKey))
         {
             if (_chunkCache.TryRemove(oldKey, out var removed) && removed.IsValueCreated)
                 Interlocked.Add(ref _chunkCacheBytes, -removed.Value.Length);
@@ -497,9 +601,6 @@ internal sealed class WiaSource : IRvzInputSource, IWiiPartitionSource
 
     public void Dispose()
     {
-        double f = Stopwatch.Frequency;
-        Console.WriteLine($"wia: file-read={_readTicks / f:F2}s  lzma-decode={_decodeTicks / f:F2}s  cache-copy={_copyTicks / f:F2}s  private-decodes={_privateDecodes}  shared-hits={_sharedHits}  shared-misses={_sharedMisses}  cache-mb={_chunkCacheBytes / 1048576}");
-
         foreach (var context in _contexts.Values)
             context.Dispose();
 
