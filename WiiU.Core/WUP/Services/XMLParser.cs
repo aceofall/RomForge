@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Xml;
 
 namespace WiiU.Core.WUP.Services
@@ -49,7 +50,7 @@ namespace WiiU.Core.WUP.Services
         {
             if (document == null)
             {
-                Console.WriteLine("Please load the document first.");
+                Debug.WriteLine("Please load the document first.");
                 return "";
             }
 

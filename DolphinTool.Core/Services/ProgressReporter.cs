@@ -1,4 +1,4 @@
-﻿namespace DolphinTool.Core.Rvz;
+﻿namespace DolphinTool.Core.Services;
 
 internal sealed class ProgressReporter(long total, Action<double>? callback)
 {

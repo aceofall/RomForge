@@ -1,8 +1,7 @@
 using System.Buffers.Binary;
-using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
 
-namespace DolphinTool.Core.Services.Wbfs;
+namespace DolphinTool.Core.Services.Wii;
 
 internal sealed class WbfsSource : IRvzInputSource
 {

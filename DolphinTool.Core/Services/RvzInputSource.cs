@@ -1,8 +1,7 @@
 using DolphinTool.Core.Services.GameCube;
-using DolphinTool.Core.Services.Wbfs;
-using DolphinTool.Core.Services.Wia;
+using DolphinTool.Core.Services.Wii;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal static class RvzInputSource
 {

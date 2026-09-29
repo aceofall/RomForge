@@ -1,5 +1,5 @@
 ﻿using DolphinTool.Core.Models;
-using DolphinTool.Core.Rvz;
+using DolphinTool.Core.Services.Wii;
 using Microsoft.Win32.SafeHandles;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
@@ -74,6 +74,13 @@ internal sealed class RvzGcWriter
         long bytesWritten = upperBound;
         long processed = 0;
         int window = Math.Clamp(Environment.ProcessorCount * 2, 2, 32);
+
+        if (_input is WiaSource wiaSource)
+        {
+            int groupsPerChunk = (int)Math.Ceiling(wiaSource.ChunkSize / (double)_chunkSize);
+            window = Math.Clamp(Environment.ProcessorCount * groupsPerChunk, window, 4096);
+        }
+
         var contexts = new List<Context>();
         var idle = new Stack<Context>();
         var pending = new Queue<(Task<GroupResult> Task, Context Context, long Index)>();

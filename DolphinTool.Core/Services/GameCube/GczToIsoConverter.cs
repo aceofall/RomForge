@@ -1,4 +1,3 @@
-using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
 
 namespace DolphinTool.Core.Services.GameCube;

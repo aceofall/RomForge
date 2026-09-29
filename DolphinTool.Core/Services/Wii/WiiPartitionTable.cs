@@ -6,7 +6,7 @@ internal static class WiiPartitionTable
 {
     private const long PartitionMagic = 0x10001;
 
-    public static List<WiiPartitionSpec> Read(Rvz.IRvzInputSource input, long isoSize)
+    public static List<WiiPartitionSpec> Read(IRvzInputSource input, long isoSize)
     {
         var offsets = new SortedSet<long>();
         var candidates = new List<(long Offset, uint Type)>();
@@ -59,7 +59,7 @@ internal static class WiiPartitionTable
         return result;
     }
 
-    private static WiiPartitionSpec? TryRead(Rvz.IRvzInputSource input, long isoSize, long offset)
+    private static WiiPartitionSpec? TryRead(IRvzInputSource input, long isoSize, long offset)
     {
         if (offset + 0x2C0 > isoSize)
             return null;

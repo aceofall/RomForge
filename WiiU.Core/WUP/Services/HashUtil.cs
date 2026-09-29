@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 namespace WiiU.Core.WUP.Services
@@ -22,7 +23,7 @@ namespace WiiU.Core.WUP.Services
             }
             catch (Exception e)
             {
-                Console.Error.WriteLine(e);
+                Debug.WriteLine(e);
             }
 
             return hash;

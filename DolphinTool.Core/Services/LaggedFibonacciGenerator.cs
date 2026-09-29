@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal sealed class LaggedFibonacciGenerator
 {
@@ -10,7 +10,6 @@ internal sealed class LaggedFibonacciGenerator
     private const int K = 521;
     private const int J = 32;
     private const int BufferBytes = K * sizeof(uint);
-
     private readonly uint[] _words = new uint[K];
     private readonly byte[] _bytes = new byte[BufferBytes];
     private int _positionBytes;

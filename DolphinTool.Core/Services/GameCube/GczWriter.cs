@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Compression;
-using DolphinTool.Core.Rvz;
 using Microsoft.Win32.SafeHandles;
 
 namespace DolphinTool.Core.Services.GameCube;

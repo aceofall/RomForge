@@ -1,6 +1,5 @@
 ﻿using Common;
 using DolphinTool.Core.Models;
-using DolphinTool.Core.Rvz;
 using DolphinTool.Core.Services.GameCube;
 
 namespace DolphinTool.Core.Services;

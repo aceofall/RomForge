@@ -1,7 +1,7 @@
 using DolphinTool.Core.Models;
 using System.Security.Cryptography;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal sealed class WiiGroupEncryptor : IDisposable
 {
@@ -33,6 +33,7 @@ internal sealed class WiiGroupEncryptor : IDisposable
     private void ComputeHashes(byte[] decrypted)
     {
         byte[] hashes = _hashes;
+
         Array.Clear(hashes);
 
         for (int i = 0; i < WiiLayout.BlocksPerGroup; i++)

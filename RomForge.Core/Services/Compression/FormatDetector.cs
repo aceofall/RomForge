@@ -1,6 +1,6 @@
 ﻿using CHD.Core.Models;
 using DolphinTool.Core.Models;
-using DolphinTool.Core.Rvz;
+using DolphinTool.Core.Services;
 using RomForge.Core.Models.Compression;
 using System.IO;
 using System.Text;

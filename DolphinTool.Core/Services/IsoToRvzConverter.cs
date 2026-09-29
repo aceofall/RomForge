@@ -1,20 +1,22 @@
-using DolphinTool.Core.Services.GameCube;
+﻿using DolphinTool.Core.Services.GameCube;
 using DolphinTool.Core.Services.Wii;
 using System.Buffers.Binary;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 public static class IsoToRvzConverter
 {
     public static void Convert(string inputPath, string outputPath, int compressionLevel = 18, int chunkSize = 131072, Action<double>? progress = null, CancellationToken ct = default)
     {
+        ThreadPool.GetMinThreads(out int minWorker, out int minIo);
+        ThreadPool.SetMinThreads(Math.Max(minWorker, Environment.ProcessorCount * 3), minIo);
+
         bool succeeded = false;
 
         try
         {
             using var input = RvzInputSource.Open(inputPath);
             using var output = File.OpenHandle(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, FileOptions.None);
-
             Span<byte> header = stackalloc byte[0x20];
 
             if (input.Length < header.Length)

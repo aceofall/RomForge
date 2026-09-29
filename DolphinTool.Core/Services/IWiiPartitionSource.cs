@@ -1,6 +1,6 @@
 ﻿using DolphinTool.Core.Models;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal interface IWiiPartitionSource
 {

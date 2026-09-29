@@ -1,5 +1,4 @@
-﻿using DolphinTool.Core.Rvz;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 
 namespace DolphinTool.Core.Services.GameCube;
 

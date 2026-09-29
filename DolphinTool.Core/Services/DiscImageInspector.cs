@@ -1,9 +1,9 @@
 ﻿using DolphinTool.Core.Models;
 using DolphinTool.Core.Services.GameCube;
-using DolphinTool.Core.Services.Wbfs;
+using DolphinTool.Core.Services.Wii;
 using System.Buffers.Binary;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 public static class DiscImageInspector
 {

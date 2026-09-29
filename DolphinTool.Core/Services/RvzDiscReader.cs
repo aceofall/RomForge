@@ -1,7 +1,7 @@
 using DolphinTool.Core.Models;
 using Microsoft.Win32.SafeHandles;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal sealed class RvzDiscReader : IDisposable
 {
@@ -170,7 +170,9 @@ internal sealed class RvzDiscReader : IDisposable
         while (position < entryEnd)
         {
             long next = Math.Min(entryEnd, (position / unitSectors + 1) * unitSectors);
+
             items.Add(new WorkItem(WorkKind.Partition, partitionIndex, dataIndex, position, next - position, false));
+
             position = next;
         }
     }

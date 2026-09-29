@@ -3,7 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal sealed class RvzFile
 {

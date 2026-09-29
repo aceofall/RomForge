@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace DolphinTool.Core.Services.Wia;
+namespace DolphinTool.Core.Services.Wii;
 
 internal sealed unsafe class LzmaFastDecoder
 {
@@ -175,22 +175,15 @@ internal sealed unsafe class LzmaFastDecoder
                         }
 
                         uint bound = (range >> 11) * ttt;
+                        uint mask = (uint)((long)((ulong)code - bound) >> 63);
+                        uint inv = ~mask;
 
-                        if (code < bound)
-                        {
-                            range = bound;
-                            *p = (ushort)(ttt + ((2048 - ttt) >> 5));
-                            symbol <<= 1;
-                            offs &= ~bit;
-                        }
-                        else
-                        {
-                            range -= bound;
-                            code -= bound;
-                            *p = (ushort)(ttt - (ttt >> 5));
-                            symbol = (symbol << 1) | 1;
-                            offs &= bit;
-                        }
+                        range = (bound & mask) | ((range - bound) & inv);
+                        code -= bound & inv;
+                        *p = (ushort)(ttt + (((2048 - ttt) >> 5) & mask) - ((ttt >> 5) & inv));
+
+                        symbol = (symbol << 1) | (inv & 1);
+                        offs &= (~bit & mask) | (bit & inv);
                     }
                     while (symbol < 0x100);
                 }

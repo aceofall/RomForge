@@ -64,7 +64,7 @@ namespace WiiU.Core.WUP.Services
             }
             catch (IOException e1)
             {
-                Console.Error.WriteLine(e1);
+                Debug.WriteLine(e1);
             }
 
             Content fstContent = GetContents().GetFSTContent();

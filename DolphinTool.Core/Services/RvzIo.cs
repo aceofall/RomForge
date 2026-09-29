@@ -1,6 +1,6 @@
 ﻿using Microsoft.Win32.SafeHandles;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal static class RvzIo
 {

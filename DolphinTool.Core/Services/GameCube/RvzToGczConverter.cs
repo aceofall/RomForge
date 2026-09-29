@@ -1,6 +1,4 @@
-﻿using DolphinTool.Core.Rvz;
-
-namespace DolphinTool.Core.Services.GameCube;
+﻿namespace DolphinTool.Core.Services.GameCube;
 
 public static class RvzToGczConverter
 {

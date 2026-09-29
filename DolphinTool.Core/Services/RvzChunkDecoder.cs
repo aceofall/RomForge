@@ -1,7 +1,7 @@
-using DolphinTool.Core.Models;
+﻿using DolphinTool.Core.Models;
 using System.Buffers.Binary;
 
-namespace DolphinTool.Core.Rvz;
+namespace DolphinTool.Core.Services;
 
 internal sealed class RvzChunkDecoder(RvzCompressionType compression, byte[] compressorData) : IDisposable
 {

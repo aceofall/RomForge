@@ -1,6 +1,4 @@
-using DolphinTool.Core.Rvz;
-
-namespace DolphinTool.Core.Services.Wia;
+namespace DolphinTool.Core.Services.Wii;
 
 internal sealed class LzmaRvzDecompressor : RvzDecompressor
 {
