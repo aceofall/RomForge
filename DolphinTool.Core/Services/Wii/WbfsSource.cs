@@ -19,7 +19,7 @@ internal sealed class WbfsSource : IRvzInputSource
     private readonly int _wbfsSectorShift;
     private readonly long _blocksPerDisc;
     private readonly ushort[] _wlbaTable;
-    private readonly long _length;
+    private long _length;
 
     private WbfsSource(List<FileEntry> files, long wbfsSectorSize, int wbfsSectorShift, long blocksPerDisc, ushort[] wlbaTable, long length)
     {
@@ -149,8 +149,20 @@ internal sealed class WbfsSource : IRvzInputSource
             }
 
             long length = Math.Max(WiiSingleLayerSize, checked(lastUsedBlock * wbfsSectorSize));
+            var source = new WbfsSource(files, wbfsSectorSize, wbfsSectorShift, blocksPerDisc, wlbaTable, length);
 
-            return new WbfsSource(files, wbfsSectorSize, wbfsSectorShift, blocksPerDisc, wlbaTable, length);
+            if (length > WiiSingleLayerSize)
+            {
+                long dataEnd = 0;
+
+                foreach (var spec in WiiPartitionTable.Read(source, length))
+                    dataEnd = Math.Max(dataEnd, spec.DataStart + spec.DataSize);
+
+                if (dataEnd > 0)
+                    source._length = Math.Max(WiiSingleLayerSize, Math.Min(length, dataEnd));
+            }
+
+            return source;
         }
         catch
         {
