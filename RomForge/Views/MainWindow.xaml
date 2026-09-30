@@ -138,7 +138,24 @@
         </GridSplitter>
 
         <Border BorderBrush="#444444" BorderThickness="1" CornerRadius="10" Background="Transparent" Grid.Row="2">
-            <ListBox x:Name="logBox" Style="{StaticResource LogBox}" ItemsSource="{Binding ActiveLogEntries}" helpers:LogAutoScrollBehavior.Enabled="True" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+            <ListBox x:Name="logBox" Style="{StaticResource LogBox}" ItemsSource="{Binding ActiveLogEntries}" helpers:LogAutoScrollBehavior.Enabled="True" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionMode="Extended"
+                     ContextMenuOpening="LogBox_ContextMenuOpening">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Focusable" Value="True"/>
+                        <Setter Property="IsEnabled" Value="True"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="복사" Click="CopyLog_Click">
+                            <MenuItem.Icon>
+                                <Image Source="/Assets/Images/Copy.png" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
         </Border>
     </Grid>
 </Window>

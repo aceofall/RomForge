@@ -1,11 +1,14 @@
 ﻿using NSW.WPF.UI;
 using RomForge.Core;
+using RomForge.Core.Models;
 using RomForge.Core.Services;
+using RomForge.Core.Services.Util;
 using RomForge.Core.UI.Helpers;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 
@@ -114,5 +117,28 @@ public partial class MainWindow : Window
             ViewModel.CancelAll();
         else
             e.Cancel = true;
+    }
+
+    private void LogBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (logBox.SelectedItems.Count == 0 || logBox.Items.Count == 0)
+            e.Handled = true;
+    }
+
+    private void CopyLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (logBox.SelectedItems.Count > 0)
+        {
+            var lines = new List<string>();
+
+            foreach (LogEntry entry in logBox.SelectedItems)
+            {
+                if (entry != null)
+                    lines.Add(entry.Message);
+            }
+
+            if (lines.Count > 0)
+                ClipboardHelper.CopyText(string.Join(Environment.NewLine, lines));
+        }
     }
 }

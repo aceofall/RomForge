@@ -2,6 +2,7 @@
 using NSW.WPF.Services;
 using RomForge.Core.Models;
 using RomForge.Core.Models.Util;
+using RomForge.Core.Services.Util;
 using RomForge.ViewModels.Util;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -108,18 +109,6 @@ public partial class HashTab : UserControl
             e.Handled = true;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool CloseClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool EmptyClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
-
     private void BtnCopyHash_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement btn && btn.DataContext is HashFileItem item)
@@ -127,29 +116,12 @@ public partial class HashTab : UserControl
             if (string.IsNullOrEmpty(item.HashResult))
                 return;
 
-            CopyTextDirect(item.HashResult);
+            ClipboardHelper.CopyText(item.HashResult);
 
             foreach (var fi in ViewModel.FileItems)
                 fi.IsCopied = false;
 
             item.IsCopied = true;
-        }
-    }
-
-    private void CopyTextDirect(string text)
-    {
-        if (!OpenClipboard(IntPtr.Zero))
-            return;
-
-        try
-        {
-            EmptyClipboard();
-            IntPtr hGlobal = Marshal.StringToHGlobalUni(text);
-            SetClipboardData(13, hGlobal);
-        }
-        finally
-        {
-            CloseClipboard();
         }
     }
 

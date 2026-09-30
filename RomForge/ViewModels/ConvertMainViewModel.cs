@@ -528,7 +528,9 @@ public class ConvertMainViewModel : ToolTabViewModel
             dolphin.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
             dolphin.ProgressChanged += (_, e) => Application.Current.Dispatcher.Invoke(() => item.Progress = e.Progress);
 
-            await dolphin.ConvertFileAsync(item.FilePath, detected.Format.ToString(), detected.OutputExtension, AppConfig.Instance.Dolphin.CompressLevel, null, ct);
+            string outputExtension = detected.Format is RomFormat.Wbfs or RomFormat.Wii && !string.IsNullOrEmpty(item.SelectedTargetFormat) ? item.SelectedTargetFormat.ToLowerInvariant() : detected.OutputExtension;
+
+            await dolphin.ConvertFileAsync(item.FilePath, detected.Format.ToString(), outputExtension, AppConfig.Instance.Dolphin.CompressLevel, null, ct);
 
             return;
         }

@@ -53,6 +53,12 @@ public class DiscConvertFileItem : ConvertibleFileItemBase
 
         var defaultTarget = detected.OutputExtension.ToUpperInvariant();
 
+        if (detected.Format == RomFormat.Wbfs)
+            return [defaultTarget, "ISO"];
+
+        if (detected.Format == RomFormat.Wii)
+            return [defaultTarget, "WBFS"];
+
         if (extension.Equals("chd", StringComparison.OrdinalIgnoreCase) || detected.Format == RomFormat.Chd)
         {
             bool isIsoBased = detected.OutputExtension.Equals("iso", StringComparison.OrdinalIgnoreCase);
